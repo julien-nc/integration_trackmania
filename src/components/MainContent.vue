@@ -47,7 +47,7 @@ export default {
 				1000: 0,
 			}
 			this.pbs.forEach(pb => {
-				const worldPosition = pb.recordPosition.zones[0].ranking.position
+				const worldPosition = pb.recordPosition.zones.World.ranking.position
 				if (worldPosition === 1) {
 					tops[1]++
 					tops[10]++

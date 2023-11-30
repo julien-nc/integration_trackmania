@@ -92,7 +92,7 @@ class TrackmaniaAPIService {
 			$results[] = $oneResult;
 		}
 
-		return $results;
+		return $this->formatMapResults($results);
 	}
 
 	public function getAllMapsWithPosition(string $userId): array {
@@ -134,7 +134,32 @@ class TrackmaniaAPIService {
 			$results[] = $oneResult;
 		}
 
-		return $results;
+		return $this->formatMapResults($results);
+	}
+
+	public function formatMapResults(array $data): array {
+		return array_map(static function(array $item) {
+			$formatted = [
+				'record' => [
+					'accountId' => $item['record']['accountId'],
+					'mapRecordId' => $item['record']['mapRecordId'],
+					'medal' => $item['record']['medal'],
+					'recordScore' => $item['record']['recordScore'],
+					'removed' => $item['record']['removed'],
+					'timestamp' => $item['record']['timestamp'],
+					'url' => $item['record']['url'],
+				],
+				'mapInfo' => $item['mapInfo'],
+				'recordPosition' => [
+					'score' => $item['recordPosition']['score'],
+					'zones' => [],
+				],
+			];
+			foreach ($item['recordPosition']['zones'] as $zone) {
+				$formatted['recordPosition']['zones'][$zone['zoneName']] = $zone;
+			}
+			return $formatted;
+		}, $data);
 	}
 
 	public function getCoreMapInfo(string $userId, ?array $mapIds = null, ?array $mapUids = null): array {
