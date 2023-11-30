@@ -15,6 +15,26 @@
 		<p>{{ t('integration_trackmania', '{nb} in top 100', { nb: topCount[100] }) }}</p>
 		<p>{{ t('integration_trackmania', '{nb} in top 1000', { nb: topCount[1000] }) }}</p>
 		<br>
+		<div class="checkColumns">
+			<NcCheckboxRadioSwitch
+				:checked.sync="showLineNumberColumn"
+				class="checkColumn">
+				{{ t('integration_trackmania', 'Line numbers') }}
+			</NcCheckboxRadioSwitch>
+			<NcCheckboxRadioSwitch
+				:checked.sync="showMedalsColumn"
+				class="checkColumn">
+				{{ t('integration_trackmania', 'Medals') }}
+			</NcCheckboxRadioSwitch>
+			<NcCheckboxRadioSwitch
+				v-for="zn in zoneNames"
+				:key="zn"
+				:checked="zoneColumnsEnabled[zn] ?? true"
+				class="checkColumn"
+				@update:checked="onZoneCheck(zn, $event)">
+				{{ t('integration_trackmania', 'Position in {zone}', { zone: zn }) }}
+			</NcCheckboxRadioSwitch>
+		</div>
 		<span>
 			{{ t('integration_trackmania', '{nb} rows', { nb: rowCount }) }}
 		</span>
@@ -40,6 +60,7 @@
 import TrackmaniaIcon from './icons/TrackmaniaIcon.vue'
 
 // import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
+import NcCheckboxRadioSwitch from '@nextcloud/vue/dist/Components/NcCheckboxRadioSwitch.js'
 import { VueGoodTable } from 'vue-good-table'
 import 'vue-good-table/dist/vue-good-table.css'
 
@@ -58,6 +79,7 @@ export default {
 		TrackmaniaIcon,
 		VueGoodTable,
 		// NcButton,
+		NcCheckboxRadioSwitch,
 	},
 
 	props: {
@@ -74,94 +96,9 @@ export default {
 	data() {
 		return {
 			rowCount: this.pbs.length,
-			columns: [
-				{
-					label: '#',
-					type: 'number',
-					field: '#',
-					sortable: false,
-				},
-				{
-					label: t('integration_trackmania', 'Map name'),
-					type: 'text',
-					field: 'mapInfo.name',
-					formatFn: this.formatMapName,
-					tdClass: 'mapNameColumn',
-					filterOptions: {
-						customFilter: true,
-						// styleClass: 'plop',
-						enabled: true, // enable filter for this column
-						placeholder: t('integration_trackmania', 'Filter names'), // placeholder for filter input
-						// filterValue: '', // initial populated value for this filter
-						filterDropdownItems: [],
-						filterFn: this.mapNameFilter,
-						trigger: 'enter',
-					},
-				},
-				{
-					label: t('integration_trackmania', 'PB'),
-					type: 'number',
-					field: 'record.recordScore.time',
-					formatFn: this.formatTime,
-					filterOptions: {
-						enabled: true, // enable filter for this column
-						placeholder: t('integration_trackmania', '"{example}" for less than 10 seconds', { example: '< 10000' }, null, { escape: false, sanitize: false }), // placeholder for filter input
-						filterFn: this.numberFilter,
-						trigger: 'enter',
-					},
-				},
-				{
-					label: t('integration_trackmania', 'Medals'),
-					type: 'number',
-					field: 'record.medal',
-					formatFn: this.formatMedals,
-					filterOptions: {
-						// styleClass: 'class1', // class to be added to the parent th element
-						enabled: true, // enable filter for this column
-						// filterValue: '', // initial populated value for this filter
-						placeholder: t('integration_trackmania', 'Any medal'), // placeholder for filter input
-						filterDropdownItems: [
-							{ value: 0, text: 'None' },
-							{ value: 1, text: '🟤 ' + t('integration_trackmania', 'Bronze') },
-							{ value: 2, text: '🔵 ' + t('integration_trackmania', 'Silver') },
-							{ value: 3, text: '🟡 ' + t('integration_trackmania', 'Gold') },
-							{ value: 4, text: '🟢 ' + t('integration_trackmania', 'Author') },
-							{ value: '>= 1', text: '🔵 ' + t('integration_trackmania', 'At least bronze') },
-							{ value: '>= 2', text: '🔵 ' + t('integration_trackmania', 'At least silver') },
-							{ value: '>= 3', text: '🟡 ' + t('integration_trackmania', 'At least gold') },
-						],
-						filterFn: this.numberFilter,
-					},
-				},
-				...this.zoneNames.map(zn => {
-					return {
-						label: t('integration_trackmania', '# in {zn}', { zn }),
-						type: 'number',
-						field: `recordPosition.zones.${zn}.ranking.position`,
-						filterOptions: {
-							enabled: true, // enable filter for this column
-							placeholder: t('integration_trackmania', '"{example}" for top 100', { example: '<= 100' }, null, { escape: false, sanitize: false }),
-							filterFn: this.numberFilter,
-							trigger: 'enter',
-						},
-					}
-				}),
-				/*
-				{
-					label: t('integration_trackmania', 'Position'),
-					type: 'number',
-					field: 'recordPosition.zones.World.ranking.position',
-					filterOptions: {
-						// styleClass: 'class1', // class to be added to the parent th element
-						enabled: true, // enable filter for this column
-						placeholder: t('integration_trackmania', '"{example}" for top 100', { example: '<= 100' }, null, { escape: false, sanitize: false }), // placeholder for filter input
-						// filterValue: '', // initial populated value for this filter
-						filterFn: this.numberFilter,
-						trigger: 'enter',
-					},
-				},
-				*/
-			],
+			showLineNumberColumn: true,
+			showMedalsColumn: true,
+			zoneColumnsEnabled: {},
 		}
 	},
 
@@ -220,6 +157,89 @@ export default {
 			})
 			return medals
 		},
+		columns() {
+			const columns = []
+			if (this.showLineNumberColumn) {
+				columns.push({
+					label: '#',
+					type: 'number',
+					field: '#',
+					sortable: false,
+				})
+			}
+			columns.push(...[
+				{
+					label: t('integration_trackmania', 'Map name'),
+					type: 'text',
+					field: 'mapInfo.name',
+					formatFn: this.formatMapName,
+					tdClass: 'mapNameColumn',
+					filterOptions: {
+						customFilter: true,
+						// styleClass: 'plop',
+						enabled: true, // enable filter for this column
+						placeholder: t('integration_trackmania', 'Filter names'), // placeholder for filter input
+						// filterValue: '', // initial populated value for this filter
+						filterDropdownItems: [],
+						filterFn: this.mapNameFilter,
+						trigger: 'enter',
+					},
+				},
+				{
+					label: t('integration_trackmania', 'PB'),
+					type: 'number',
+					field: 'record.recordScore.time',
+					formatFn: this.formatTime,
+					filterOptions: {
+						enabled: true, // enable filter for this column
+						placeholder: t('integration_trackmania', '"{example}" for less than 10 seconds', { example: '< 10000' }, null, { escape: false, sanitize: false }), // placeholder for filter input
+						filterFn: this.numberFilter,
+						trigger: 'enter',
+					},
+				},
+			])
+			if (this.showMedalsColumn) {
+				columns.push({
+					label: t('integration_trackmania', 'Medals'),
+					type: 'number',
+					field: 'record.medal',
+					formatFn: this.formatMedals,
+					filterOptions: {
+						// styleClass: 'class1', // class to be added to the parent th element
+						enabled: true, // enable filter for this column
+						// filterValue: '', // initial populated value for this filter
+						placeholder: t('integration_trackmania', 'Any medal'), // placeholder for filter input
+						filterDropdownItems: [
+							{ value: 0, text: 'None' },
+							{ value: 1, text: '🟤 ' + t('integration_trackmania', 'Bronze') },
+							{ value: 2, text: '🔵 ' + t('integration_trackmania', 'Silver') },
+							{ value: 3, text: '🟡 ' + t('integration_trackmania', 'Gold') },
+							{ value: 4, text: '🟢 ' + t('integration_trackmania', 'Author') },
+							{ value: '>= 1', text: '🔵 ' + t('integration_trackmania', 'At least bronze') },
+							{ value: '>= 2', text: '🔵 ' + t('integration_trackmania', 'At least silver') },
+							{ value: '>= 3', text: '🟡 ' + t('integration_trackmania', 'At least gold') },
+						],
+						filterFn: this.numberFilter,
+					},
+				})
+			}
+			columns.push(
+				...this.zoneNames.filter(zn => this.zoneColumnsEnabled[zn] ?? true).map(zn => {
+					return {
+						label: t('integration_trackmania', '# in {zn}', { zn }),
+						type: 'number',
+						field: `recordPosition.zones.${zn}.ranking.position`,
+						filterOptions: {
+							enabled: true, // enable filter for this column
+							placeholder: t('integration_trackmania', '"{example}" for top 100', { example: '<= 100' }, null, { escape: false, sanitize: false }),
+							filterFn: this.numberFilter,
+							trigger: 'enter',
+						},
+					}
+				}),
+			)
+			return columns
+		},
 	},
 
 	watch: {
@@ -232,6 +252,9 @@ export default {
 	},
 
 	methods: {
+		onZoneCheck(zn, checked) {
+			this.$set(this.zoneColumnsEnabled, zn, checked)
+		},
 		stringFilter(data, filterString) {
 			return data.toUpperCase().includes(filterString.toUpperCase())
 		},
@@ -319,6 +342,12 @@ export default {
 	:deep(.mapNameColumn) {
 		background: #B0B0B0;
 		font-weight: bold;
+	}
+
+	.checkColumns {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
 	}
 }
 </style>
