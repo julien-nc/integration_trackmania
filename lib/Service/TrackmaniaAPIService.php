@@ -101,14 +101,19 @@ class TrackmaniaAPIService {
 		foreach ($pbs as $pb) {
 			$pbTimesByMapId[$pb['mapId']] = $pb['recordScore']['time'];
 		}
-		$mapInfos = $this->getMapInfo($userId, array_keys($pbTimesByMapId));
+		$coreMapInfos = $this->getCoreMapInfo($userId, array_keys($pbTimesByMapId));
 		$allMyPbTimesByMapUid = [];
-		foreach ($mapInfos as $mapInfo) {
-			$mapInfoByMapId[$mapInfo['mapId']] = $mapInfo;
+		foreach ($coreMapInfos as $mapInfo) {
 			$time = $pbTimesByMapId[$mapInfo['mapId']];
 			if ($time !== null) {
 				$allMyPbTimesByMapUid[$mapInfo['mapUid']] = $time;
 			}
+		}
+		// there is more information in the live endpoint
+		$liveMapInfos = $this->getLiveMapInfo($userId, array_keys($allMyPbTimesByMapUid));
+		$liveMapInfoByMapId = [];
+		foreach ($liveMapInfos as $mapInfo) {
+			$liveMapInfoByMapId[$mapInfo['mapId']] = $mapInfo;
 		}
 		$positionsByMapUid = $this->getScorePositions($userId, $allMyPbTimesByMapUid);
 		$results = [];
@@ -117,9 +122,9 @@ class TrackmaniaAPIService {
 				'record' => $pb,
 			];
 			$mapId = $pb['mapId'];
-			if (isset($mapInfoByMapId[$mapId])) {
-				$mapUid = $mapInfoByMapId[$mapId]['mapUid'];
-				$oneResult['mapInfo'] = $mapInfoByMapId[$mapId];
+			if (isset($liveMapInfoByMapId[$mapId])) {
+				$mapUid = $liveMapInfoByMapId[$mapId]['uid'];
+				$oneResult['mapInfo'] = $liveMapInfoByMapId[$mapId];
 				if (isset($allMyPbTimesByMapUid[$mapUid])) {
 					$oneResult['recordPosition'] = $positionsByMapUid[$mapUid];
 				} else {
@@ -132,7 +137,7 @@ class TrackmaniaAPIService {
 		return $results;
 	}
 
-	public function getMapInfo(string $userId, ?array $mapIds = null, ?array $mapUids = null): array {
+	public function getCoreMapInfo(string $userId, ?array $mapIds = null, ?array $mapUids = null): array {
 		if ($mapIds !== null) {
 			$paramName = 'mapIdList';
 			$itemList = $mapIds;
@@ -163,6 +168,25 @@ class TrackmaniaAPIService {
 			}
 		}
 		return $mapInfos;
+	}
+
+	public function getLiveMapInfo(string $userId, array $mapUids): array {
+		$results = [];
+		$chunkSize = 100;
+		$offset = 0;
+		while ($offset < count($mapUids)) {
+			$uidsToLook = array_slice($mapUids, $offset, $chunkSize);
+			$params = [
+				'mapUidList' => implode(',', $uidsToLook),
+			];
+			$oneChunk = $this->request($userId, Application::AUDIENCE_LIVE, 'map/get-multiple', $params);
+			if (isset($oneChunk['mapList'])) {
+				$results = array_merge($results, $oneChunk['mapList']);
+			}
+			$offset = $offset + $chunkSize;
+		}
+
+		return $results;
 	}
 
 	public function getAllFavorites(string $userId): array {
@@ -215,7 +239,6 @@ class TrackmaniaAPIService {
 	public function getScorePositions(string $userId, array $scoresByMapUid): array {
 		$positionsByMapUid = [];
 		$uids = array_keys($scoresByMapUid);
-		file_put_contents('/tmp/uids', json_encode($scoresByMapUid));
 		$chunkSize = 50;
 		$offset = 0;
 		while ($offset < count($uids)) {
@@ -233,8 +256,6 @@ class TrackmaniaAPIService {
 				return 'scores[' . $uid . ']=' . $scoresByMapUid[$uid];
 			}, $uidsToLook);
 			$positions = $this->request($userId, Application::AUDIENCE_LIVE, 'leaderboard/group/map?' . implode('&', $getParams), $params, 'POST');
-			file_put_contents('/tmp/a' . $offset, json_encode($positions));
-			file_put_contents('/tmp/b' . $offset, json_encode($getParams));
 			if (!isset($positions['error'])) {
 				foreach ($positions as $position) {
 					$positionsByMapUid[$position['mapUid']] = $position;
