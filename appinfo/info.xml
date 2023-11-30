@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<info>
+	<id>integration_trackmania</id>
+	<name>Trackmania integration</name>
+	<summary>Integration of Trackmania</summary>
+	<description><![CDATA[Get more information than the game is able to.]]></description>
+	<version>1.0.0</version>
+	<licence>agpl</licence>
+	<author>Julien Veyssier</author>
+	<namespace>Trackmania</namespace>
+	<documentation>
+		<developer>https://github.com/julien-nc/integration_trackmania</developer>
+	</documentation>
+	<category>integration</category>
+	<category>dashboard</category>
+	<website>https://github.com/julien-nc/integration_trackmania</website>
+	<bugs>https://github.com/julien-nc/integration_trackmania/issues</bugs>
+	<screenshot>https://raw.githubusercontent.com/julien-nc/integration_trackmania/main/img/screenshot1.jpg</screenshot>
+	<screenshot>https://raw.githubusercontent.com/julien-nc/integration_trackmania/main/img/screenshot2.jpg</screenshot>
+	<screenshot>https://raw.githubusercontent.com/julien-nc/integration_trackmania/main/img/screenshot3.jpg</screenshot>
+	<dependencies>
+		<nextcloud min-version="28" max-version="29"/>
+	</dependencies>
+	<commands>
+		<command>OCA\Trackmania\Command\GetRecords</command>
+	</commands>
+	<settings>
+		<personal>OCA\Trackmania\Settings\Personal</personal>
+		<personal-section>OCA\Trackmania\Settings\PersonalSection</personal-section>
+	</settings>
+	<navigations>
+		<navigation>
+			<id>integration_trackmania</id>
+			<name>Trackmania</name>
+			<route>integration_trackmania.page.index</route>
+			<icon>app.svg</icon>
+			<order>8</order>
+		</navigation>
+	</navigations>
+</info>
