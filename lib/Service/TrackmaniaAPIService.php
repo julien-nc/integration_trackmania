@@ -18,6 +18,8 @@ use GuzzleHttp\Exception\ServerException;
 use OCA\Trackmania\AppInfo\Application;
 use OCA\Trackmania\Controller\ConfigController;
 use OCP\Http\Client\IClient;
+use OCP\ICache;
+use OCP\ICacheFactory;
 use OCP\IConfig;
 use OCP\IL10N;
 use OCP\PreConditionNotMetException;
@@ -28,15 +30,18 @@ use Throwable;
 class TrackmaniaAPIService {
 
 	private IClient $client;
+	private ICache $cache;
 
 	public function __construct(
 		string $appName,
 		private LoggerInterface $logger,
 		private IL10N $l10n,
 		private IConfig $config,
+		ICacheFactory $cacheFactory,
 		IClientService $clientService
 	) {
 		$this->client = $clientService->newClient();
+		$this->cache = $cacheFactory->createDistributed(Application::APP_ID);
 	}
 
 	public function getFavoritesWithPosition(string $userId): array {
@@ -165,22 +170,39 @@ class TrackmaniaAPIService {
 	public function getCoreMapInfo(string $userId, ?array $mapIds = null, ?array $mapUids = null): array {
 		if ($mapIds !== null) {
 			$paramName = 'mapIdList';
+			$cachePrefix = 'id';
+			$itemKeyInMapInfo = 'mapId';
 			$itemList = $mapIds;
 		} elseif ($mapUids !== null) {
 			$paramName = 'mapUidList';
+			$cachePrefix = 'uid';
+			$itemKeyInMapInfo = 'mapUid';
 			$itemList = $mapUids;
 		} else {
 			return [];
 		}
 
 		$mapInfos = [];
+
+		// get cached
+		$nonCachedItems = [];
+		foreach ($itemList as $item) {
+			$cacheKey = 'core-map-' . $cachePrefix . '-' . $item;
+			$cachedMapInfo = $this->cache->get($cacheKey);
+			if ($cachedMapInfo !== null) {
+				$mapInfos[] = $cachedMapInfo;
+			} else {
+				$nonCachedItems[] = $item;
+			}
+		}
+
 		$offset = 0;
-		while ($offset < count($itemList)) {
+		while ($offset < count($nonCachedItems)) {
 			$oneRequestItemList = [];
 			$stringListLength = 0;
-			while ($stringListLength < 7000 && $offset < count($itemList)) {
-				$oneRequestItemList[] = $itemList[$offset];
-				$stringListLength += strlen($itemList[$offset]) + 1;
+			while ($stringListLength < 7000 && $offset < count($nonCachedItems)) {
+				$oneRequestItemList[] = $nonCachedItems[$offset];
+				$stringListLength += strlen($nonCachedItems[$offset]) + 1;
 				$offset++;
 			}
 			$params = [
@@ -191,16 +213,33 @@ class TrackmaniaAPIService {
 			if (!isset($oneChunk['error'])) {
 				$mapInfos = array_merge($mapInfos, $oneChunk);
 			}
+			// cache this chunk
+			foreach ($oneChunk as $mapInfo) {
+				$cacheKey = 'core-map-' . $cachePrefix . '-' . $mapInfo[$itemKeyInMapInfo];
+				$this->cache->set($cacheKey, $mapInfo, Application::CACHE_DURATION);
+			}
 		}
 		return $mapInfos;
 	}
 
 	public function getLiveMapInfo(string $userId, array $mapUids): array {
 		$results = [];
+		// get cached
+		$nonCachedMapUids = [];
+		foreach ($mapUids as $uid) {
+			$cacheKey = 'live-map-' . $uid;
+			$cachedMapInfo = $this->cache->get($cacheKey);
+			if ($cachedMapInfo !== null) {
+				$results[] = $cachedMapInfo;
+			} else {
+				$nonCachedMapUids[] = $uid;
+			}
+		}
+
 		$chunkSize = 100;
 		$offset = 0;
-		while ($offset < count($mapUids)) {
-			$uidsToLook = array_slice($mapUids, $offset, $chunkSize);
+		while ($offset < count($nonCachedMapUids)) {
+			$uidsToLook = array_slice($nonCachedMapUids, $offset, $chunkSize);
 			$params = [
 				'mapUidList' => implode(',', $uidsToLook),
 			];
@@ -209,6 +248,11 @@ class TrackmaniaAPIService {
 				$results = array_merge($results, $oneChunk['mapList']);
 			}
 			$offset = $offset + $chunkSize;
+			// cache this chunk
+			foreach ($oneChunk['mapList'] as $mapInfo) {
+				$cacheKey = 'live-map-' . $mapInfo['uid'];
+				$this->cache->set($cacheKey, $mapInfo, Application::CACHE_DURATION);
+			}
 		}
 
 		return $results;

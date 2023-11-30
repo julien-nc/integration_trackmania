@@ -17,6 +17,7 @@ use OCP\AppFramework\Bootstrap\IBootstrap;
 class Application extends App implements IBootstrap {
 	public const APP_ID = 'integration_trackmania';
 
+	public const CACHE_DURATION = 24 * 60 * 60;
 	public const INTEGRATION_USER_AGENT = 'Nextcloud Trackmania integration / eneiluj+ubi@posteo.net';
 
 	public const TOKEN_REFRESH_URL = 'https://prod.trackmania.core.nadeo.online/v2/authentication/token/refresh';
