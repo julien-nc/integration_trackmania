@@ -152,6 +152,7 @@ class TrackmaniaAPIService {
 					'recordScore' => $item['record']['recordScore'],
 					'removed' => $item['record']['removed'],
 					'timestamp' => $item['record']['timestamp'],
+					'unix_timestamp' => (new DateTime($item['record']['timestamp']))->getTimestamp(),
 					'url' => $item['record']['url'],
 				],
 				'mapInfo' => $item['mapInfo'],

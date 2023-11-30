@@ -22,6 +22,11 @@
 				{{ t('integration_trackmania', 'Line numbers') }}
 			</NcCheckboxRadioSwitch>
 			<NcCheckboxRadioSwitch
+				:checked.sync="showDatesColumn"
+				class="checkColumn">
+				{{ t('integration_trackmania', 'Date') }}
+			</NcCheckboxRadioSwitch>
+			<NcCheckboxRadioSwitch
 				:checked.sync="showMedalsColumn"
 				class="checkColumn">
 				{{ t('integration_trackmania', 'Medals') }}
@@ -64,7 +69,7 @@ import NcCheckboxRadioSwitch from '@nextcloud/vue/dist/Components/NcCheckboxRadi
 import { VueGoodTable } from 'vue-good-table'
 import 'vue-good-table/dist/vue-good-table.css'
 
-// import moment from '@nextcloud/moment'
+import moment from '@nextcloud/moment'
 import { dig } from '../utils.js'
 import {
 	Time,
@@ -97,6 +102,7 @@ export default {
 		return {
 			rowCount: this.pbs.length,
 			showLineNumberColumn: true,
+			showDatesColumn: true,
 			showMedalsColumn: true,
 			zoneColumnsEnabled: {},
 		}
@@ -198,6 +204,14 @@ export default {
 					},
 				},
 			])
+			if (this.showDatesColumn) {
+				columns.push({
+					label: t('integration_trackmania', 'Date'),
+					type: 'number',
+					field: 'record.unix_timestamp',
+					formatFn: this.formatTimestamp,
+				})
+			}
 			if (this.showMedalsColumn) {
 				columns.push({
 					label: t('integration_trackmania', 'Medals'),
@@ -288,6 +302,9 @@ export default {
 				+ '.' + milli + ' (' + value + ')'
 			*/
 			return Time.fromMilliseconds(value).toTmString() + ' (' + value + ')'
+		},
+		formatTimestamp(value) {
+			return moment.unix(value).format('LLL')
 		},
 		formatMapName(value) {
 			return htmlify(value)
