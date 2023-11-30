@@ -46,6 +46,7 @@ import 'vue-good-table/dist/vue-good-table.css'
 
 // import moment from '@nextcloud/moment'
 import { dig } from '../utils.js'
+import { Time, TextFormatter } from 'tm-essentials'
 
 export default {
 	name: 'MainContent',
@@ -77,6 +78,7 @@ export default {
 					label: t('integration_trackmania', 'Map name'),
 					type: 'text',
 					field: 'mapInfo.name',
+					formatFn: this.formatMapName,
 					filterOptions: {
 						customFilter: true,
 						// styleClass: 'class1', // class to be added to the parent th element
@@ -224,6 +226,7 @@ export default {
 			}
 		},
 		formatTime(value) {
+			/*
 			const milli = value % 1000
 			const totalSeconds = Math.floor(value / 1000)
 			const hours = Math.floor(totalSeconds / 3600)
@@ -233,6 +236,11 @@ export default {
 				+ ':' + String(minutes).padStart(2, '0')
 				+ ':' + String(seconds).padStart(2, '0')
 				+ '.' + milli + ' (' + value + ')'
+			*/
+			return Time.fromMilliseconds(value).toTmString() + ' (' + value + ')'
+		},
+		formatMapName(value) {
+			return TextFormatter.deformat(value)
 		},
 		formatMedals(value) {
 			return value === 4
