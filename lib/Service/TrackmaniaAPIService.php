@@ -428,7 +428,7 @@ class TrackmaniaAPIService {
 	private function refreshToken(string $userId, string $audience): bool {
 		$refreshToken = $this->config->getUserValue($userId, Application::APP_ID, Application::AUDIENCES[$audience]['token_config_key_prefix'] . 'refresh_token');
 		if (!$refreshToken) {
-			$this->logger->error('No refresh token found', ['app' => Application::APP_ID]);
+			$this->logger->error('No ' . $audience . ' refresh token found', ['app' => Application::APP_ID]);
 			return false;
 		}
 		try {
@@ -444,13 +444,11 @@ class TrackmaniaAPIService {
 			$respCode = $response->getStatusCode();
 
 			if ($respCode >= 400) {
-				error_log('refresh failed:' . $respCode);
 				return false;
 			} else {
 				$bodyArray = json_decode($body, true);
-//				error_log('refresh BODY2 KEYS:' . implode('||', array_keys($bodyArray)));
 				if (isset($bodyArray['accessToken'], $bodyArray['refreshToken'])) {
-					$this->logger->info('access token successfully refreshed', ['app' => Application::APP_ID]);
+					$this->logger->info($audience . 'access token successfully refreshed', ['app' => Application::APP_ID]);
 					$accessToken = $bodyArray['accessToken'];
 					$refreshToken = $bodyArray['refreshToken'];
 					$this->config->setUserValue($userId, Application::APP_ID, Application::AUDIENCES[$audience]['token_config_key_prefix'] . 'token', $accessToken);
@@ -467,7 +465,7 @@ class TrackmaniaAPIService {
 		} catch (Exception $e) {
 			error_log('refresh exception '.$e->getMessage());
 			$this->logger->error(
-				'Token is not valid anymore. Impossible to refresh it. '
+				$audience . ' token is not valid anymore. Impossible to refresh it. '
 				. $result['error'] . ' '
 				. $result['error_description'] ?? '[no error description]',
 				['app' => Application::APP_ID]
@@ -500,18 +498,16 @@ class TrackmaniaAPIService {
 				return ['error' => $this->l10n->t('Invalid credentials')];
 			} else {
 				$bodyArray = json_decode($body, true);
-				error_log('BODY KEYS:' . implode('||', array_keys($bodyArray)));
-				error_log('BODY ticket:' . $bodyArray['ticket']);
 				if (isset($bodyArray['ticket'], $bodyArray['userId'], $bodyArray['nameOnPlatform'])) {
 					foreach (Application::AUDIENCES as $audienceKey => $v) {
-						$tokens = $this->login2($bodyArray['ticket'], $audienceKey);
+						$tokens = $this->getAccessTokenFromLoginTicket($bodyArray['ticket'], $audienceKey);
 						if (isset($tokens['accessToken'], $tokens['refreshToken'])) {
 							$bodyArray[$audienceKey] = $tokens;
 						}
 					}
 					return $bodyArray;
 				}
-				return ['error' => $this->l10n->t('Error during login1111')];
+				return ['error' => $this->l10n->t('Error during login')];
 			}
 		} catch (Exception $e) {
 			$this->logger->warning('login error : '.$e->getMessage(), ['app' => Application::APP_ID]);
@@ -519,7 +515,12 @@ class TrackmaniaAPIService {
 		}
 	}
 
-	public function login2(string $ticket, string $audience): array {
+	/**
+	 * @param string $ticket
+	 * @param string $audience
+	 * @return array
+	 */
+	public function getAccessTokenFromLoginTicket(string $ticket, string $audience): array {
 		try {
 			$url = 'https://prod.trackmania.core.nadeo.online/v2/authentication/token/ubiservices';
 			$options = [
@@ -530,9 +531,6 @@ class TrackmaniaAPIService {
 				],
 				'json' => [
 					'audience' => $audience,
-//					'audience' => 'NadeoLiveServices',
-//					'audience' => 'NadeoServices',
-//					'audience' => 'NadeoClubServices',
 				],
 			];
 			$response = $this->client->post($url, $options);
@@ -540,18 +538,15 @@ class TrackmaniaAPIService {
 			$respCode = $response->getStatusCode();
 
 			if ($respCode >= 400) {
-				error_log('login2 failed:' . $respCode);
 				return ['error' => $this->l10n->t('Invalid credentials')];
 			} else {
 				$bodyArray = json_decode($body, true);
-				error_log('BODY2 KEYS:' . implode('||', array_keys($bodyArray)));
 				if (isset($bodyArray['accessToken'], $bodyArray['refreshToken'])) {
 					return $bodyArray;
 				}
-				return ['error' => $this->l10n->t('Error during login22222')];
+				return ['error' => $this->l10n->t('Error when getting access token')];
 			}
 		} catch (Exception $e) {
-			error_log('login2 exception '.$e->getMessage());
 			$this->logger->warning('login error : '.$e->getMessage(), ['app' => Application::APP_ID]);
 			return ['error' => $e->getMessage()];
 		}

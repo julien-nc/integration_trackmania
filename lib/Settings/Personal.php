@@ -21,12 +21,12 @@ class Personal implements ISettings {
 	 * @return TemplateResponse
 	 */
 	public function getForm(): TemplateResponse {
-		$liveToken = $this->config->getUserValue($this->userId, Application::APP_ID, 'live_token');
+		$coreToken = $this->config->getUserValue($this->userId, Application::APP_ID, Application::AUDIENCES[Application::AUDIENCE_CORE]['token_config_key_prefix'] . 'token');
 		$mmUserId = $this->config->getUserValue($this->userId, Application::APP_ID, 'user_id');
 		$mmUserName = $this->config->getUserValue($this->userId, Application::APP_ID, 'user_name');
 
 		$userConfig = [
-			'token' => $liveToken ? 'dummyTokenContent' : '',
+			'core_token' => $coreToken ? 'dummyTokenContent' : '',
 			'user_id' => $mmUserId,
 			'user_name' => $mmUserName,
 		];

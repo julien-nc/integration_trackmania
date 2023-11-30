@@ -1,6 +1,6 @@
 <template>
 	<div id="trackmania_prefs" class="section">
-		<h2>
+		<h2 v-if="showTitle">
 			<TrackmaniaIcon class="icon" />
 			{{ t('integration_trackmania', 'Trackmania integration') }}
 		</h2>
@@ -92,7 +92,12 @@ export default {
 		AccountIcon,
 	},
 
-	props: [],
+	props: {
+		showTitle: {
+			type: Boolean,
+			default: true,
+		},
+	},
 
 	data() {
 		return {
@@ -106,7 +111,7 @@ export default {
 
 	computed: {
 		connected() {
-			return !!this.state.token
+			return !!this.state.core_token
 				&& !!this.state.user_name
 		},
 		connectedDisplayName() {
@@ -122,10 +127,10 @@ export default {
 
 	methods: {
 		onLogoutClick() {
-			this.state.token = ''
+			this.state.core_token = ''
 			this.login = ''
 			this.password = ''
-			this.saveOptions({ token: '' })
+			this.saveOptions({ core_token: '' })
 		},
 		saveOptions(values) {
 			const req = {
@@ -142,7 +147,8 @@ export default {
 							showSuccess(t('integration_trackmania', 'Successfully connected to Trackmania!'))
 							this.state.user_id = response.data.user_id
 							this.state.user_name = response.data.user_name
-							this.state.token = 'dumdum'
+							this.state.core_token = 'dumdum'
+							this.$emit('connected', this.state.user_name, this.state.user_id)
 						}
 					} else {
 						showSuccess(t('integration_trackmania', 'Trackmania options saved'))

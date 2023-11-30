@@ -15,7 +15,7 @@ webpackConfig.stats = {
 const appId = 'integration_trackmania'
 webpackConfig.entry = {
 	personalSettings: { import: path.join(__dirname, 'src', 'personalSettings.js'), filename: appId + '-personalSettings.js' },
-	// main: { import: path.join(__dirname, 'src', 'main.js'), filename: appId + '-main.js' },
+	main: { import: path.join(__dirname, 'src', 'main.js'), filename: appId + '-main.js' },
 }
 
 webpackConfig.plugins.push(

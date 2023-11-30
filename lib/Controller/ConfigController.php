@@ -62,18 +62,21 @@ class ConfigController extends Controller {
 		}
 		$result = [];
 
-		if (isset($values['token']) && $values['token'] === '') {
+		if (isset($values['core_token']) && $values['core_token'] === '') {
 			$this->config->deleteUserValue($this->userId, Application::APP_ID, 'user_id');
 			$this->config->deleteUserValue($this->userId, Application::APP_ID, 'account_id');
 			$this->config->deleteUserValue($this->userId, Application::APP_ID, 'user_name');
 			$this->config->deleteUserValue($this->userId, Application::APP_ID, 'user_displayname');
-			$this->config->deleteUserValue($this->userId, Application::APP_ID, 'token');
+			foreach (Application::AUDIENCES as $audienceKey => $v) {
+				$prefix = $v['token_config_key_prefix'];
+				$this->config->deleteUserValue($this->userId, Application::APP_ID, $prefix . 'token');
+				$this->config->deleteUserValue($this->userId, Application::APP_ID, $prefix . 'refresh_token');
+				$this->config->deleteUserValue($this->userId, Application::APP_ID, $prefix . 'token_expires_at');
+				$this->config->deleteUserValue($this->userId, Application::APP_ID, $prefix . 'account_id');
+			}
 			$result['user_id'] = '';
 			$result['user_name'] = '';
 			$result['user_displayname'] = '';
-			// if the token is set, cleanup refresh token and expiration date
-			$this->config->deleteUserValue($this->userId, Application::APP_ID, 'refresh_token');
-			$this->config->deleteUserValue($this->userId, Application::APP_ID, 'token_expires_at');
 		}
 		return new DataResponse($result);
 	}
