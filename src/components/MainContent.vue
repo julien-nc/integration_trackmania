@@ -47,7 +47,7 @@ import 'vue-good-table/dist/vue-good-table.css'
 import { dig } from '../utils.js'
 import {
 	Time,
-	// TextFormatter,
+	TextFormatter,
 } from 'tm-essentials'
 import { htmlify } from 'tm-text'
 
@@ -94,7 +94,7 @@ export default {
 						placeholder: t('integration_trackmania', 'Filter names'), // placeholder for filter input
 						// filterValue: '', // initial populated value for this filter
 						filterDropdownItems: [],
-						filterFn: this.stringFilter,
+						filterFn: this.mapNameFilter,
 						trigger: 'enter',
 					},
 				},
@@ -235,6 +235,10 @@ export default {
 		stringFilter(data, filterString) {
 			return data.toUpperCase().includes(filterString.toUpperCase())
 		},
+		mapNameFilter(data, filterString) {
+			console.debug('aaaaaaaaaaaaa FILTER MAP NAME', data)
+			return TextFormatter.deformat(data).includes(filterString.toUpperCase())
+		},
 		numberFilter(data, filterString) {
 			if (filterString.startsWith('<=')) {
 				return data <= parseInt(filterString.replace('<=', ''))
@@ -263,7 +267,6 @@ export default {
 			return Time.fromMilliseconds(value).toTmString() + ' (' + value + ')'
 		},
 		formatMapName(value) {
-			// return TextFormatter.deformat(value)
 			return htmlify(value)
 		},
 		formatMedals(value) {
