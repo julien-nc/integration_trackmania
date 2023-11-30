@@ -5,10 +5,10 @@
 			<span>{{ t('integration_trackmania', 'Trackmania integration') }}</span>
 		</h2>
 		<br>
-		<p>{{ t('integration_trackmania', '{nb} Author medals', { nb: medalCount.author }) }}</p>
-		<p>{{ t('integration_trackmania', '{nb} Gold medals', { nb: medalCount.gold }) }}</p>
-		<p>{{ t('integration_trackmania', '{nb} Silver medals', { nb: medalCount.silver }) }}</p>
-		<p>{{ t('integration_trackmania', '{nb} Bronze medals', { nb: medalCount.bronze }) }}</p>
+		<p>🟢 {{ t('integration_trackmania', '{nb} Author medals', { nb: medalCount.author }) }}</p>
+		<p>🟡 {{ t('integration_trackmania', '{nb} Gold medals', { nb: medalCount.gold }) }}</p>
+		<p>🔵 {{ t('integration_trackmania', '{nb} Silver medals', { nb: medalCount.silver }) }}</p>
+		<p>🟤 {{ t('integration_trackmania', '{nb} Bronze medals', { nb: medalCount.bronze }) }}</p>
 		<br>
 		<p>{{ t('integration_trackmania', '{nb} in top 1', { nb: topCount[1] }) }}</p>
 		<p>{{ t('integration_trackmania', '{nb} in top 10', { nb: topCount[10] }) }}</p>
@@ -18,22 +18,21 @@
 		<span>
 			{{ t('integration_trackmania', '{nb} rows', { nb: rowCount }) }}
 		</span>
-		<div id="trackmania-content">
-			<VueGoodTable
-				:columns="columns"
-				:rows="pbs"
-				:fixed-header="true"
-				@on-column-filter="onColumnFilter">
-				<template slot="table-row" slot-scope="props">
-					<span v-if="props.column.field === '#'">
-						{{ props.index + 1 }}
-					</span>
-					<span v-else>
-						{{ props.formattedRow[props.column.field] }}
-					</span>
-				</template>
-			</VueGoodTable>
-		</div>
+		<VueGoodTable
+			:columns="columns"
+			:rows="pbs"
+			:fixed-header="true"
+			@on-column-filter="onColumnFilter">
+			<template slot="table-row" slot-scope="props">
+				<span v-if="props.column.field === '#'">
+					{{ props.index + 1 }}
+				</span>
+				<span v-else-if="props.column.field === 'mapInfo.name'" v-html="props.formattedRow[props.column.field]" />
+				<span v-else>
+					{{ props.formattedRow[props.column.field] }}
+				</span>
+			</template>
+		</VueGoodTable>
 	</div>
 </template>
 
@@ -46,7 +45,11 @@ import 'vue-good-table/dist/vue-good-table.css'
 
 // import moment from '@nextcloud/moment'
 import { dig } from '../utils.js'
-import { Time, TextFormatter } from 'tm-essentials'
+import {
+	Time,
+	// TextFormatter,
+} from 'tm-essentials'
+import { htmlify } from 'tm-text'
 
 export default {
 	name: 'MainContent',
@@ -59,6 +62,10 @@ export default {
 
 	props: {
 		pbs: {
+			type: Array,
+			required: true,
+		},
+		zoneNames: {
 			type: Array,
 			required: true,
 		},
@@ -79,27 +86,15 @@ export default {
 					type: 'text',
 					field: 'mapInfo.name',
 					formatFn: this.formatMapName,
+					tdClass: 'mapNameColumn',
 					filterOptions: {
 						customFilter: true,
-						// styleClass: 'class1', // class to be added to the parent th element
+						// styleClass: 'plop',
 						enabled: true, // enable filter for this column
 						placeholder: t('integration_trackmania', 'Filter names'), // placeholder for filter input
 						// filterValue: '', // initial populated value for this filter
 						filterDropdownItems: [],
 						filterFn: this.stringFilter,
-						trigger: 'enter',
-					},
-				},
-				{
-					label: t('integration_trackmania', 'Position'),
-					type: 'number',
-					field: 'recordPosition.zones.World.ranking.position',
-					filterOptions: {
-						// styleClass: 'class1', // class to be added to the parent th element
-						enabled: true, // enable filter for this column
-						placeholder: t('integration_trackmania', '"{example}" for top 100', { example: '<= 100' }, null, { escape: false, sanitize: false }), // placeholder for filter input
-						// filterValue: '', // initial populated value for this filter
-						filterFn: this.numberFilter,
 						trigger: 'enter',
 					},
 				},
@@ -138,6 +133,34 @@ export default {
 						filterFn: this.numberFilter,
 					},
 				},
+				...this.zoneNames.map(zn => {
+					return {
+						label: t('integration_trackmania', '# in {zn}', { zn }),
+						type: 'number',
+						field: `recordPosition.zones.${zn}.ranking.position`,
+						filterOptions: {
+							enabled: true, // enable filter for this column
+							placeholder: t('integration_trackmania', '"{example}" for top 100', { example: '<= 100' }, null, { escape: false, sanitize: false }),
+							filterFn: this.numberFilter,
+							trigger: 'enter',
+						},
+					}
+				}),
+				/*
+				{
+					label: t('integration_trackmania', 'Position'),
+					type: 'number',
+					field: 'recordPosition.zones.World.ranking.position',
+					filterOptions: {
+						// styleClass: 'class1', // class to be added to the parent th element
+						enabled: true, // enable filter for this column
+						placeholder: t('integration_trackmania', '"{example}" for top 100', { example: '<= 100' }, null, { escape: false, sanitize: false }), // placeholder for filter input
+						// filterValue: '', // initial populated value for this filter
+						filterFn: this.numberFilter,
+						trigger: 'enter',
+					},
+				},
+				*/
 			],
 		}
 	},
@@ -240,7 +263,8 @@ export default {
 			return Time.fromMilliseconds(value).toTmString() + ' (' + value + ')'
 		},
 		formatMapName(value) {
-			return TextFormatter.deformat(value)
+			// return TextFormatter.deformat(value)
+			return htmlify(value)
 		},
 		formatMedals(value) {
 			return value === 4
@@ -276,14 +300,22 @@ export default {
 
 <style scoped lang="scss">
 #trackmania_main {
+	overflow-x: scroll;
+
 	>h2 {
 		display: flex;
 		.icon {
 			margin-right: 8px;
 		}
 	}
+
 	#trackmania-content {
 		//margin-left: 40px;
+	}
+
+	:deep(.mapNameColumn) {
+		background: #B0B0B0;
+		font-weight: bold;
 	}
 }
 </style>

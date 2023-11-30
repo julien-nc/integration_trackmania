@@ -6,7 +6,8 @@
 			<!--template #list>
 			</template-->
 			<MainContent v-if="pbs"
-				:pbs="pbs" />
+				:pbs="pbs"
+				:zone-names="zoneNames" />
 			<div v-else-if="!connected">
 				<NcEmptyContent
 					:name="t('integration_trackmania', 'You are not connected to Trackmania')">
@@ -84,6 +85,7 @@ export default {
 			state,
 			loadingData: false,
 			pbs: null,
+			zoneNames: null,
 		}
 	},
 
@@ -121,6 +123,7 @@ export default {
 			this.loadingData = true
 			const url = generateUrl('/apps/integration_trackmania/pbs')
 			axios.get(url).then((response) => {
+				this.zoneNames = this.getZoneNames(response.data[0])
 				this.pbs = response.data
 			}).catch((error) => {
 				showError(
@@ -131,6 +134,9 @@ export default {
 			}).then(() => {
 				this.loadingData = false
 			})
+		},
+		getZoneNames(onePb) {
+			return Object.keys(onePb.recordPosition.zones)
 		},
 	},
 }

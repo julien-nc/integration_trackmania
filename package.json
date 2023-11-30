@@ -43,6 +43,7 @@
 		"@nextcloud/router": "^2.0.0",
 		"@nextcloud/vue": "^8.2.0",
 		"tm-essentials": "^1.0.5",
+		"tm-text": "^1.1.0",
 		"vue": "^2.7.13",
 		"vue-clipboard2": "^0.3.3",
 		"vue-good-table": "^2.21.11",

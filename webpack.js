@@ -37,4 +37,12 @@ webpackConfig.module.rules.push({
 	type: 'asset/source',
 })
 
+// for tm-text
+webpackConfig.module.rules.push({
+	test: /\.m?js$/,
+	resolve: {
+		fullySpecified: false,
+	},
+})
+
 module.exports = webpackConfig
