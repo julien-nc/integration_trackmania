@@ -23,7 +23,16 @@
 				:columns="columns"
 				:rows="pbs"
 				:fixed-header="true"
-				@on-column-filter="onColumnFilter" />
+				@on-column-filter="onColumnFilter">
+				<template slot="table-row" slot-scope="props">
+					<span v-if="props.column.field === '#'">
+						{{ props.index + 1 }}
+					</span>
+					<span v-else>
+						{{ props.formattedRow[props.column.field] }}
+					</span>
+				</template>
+			</VueGoodTable>
 		</div>
 	</div>
 </template>
@@ -58,6 +67,12 @@ export default {
 		return {
 			rowCount: this.pbs.length,
 			columns: [
+				{
+					label: '#',
+					type: 'number',
+					field: '#',
+					sortable: false,
+				},
 				{
 					label: t('integration_trackmania', 'Map name'),
 					type: 'text',
