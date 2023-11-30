@@ -5,6 +5,16 @@
 			<span>{{ t('integration_trackmania', 'Trackmania integration') }}</span>
 		</h2>
 		<br>
+		<p>{{ t('integration_trackmania', '{nb} Author medals', { nb: medalCount.author }) }}</p>
+		<p>{{ t('integration_trackmania', '{nb} Gold medals', { nb: medalCount.gold }) }}</p>
+		<p>{{ t('integration_trackmania', '{nb} Silver medals', { nb: medalCount.silver }) }}</p>
+		<p>{{ t('integration_trackmania', '{nb} Bronze medals', { nb: medalCount.bronze }) }}</p>
+		<br>
+		<p>{{ t('integration_trackmania', '{nb} in top 1', { nb: topCount[1] }) }}</p>
+		<p>{{ t('integration_trackmania', '{nb} in top 10', { nb: topCount[10] }) }}</p>
+		<p>{{ t('integration_trackmania', '{nb} in top 100', { nb: topCount[100] }) }}</p>
+		<p>{{ t('integration_trackmania', '{nb} in top 1000', { nb: topCount[1000] }) }}</p>
+		<br>
 		<span>
 			{{ t('integration_trackmania', '{nb} rows', { nb: rowCount }) }}
 		</span>
@@ -12,7 +22,6 @@
 			<VueGoodTable
 				:columns="columns"
 				:rows="pbs"
-				max-height="600px"
 				:fixed-header="true"
 				@on-column-filter="onColumnFilter" />
 		</div>
@@ -50,14 +59,14 @@ export default {
 			rowCount: this.pbs.length,
 			columns: [
 				{
-					label: 'Map name',
+					label: t('integration_trackmania', 'Map name'),
 					type: 'text',
 					field: 'mapInfo.name',
 					filterOptions: {
 						customFilter: true,
 						// styleClass: 'class1', // class to be added to the parent th element
 						enabled: true, // enable filter for this column
-						placeholder: 'Filter names', // placeholder for filter input
+						placeholder: t('integration_trackmania', 'Filter names'), // placeholder for filter input
 						// filterValue: '', // initial populated value for this filter
 						filterDropdownItems: [],
 						filterFn: this.stringFilter,
@@ -65,32 +74,32 @@ export default {
 					},
 				},
 				{
-					label: 'Position',
+					label: t('integration_trackmania', 'Position'),
 					type: 'number',
 					field: 'recordPosition.zones.World.ranking.position',
 					filterOptions: {
 						// styleClass: 'class1', // class to be added to the parent th element
 						enabled: true, // enable filter for this column
-						placeholder: '"<= 100" for top 100', // placeholder for filter input
+						placeholder: t('integration_trackmania', '"{example}" for top 100', { example: '<= 100' }, null, { escape: false, sanitize: false }), // placeholder for filter input
 						// filterValue: '', // initial populated value for this filter
 						filterFn: this.numberFilter,
 						trigger: 'enter',
 					},
 				},
 				{
-					label: 'PB',
+					label: t('integration_trackmania', 'PB'),
 					type: 'number',
 					field: 'record.recordScore.time',
 					formatFn: this.formatTime,
 					filterOptions: {
 						enabled: true, // enable filter for this column
-						placeholder: '"< 10000" for less than 10 seconds', // placeholder for filter input
+						placeholder: t('integration_trackmania', '"{example}" for less than 10 seconds', { example: '< 10000' }, null, { escape: false, sanitize: false }), // placeholder for filter input
 						filterFn: this.numberFilter,
 						trigger: 'enter',
 					},
 				},
 				{
-					label: 'Medals',
+					label: t('integration_trackmania', 'Medals'),
 					type: 'number',
 					field: 'record.medal',
 					formatFn: this.formatMedals,
@@ -98,13 +107,16 @@ export default {
 						// styleClass: 'class1', // class to be added to the parent th element
 						enabled: true, // enable filter for this column
 						// filterValue: '', // initial populated value for this filter
-						placeholder: 'Any medal', // placeholder for filter input
+						placeholder: t('integration_trackmania', 'Any medal'), // placeholder for filter input
 						filterDropdownItems: [
 							{ value: 0, text: 'None' },
-							{ value: 1, text: '🟤 Bronze' },
-							{ value: 2, text: '🔵 Silver' },
-							{ value: 3, text: '🟡 Gold' },
-							{ value: 4, text: '🟢 Author' },
+							{ value: 1, text: '🟤 ' + t('integration_trackmania', 'Bronze') },
+							{ value: 2, text: '🔵 ' + t('integration_trackmania', 'Silver') },
+							{ value: 3, text: '🟡 ' + t('integration_trackmania', 'Gold') },
+							{ value: 4, text: '🟢 ' + t('integration_trackmania', 'Author') },
+							{ value: '>= 1', text: '🔵 ' + t('integration_trackmania', 'At least bronze') },
+							{ value: '>= 2', text: '🔵 ' + t('integration_trackmania', 'At least silver') },
+							{ value: '>= 3', text: '🟡 ' + t('integration_trackmania', 'At least gold') },
 						],
 						filterFn: this.numberFilter,
 					},
@@ -189,9 +201,9 @@ export default {
 			} else if (filterString.startsWith('<')) {
 				return data < parseInt(filterString.replace('<', ''))
 			} else if (filterString.startsWith('>=')) {
-				return data < parseInt(filterString.replace('>', ''))
+				return data >= parseInt(filterString.replace('>=', ''))
 			} else if (filterString.startsWith('>')) {
-				return data < parseInt(filterString.replace('>=', ''))
+				return data > parseInt(filterString.replace('>', ''))
 			} else {
 				return data === parseInt(filterString)
 			}

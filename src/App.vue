@@ -20,12 +20,14 @@
 					@connected="onConnected" />
 			</div>
 			<NcEmptyContent v-else-if="loadingData"
+				class="main-empty-content"
 				:name="t('integration_trackmania', 'Loading your records')">
 				<template #icon>
 					<NcLoadingIcon />
 				</template>
 			</NcEmptyContent>
 			<NcEmptyContent v-else
+				class="main-empty-content"
 				:name="t('integration_trackmania', 'Failed to get the data')">
 				<template #icon>
 					<TrackmaniaIcon />
@@ -147,9 +149,7 @@ body {
 	align-items: center;
 }
 
-.emptyContentWrapper {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
+.main-empty-content {
+	margin-top: 24px;
 }
 </style>
