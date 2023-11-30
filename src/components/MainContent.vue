@@ -2,15 +2,19 @@
 	<div id="trackmania_main" class="section">
 		<h2>
 			<TrackmaniaIcon class="icon" />
-			{{ t('integration_trackmania', 'Trackmania integration') }}
+			<span>{{ t('integration_trackmania', 'Trackmania integration') }}</span>
 		</h2>
 		<br>
+		<span>
+			{{ t('integration_trackmania', '{nb} rows', { nb: rowCount }) }}
+		</span>
 		<div id="trackmania-content">
 			<VueGoodTable
 				:columns="columns"
 				:rows="pbs"
 				max-height="600px"
-				:fixed-header="true" />
+				:fixed-header="true"
+				@on-column-filter="onColumnFilter" />
 		</div>
 	</div>
 </template>
@@ -23,6 +27,7 @@ import { VueGoodTable } from 'vue-good-table'
 import 'vue-good-table/dist/vue-good-table.css'
 
 // import moment from '@nextcloud/moment'
+import { dig } from '../utils.js'
 
 export default {
 	name: 'MainContent',
@@ -42,12 +47,14 @@ export default {
 
 	data() {
 		return {
+			rowCount: this.pbs.length,
 			columns: [
 				{
 					label: 'Map name',
 					type: 'text',
 					field: 'mapInfo.name',
 					filterOptions: {
+						customFilter: true,
 						// styleClass: 'class1', // class to be added to the parent th element
 						enabled: true, // enable filter for this column
 						placeholder: 'Filter names', // placeholder for filter input
@@ -64,7 +71,7 @@ export default {
 					filterOptions: {
 						// styleClass: 'class1', // class to be added to the parent th element
 						enabled: true, // enable filter for this column
-						placeholder: 'Example: "<= 100" for top 100', // placeholder for filter input
+						placeholder: '"<= 100" for top 100', // placeholder for filter input
 						// filterValue: '', // initial populated value for this filter
 						filterFn: this.numberFilter,
 						trigger: 'enter',
@@ -75,6 +82,32 @@ export default {
 					type: 'number',
 					field: 'record.recordScore.time',
 					formatFn: this.formatTime,
+					filterOptions: {
+						enabled: true, // enable filter for this column
+						placeholder: '"< 10000" for less than 10 seconds', // placeholder for filter input
+						filterFn: this.numberFilter,
+						trigger: 'enter',
+					},
+				},
+				{
+					label: 'Medals',
+					type: 'number',
+					field: 'record.medal',
+					formatFn: this.formatMedals,
+					filterOptions: {
+						// styleClass: 'class1', // class to be added to the parent th element
+						enabled: true, // enable filter for this column
+						// filterValue: '', // initial populated value for this filter
+						placeholder: 'Any medal', // placeholder for filter input
+						filterDropdownItems: [
+							{ value: 0, text: 'None' },
+							{ value: 1, text: '🟤 Bronze' },
+							{ value: 2, text: '🔵 Silver' },
+							{ value: 3, text: '🟡 Gold' },
+							{ value: 4, text: '🟢 Author' },
+						],
+						filterFn: this.numberFilter,
+					},
 				},
 			],
 		}
@@ -153,8 +186,14 @@ export default {
 		numberFilter(data, filterString) {
 			if (filterString.startsWith('<=')) {
 				return data <= parseInt(filterString.replace('<=', ''))
-			// } else if () {
-
+			} else if (filterString.startsWith('<')) {
+				return data < parseInt(filterString.replace('<', ''))
+			} else if (filterString.startsWith('>=')) {
+				return data < parseInt(filterString.replace('>', ''))
+			} else if (filterString.startsWith('>')) {
+				return data < parseInt(filterString.replace('>=', ''))
+			} else {
+				return data === parseInt(filterString)
 			}
 		},
 		formatTime(value) {
@@ -168,14 +207,48 @@ export default {
 				+ ':' + String(seconds).padStart(2, '0')
 				+ '.' + milli + ' (' + value + ')'
 		},
+		formatMedals(value) {
+			return value === 4
+				? '🟢 Author'
+				: value === 3
+					? '🟡 Gold'
+					: value === 2
+						? '🔵 Silver'
+						: value === 1
+							? '🟤 Bronze'
+							: 'None'
+		},
+		// recompute the filtered list to get the total number of rows...because good table no good
+		onColumnFilter(params) {
+			let myFiltered = this.pbs
+			Object.keys(params.columnFilters).forEach(field => {
+				const filterString = params.columnFilters[field]
+				if (filterString === '') {
+					return
+				}
+				const columnConfig = this.columns.find(c => c.field === field)
+				myFiltered = myFiltered.filter(pb => {
+					const data = dig(pb, field)
+					return columnConfig.filterOptions.filterFn(data, filterString)
+				})
+			})
+			this.rowCount = myFiltered.length
+			console.debug('my filtered row list', myFiltered)
+		},
 	},
 }
 </script>
 
 <style scoped lang="scss">
 #trackmania_main {
+	>h2 {
+		display: flex;
+		.icon {
+			margin-right: 8px;
+		}
+	}
 	#trackmania-content {
-		margin-left: 40px;
+		//margin-left: 40px;
 	}
 }
 </style>
