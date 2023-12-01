@@ -5,16 +5,20 @@
 			<span>{{ t('integration_trackmania', 'Trackmania integration') }}</span>
 		</h2>
 		<br>
-		<p>🟢 {{ t('integration_trackmania', '{nb} Author medals', { nb: medalCount.author }) }}</p>
-		<p>🟡 {{ t('integration_trackmania', '{nb} Gold medals', { nb: medalCount.gold }) }}</p>
-		<p>🔵 {{ t('integration_trackmania', '{nb} Silver medals', { nb: medalCount.silver }) }}</p>
-		<p>🟤 {{ t('integration_trackmania', '{nb} Bronze medals', { nb: medalCount.bronze }) }}</p>
-		<br>
-		<p>{{ t('integration_trackmania', '{nb} in top 1', { nb: topCount[1] }) }}</p>
-		<p>{{ t('integration_trackmania', '{nb} in top 10', { nb: topCount[10] }) }}</p>
-		<p>{{ t('integration_trackmania', '{nb} in top 100', { nb: topCount[100] }) }}</p>
-		<p>{{ t('integration_trackmania', '{nb} in top 1000', { nb: topCount[1000] }) }}</p>
-		<br>
+		<div class="summary">
+			<div class="summary__medals">
+				<p>🟢 {{ t('integration_trackmania', '{nb} Author medals', { nb: medalCount.author }) }}</p>
+				<p>🟡 {{ t('integration_trackmania', '{nb} Gold medals', { nb: medalCount.gold }) }}</p>
+				<p>🔵 {{ t('integration_trackmania', '{nb} Silver medals', { nb: medalCount.silver }) }}</p>
+				<p>🟤 {{ t('integration_trackmania', '{nb} Bronze medals', { nb: medalCount.bronze }) }}</p>
+			</div>
+			<div class="summary__top">
+				<p>{{ t('integration_trackmania', '{nb} records in top 1', { nb: topCount[1] }) }}</p>
+				<p>{{ t('integration_trackmania', '{nb} records in top 10', { nb: topCount[10] }) }}</p>
+				<p>{{ t('integration_trackmania', '{nb} records in top 100', { nb: topCount[100] }) }}</p>
+				<p>{{ t('integration_trackmania', '{nb} records in top 1000', { nb: topCount[1000] }) }}</p>
+			</div>
+		</div>
 		<div class="checkColumns">
 			<NcCheckboxRadioSwitch
 				:checked.sync="showLineNumberColumn"
@@ -53,6 +57,10 @@
 					{{ props.index + 1 }}
 				</span>
 				<span v-else-if="props.column.field === 'mapInfo.name'" v-html="props.formattedRow[props.column.field]" />
+				<span v-else-if="props.column.field === 'record.medal'"
+					:title="getMedalTime(props)">
+					{{ props.formattedRow[props.column.field] }}
+				</span>
 				<span v-else>
 					{{ props.formattedRow[props.column.field] }}
 				</span>
@@ -266,6 +274,18 @@ export default {
 	},
 
 	methods: {
+		getMedalTime(props) {
+			if (props.row.record.medal === 4) {
+				return t('integration_trackmania', 'Author time is {t}', { t: this.formatTime(props.row.mapInfo.authorTime) })
+			} else if (props.row.record.medal === 3) {
+				return t('integration_trackmania', 'Gold time is {t}', { t: this.formatTime(props.row.mapInfo.goldTime) })
+			} else if (props.row.record.medal === 2) {
+				return t('integration_trackmania', 'Silver time is {t}', { t: this.formatTime(props.row.mapInfo.silverTime) })
+			} else if (props.row.record.medal === 1) {
+				return t('integration_trackmania', 'Bronze time is {t}', { t: this.formatTime(props.row.mapInfo.bronzeTime) })
+			}
+			return ''
+		},
 		onZoneCheck(zn, checked) {
 			this.$set(this.zoneColumnsEnabled, zn, checked)
 		},
@@ -311,13 +331,13 @@ export default {
 		},
 		formatMedals(value) {
 			return value === 4
-				? '🟢 Author'
+				? '🟢 ' + t('integration_trackmania', 'Author')
 				: value === 3
-					? '🟡 Gold'
+					? '🟡 ' + t('integration_trackmania', ' Gold')
 					: value === 2
-						? '🔵 Silver'
+						? '🔵 ' + t('integration_trackmania', ' Silver')
 						: value === 1
-							? '🟤 Bronze'
+							? '🟤 ' + t('integration_trackmania', ' Bronze')
 							: 'None'
 		},
 		// recompute the filtered list to get the total number of rows...because good table no good
@@ -354,6 +374,13 @@ export default {
 
 	#trackmania-content {
 		//margin-left: 40px;
+	}
+
+	.summary {
+		display: flex;
+		align-items: center;
+		gap: 44px;
+		margin-bottom: 24px;
 	}
 
 	:deep(.mapNameColumn) {
