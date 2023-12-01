@@ -27,24 +27,27 @@
 		</div>
 		<div class="checkColumns">
 			<NcCheckboxRadioSwitch
-				:checked.sync="showLineNumberColumn"
-				class="checkColumn">
+				:checked="config.show_column_line_number ?? true"
+				class="checkColumn"
+				@update:checked="onColumnCheck('show_column_line_number', $event)">
 				{{ t('integration_trackmania', 'Line numbers') }}
 			</NcCheckboxRadioSwitch>
 			<NcCheckboxRadioSwitch
-				:checked.sync="showDatesColumn"
-				class="checkColumn">
+				:checked="config.show_column_date ?? true"
+				class="checkColumn"
+				@update:checked="onColumnCheck('show_column_date', $event)">
 				{{ t('integration_trackmania', 'Date') }}
 			</NcCheckboxRadioSwitch>
 			<NcCheckboxRadioSwitch
-				:checked.sync="showMedalsColumn"
-				class="checkColumn">
+				:checked="config.show_column_medals ?? true"
+				class="checkColumn"
+				@update:checked="onColumnCheck('show_column_medals', $event)">
 				{{ t('integration_trackmania', 'Medals') }}
 			</NcCheckboxRadioSwitch>
 			<NcCheckboxRadioSwitch
 				v-for="zn in zoneNames"
 				:key="zn"
-				:checked="zoneColumnsEnabled[zn] ?? false"
+				:checked="config['show_column_zone_' + zn] ?? zn === 'World'"
 				class="checkColumn"
 				@update:checked="onZoneCheck(zn, $event)">
 				{{ t('integration_trackmania', 'Position in {zone}', { zone: zn }) }}
@@ -86,6 +89,10 @@ import { VueGoodTable } from 'vue-good-table'
 import 'vue-good-table/dist/vue-good-table.css'
 
 import moment from '@nextcloud/moment'
+import { generateUrl } from '@nextcloud/router'
+import axios from '@nextcloud/axios'
+import { showError } from '@nextcloud/dialogs'
+import { loadState } from '@nextcloud/initial-state'
 import { dig } from '../utils.js'
 import {
 	Time,
@@ -100,6 +107,8 @@ const MEDAL_STRING = {
 	3: '🟡 ' + t('integration_trackmania', 'Gold'),
 	4: '🟢 ' + t('integration_trackmania', 'Author'),
 }
+
+const configState = loadState('integration_trackmania', 'table-config')
 
 export default {
 	name: 'MainContent',
@@ -136,6 +145,7 @@ export default {
 			zoneColumnsEnabled: {
 				World: true,
 			},
+			config: configState,
 		}
 	},
 
@@ -218,7 +228,7 @@ export default {
 		},
 		columns() {
 			const columns = []
-			if (this.showLineNumberColumn) {
+			if (this.config.show_column_line_number ?? true) {
 				columns.push({
 					label: '#',
 					type: 'number',
@@ -257,7 +267,7 @@ export default {
 					},
 				},
 			])
-			if (this.showDatesColumn) {
+			if (this.config.show_column_date ?? true) {
 				columns.push({
 					label: t('integration_trackmania', 'Date'),
 					type: 'number',
@@ -265,7 +275,7 @@ export default {
 					formatFn: this.formatTimestamp,
 				})
 			}
-			if (this.showMedalsColumn) {
+			if (this.config.show_column_medals ?? true) {
 				columns.push({
 					label: t('integration_trackmania', 'Medals'),
 					type: 'number',
@@ -291,7 +301,7 @@ export default {
 				})
 			}
 			columns.push(
-				...this.zoneNames.filter(zn => this.zoneColumnsEnabled[zn] ?? false).map(zn => {
+				...this.zoneNames.filter(zn => this.config['show_column_zone_' + zn] ?? zn === 'World').map(zn => {
 					return {
 						label: t('integration_trackmania', '# in {zn}', { zn }),
 						type: 'number',
@@ -332,7 +342,27 @@ export default {
 			return ''
 		},
 		onZoneCheck(zn, checked) {
-			this.$set(this.zoneColumnsEnabled, zn, checked)
+			this.$set(this.config, 'show_column_zone_' + zn, checked)
+			this.saveOptions({ ['show_column_zone_' + zn]: checked ? '1' : '0' })
+		},
+		onColumnCheck(key, checked) {
+			this.$set(this.config, key, checked)
+			this.saveOptions({ [key]: checked ? '1' : '0' })
+		},
+		saveOptions(values) {
+			const req = {
+				values,
+			}
+			const url = generateUrl('/apps/integration_trackmania/config')
+			axios.put(url, req).then((response) => {
+				console.debug('saved options', response.data)
+			}).catch((error) => {
+				showError(
+					t('integration_trackmania', 'Failed to save options')
+					+ ': ' + (error.response?.request?.responseText ?? ''),
+				)
+				console.error(error)
+			})
 		},
 		stringFilter(data, filterString) {
 			return data.toUpperCase().includes(filterString.toUpperCase())

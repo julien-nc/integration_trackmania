@@ -102,6 +102,7 @@ class TrackmaniaAPIService {
 
 	public function getAllMapsWithPosition(string $userId): array {
 		$pbs = $this->getMapRecords($userId);
+//		$pbs = array_slice($pbs, 0, 2);
 		$pbTimesByMapId = [];
 		foreach ($pbs as $pb) {
 			$pbTimesByMapId[$pb['mapId']] = $pb['recordScore']['time'];

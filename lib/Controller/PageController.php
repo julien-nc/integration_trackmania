@@ -53,6 +53,16 @@ class PageController extends Controller {
 			'ubisofts_user_id' => $ubisoftUserId,
 		];
 		$this->initialStateService->provideInitialState('user-config', $pageInitialState);
+
+		// table config
+		$tableConfig = [];
+		foreach ($this->config->getUserKeys($this->userId, Application::APP_ID) as $key) {
+			if (str_starts_with($key, 'show_column_')) {
+				$tableConfig[$key] = $this->config->getUserValue($this->userId, Application::APP_ID, $key) === '1';
+			}
+		}
+		$this->initialStateService->provideInitialState('table-config', $tableConfig);
+
 		return new TemplateResponse(Application::APP_ID, 'main', []);
 	}
 }
