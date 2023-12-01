@@ -5,10 +5,7 @@
 			@update:showDetails="a = 2">
 			<!--template #list>
 			</template-->
-			<MainContent v-if="pbs"
-				:pbs="pbs"
-				:zone-names="zoneNames" />
-			<div v-else-if="!connected">
+			<div v-if="!connected">
 				<NcEmptyContent
 					:name="t('integration_trackmania', 'You are not connected to Trackmania')">
 					<template #icon>
@@ -27,6 +24,8 @@
 					<NcLoadingIcon />
 				</template>
 			</NcEmptyContent>
+			<MainContent v-else-if="hasData"
+				:zone-names="zoneNames" />
 			<NcEmptyContent v-else
 				class="main-empty-content"
 				:name="t('integration_trackmania', 'Failed to get the data')">
@@ -74,7 +73,12 @@ export default {
 		NcLoadingIcon,
 	},
 
-	provide: {
+	provide() {
+		return {
+			pbs: () => {
+				return this.$options.pbs
+			},
+		}
 	},
 
 	props: {
@@ -84,7 +88,7 @@ export default {
 		return {
 			state,
 			loadingData: false,
-			pbs: null,
+			hasData: false,
 			zoneNames: null,
 		}
 	},
@@ -103,6 +107,7 @@ export default {
 	},
 
 	mounted() {
+		this.$options.pbs = []
 		if (this.connected) {
 			this.getPbs()
 		}
@@ -116,7 +121,8 @@ export default {
 			this.getPbs()
 		},
 		reloadData() {
-			this.pbs = null
+			this.hasData = false
+			this.$options.pbs = []
 			this.getPbs()
 		},
 		getPbs() {
@@ -124,7 +130,8 @@ export default {
 			const url = generateUrl('/apps/integration_trackmania/pbs')
 			axios.get(url).then((response) => {
 				this.zoneNames = this.getZoneNames(response.data[0])
-				this.pbs = response.data
+				this.$options.pbs = response.data
+				this.hasData = true
 			}).catch((error) => {
 				showError(
 					t('integration_trackmania', 'Failed to get data')

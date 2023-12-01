@@ -49,7 +49,7 @@
 		</span>
 		<VueGoodTable
 			:columns="columns"
-			:rows="pbs"
+			:rows="pbs()"
 			:fixed-header="true"
 			@on-column-filter="onColumnFilter">
 			<template slot="table-row" slot-scope="props">
@@ -95,11 +95,13 @@ export default {
 		NcCheckboxRadioSwitch,
 	},
 
-	props: {
+	inject: {
 		pbs: {
-			type: Array,
-			required: true,
+			default: () => [],
 		},
+	},
+
+	props: {
 		zoneNames: {
 			type: Array,
 			required: true,
@@ -119,9 +121,9 @@ export default {
 	computed: {
 		filteredPbs() {
 			if (this.filterParams === null) {
-				return this.pbs
+				return this.pbs()
 			}
-			let myFiltered = this.pbs
+			let myFiltered = this.pbs()
 			Object.keys(this.filterParams.columnFilters).forEach(field => {
 				const filterString = this.filterParams.columnFilters[field]
 				if (filterString === '') {
@@ -290,7 +292,7 @@ export default {
 	},
 
 	mounted() {
-		console.debug('aaaaaaaaaaaaa pbs', this.pbs)
+		console.debug('aaaaaaaaaaaaa pbs', this.pbs())
 		console.debug('aaaaaaaaaaaaa tops', this.topCount)
 		console.debug('aaaaaaaaaaaaa medals', this.medalCount)
 	},
