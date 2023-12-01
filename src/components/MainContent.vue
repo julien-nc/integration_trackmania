@@ -4,6 +4,12 @@
 			<TrackmaniaIcon class="icon" />
 			<span>{{ t('integration_trackmania', 'Trackmania integration') }}</span>
 		</h2>
+		<NcButton @click="$emit('reload')">
+			<template #icon>
+				<ReloadIcon />
+			</template>
+			{{ t('integration_trackmania', 'Reload data') }}
+		</NcButton>
 		<br>
 		<div class="summary">
 			<div class="summary__medals">
@@ -38,7 +44,7 @@
 			<NcCheckboxRadioSwitch
 				v-for="zn in zoneNames"
 				:key="zn"
-				:checked="zoneColumnsEnabled[zn] ?? true"
+				:checked="zoneColumnsEnabled[zn] ?? false"
 				class="checkColumn"
 				@update:checked="onZoneCheck(zn, $event)">
 				{{ t('integration_trackmania', 'Position in {zone}', { zone: zn }) }}
@@ -70,9 +76,11 @@
 </template>
 
 <script>
+import ReloadIcon from 'vue-material-design-icons/Reload.vue'
+
 import TrackmaniaIcon from './icons/TrackmaniaIcon.vue'
 
-// import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
+import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
 import NcCheckboxRadioSwitch from '@nextcloud/vue/dist/Components/NcCheckboxRadioSwitch.js'
 import { VueGoodTable } from 'vue-good-table'
 import 'vue-good-table/dist/vue-good-table.css'
@@ -91,8 +99,9 @@ export default {
 	components: {
 		TrackmaniaIcon,
 		VueGoodTable,
-		// NcButton,
+		NcButton,
 		NcCheckboxRadioSwitch,
+		ReloadIcon,
 	},
 
 	inject: {
@@ -114,7 +123,9 @@ export default {
 			showLineNumberColumn: true,
 			showDatesColumn: true,
 			showMedalsColumn: true,
-			zoneColumnsEnabled: {},
+			zoneColumnsEnabled: {
+				World: true,
+			},
 		}
 	},
 
@@ -270,7 +281,7 @@ export default {
 				})
 			}
 			columns.push(
-				...this.zoneNames.filter(zn => this.zoneColumnsEnabled[zn] ?? true).map(zn => {
+				...this.zoneNames.filter(zn => this.zoneColumnsEnabled[zn] ?? false).map(zn => {
 					return {
 						label: t('integration_trackmania', '# in {zn}', { zn }),
 						type: 'number',

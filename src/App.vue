@@ -25,7 +25,8 @@
 				</template>
 			</NcEmptyContent>
 			<MainContent v-else-if="hasData"
-				:zone-names="zoneNames" />
+				:zone-names="zoneNames"
+				@reload="reloadData" />
 			<NcEmptyContent v-else
 				class="main-empty-content"
 				:name="t('integration_trackmania', 'Failed to get the data')">
@@ -43,7 +44,6 @@ import CogIcon from 'vue-material-design-icons/Cog.vue'
 import TrackmaniaIcon from './components/icons/TrackmaniaIcon.vue'
 
 import NcLoadingIcon from '@nextcloud/vue/dist/Components/NcLoadingIcon.js'
-// import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
 import NcAppContent from '@nextcloud/vue/dist/Components/NcAppContent.js'
 import NcContent from '@nextcloud/vue/dist/Components/NcContent.js'
 import NcEmptyContent from '@nextcloud/vue/dist/Components/NcEmptyContent.js'
@@ -69,7 +69,6 @@ export default {
 		NcAppContent,
 		NcContent,
 		NcEmptyContent,
-		// NcButton,
 		NcLoadingIcon,
 	},
 
