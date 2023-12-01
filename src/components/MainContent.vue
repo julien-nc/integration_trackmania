@@ -117,6 +117,8 @@ export default {
 		},
 	},
 
+	// TODO save/restore enabled columns and filters
+	// TODO check if possible to keep filters when toggling a column
 	data() {
 		return {
 			filterParams: null,
