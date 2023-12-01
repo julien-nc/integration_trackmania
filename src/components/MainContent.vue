@@ -93,6 +93,14 @@ import {
 } from 'tm-essentials'
 import { htmlify } from 'tm-text'
 
+const MEDAL_STRING = {
+	0: t('integration_trackmania', 'None'),
+	1: '🟤 ' + t('integration_trackmania', 'Bronze'),
+	2: '🔵 ' + t('integration_trackmania', 'Silver'),
+	3: '🟡 ' + t('integration_trackmania', 'Gold'),
+	4: '🟢 ' + t('integration_trackmania', 'Author'),
+}
+
 export default {
 	name: 'MainContent',
 
@@ -367,15 +375,7 @@ export default {
 			return htmlify(value)
 		},
 		formatMedals(value) {
-			return value === 4
-				? '🟢 ' + t('integration_trackmania', 'Author')
-				: value === 3
-					? '🟡 ' + t('integration_trackmania', ' Gold')
-					: value === 2
-						? '🔵 ' + t('integration_trackmania', ' Silver')
-						: value === 1
-							? '🟤 ' + t('integration_trackmania', ' Bronze')
-							: 'None'
+			return MEDAL_STRING[value]
 		},
 		// recompute the filtered list to get the total number of rows...because good table no good
 		onColumnFilter(params) {
