@@ -147,22 +147,28 @@ class TrackmaniaAPIService {
 			$formatted = [
 				'record' => [
 					'accountId' => $item['record']['accountId'],
-					'mapRecordId' => $item['record']['mapRecordId'],
 					'medal' => $item['record']['medal'],
 					'recordScore' => $item['record']['recordScore'],
-					'removed' => $item['record']['removed'],
-					'timestamp' => $item['record']['timestamp'],
 					'unix_timestamp' => (new DateTime($item['record']['timestamp']))->getTimestamp(),
-					'url' => $item['record']['url'],
 				],
-				'mapInfo' => $item['mapInfo'],
+				'mapInfo' => [
+					'uid' => $item['mapInfo']['uid'],
+					'mapId' => $item['mapInfo']['mapId'],
+					'name' => $item['mapInfo']['name'],
+					'favorite' => $item['mapInfo']['favorite'],
+					'authorTime' => $item['mapInfo']['authorTime'],
+					'goldTime' => $item['mapInfo']['goldTime'],
+					'silverTime' => $item['mapInfo']['silverTime'],
+					'bronzeTime' => $item['mapInfo']['bronzeTime'],
+				],
 				'recordPosition' => [
 					'score' => $item['recordPosition']['score'],
 					'zones' => [],
 				],
 			];
 			foreach ($item['recordPosition']['zones'] as $zone) {
-				$formatted['recordPosition']['zones'][$zone['zoneName']] = $zone;
+//				$formatted['recordPosition']['zones'][$zone['zoneName']] = $zone;
+				$formatted['recordPosition']['zones'][$zone['zoneName']] = $zone['ranking']['position'];
 			}
 			return $formatted;
 		}, $data);

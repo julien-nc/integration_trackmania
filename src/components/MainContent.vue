@@ -125,7 +125,7 @@ export default {
 				1000: 0,
 			}
 			this.pbs.forEach(pb => {
-				const worldPosition = pb.recordPosition.zones.World.ranking.position
+				const worldPosition = pb.recordPosition.zones.World
 				if (worldPosition === 1) {
 					tops[1]++
 					tops[10]++
@@ -250,7 +250,7 @@ export default {
 					return {
 						label: t('integration_trackmania', '# in {zn}', { zn }),
 						type: 'number',
-						field: `recordPosition.zones.${zn}.ranking.position`,
+						field: `recordPosition.zones.${zn}`,
 						filterOptions: {
 							enabled: true, // enable filter for this column
 							placeholder: t('integration_trackmania', '"{example}" for top 100', { example: '<= 100' }, null, { escape: false, sanitize: false }),
