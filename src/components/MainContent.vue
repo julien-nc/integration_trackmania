@@ -419,8 +419,9 @@ export default {
 			return htmlify(value)
 		},
 		formatFavorite(value) {
+			// checkwhy that's called way too many times
 			console.debug('aaaaa FAV', value)
-			return value ? '⭐' : ''
+			return value ? '⭐' : '☆'
 		},
 		formatMedals(value) {
 			return MEDAL_STRING[value]
