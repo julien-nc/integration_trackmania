@@ -101,8 +101,15 @@ class TrackmaniaAPIService {
 	}
 
 	public function getAllMapsWithPosition(string $userId): array {
+		// get favorites because liveMapInfo always says favorite: false
+		$allFavs = $this->getAllFavorites($userId);
+		$allFavsByMapId = [];
+		foreach ($allFavs as $fav) {
+			$allFavsByMapId[$fav['mapId']] = 1;
+		}
+
 		$pbs = $this->getMapRecords($userId);
-//		$pbs = array_slice($pbs, 0, 2);
+		$pbs = array_slice($pbs, 0, 100);
 		$pbTimesByMapId = [];
 		foreach ($pbs as $pb) {
 			$pbTimesByMapId[$pb['mapId']] = $pb['recordScore']['time'];
@@ -131,6 +138,7 @@ class TrackmaniaAPIService {
 			if (isset($liveMapInfoByMapId[$mapId])) {
 				$mapUid = $liveMapInfoByMapId[$mapId]['uid'];
 				$oneResult['mapInfo'] = $liveMapInfoByMapId[$mapId];
+				$oneResult['mapInfo']['favorite'] = isset($allFavsByMapId[$mapId]);
 				if (isset($allMyPbTimesByMapUid[$mapUid])) {
 					$oneResult['recordPosition'] = $positionsByMapUid[$mapUid];
 				} else {
@@ -161,6 +169,7 @@ class TrackmaniaAPIService {
 					'goldTime' => $item['mapInfo']['goldTime'],
 					'silverTime' => $item['mapInfo']['silverTime'],
 					'bronzeTime' => $item['mapInfo']['bronzeTime'],
+					'thumbnailUrl' => $item['mapInfo']['thumbnailUrl'],
 				],
 				'recordPosition' => [
 					'score' => $item['recordPosition']['score'],

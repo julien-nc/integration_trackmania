@@ -39,6 +39,12 @@
 				{{ t('integration_trackmania', 'Date') }}
 			</NcCheckboxRadioSwitch>
 			<NcCheckboxRadioSwitch
+				:checked="config.show_column_favorite ?? true"
+				class="checkColumn"
+				@update:checked="onColumnCheck('show_column_favorite', $event)">
+				{{ t('integration_trackmania', 'Favorite') }}
+			</NcCheckboxRadioSwitch>
+			<NcCheckboxRadioSwitch
 				:checked="config.show_column_medals ?? true"
 				class="checkColumn"
 				@update:checked="onColumnCheck('show_column_medals', $event)">
@@ -236,6 +242,14 @@ export default {
 					sortable: false,
 				})
 			}
+			if (this.config.show_column_favorite ?? true) {
+				columns.push({
+					label: t('integration_trackmania', 'Favorite'),
+					type: 'text',
+					field: 'mapInfo.favorite',
+					formatFn: this.formatFavorite,
+				})
+			}
 			columns.push(...[
 				{
 					label: t('integration_trackmania', 'Map name'),
@@ -403,6 +417,10 @@ export default {
 		},
 		formatMapName(value) {
 			return htmlify(value)
+		},
+		formatFavorite(value) {
+			console.debug('aaaaa FAV', value)
+			return value ? '⭐' : ''
 		},
 		formatMedals(value) {
 			return MEDAL_STRING[value]
