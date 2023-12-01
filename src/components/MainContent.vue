@@ -108,7 +108,7 @@ export default {
 
 	data() {
 		return {
-			rowCount: this.pbs.length,
+			filterParams: null,
 			showLineNumberColumn: true,
 			showDatesColumn: true,
 			showMedalsColumn: true,
@@ -117,6 +117,28 @@ export default {
 	},
 
 	computed: {
+		filteredPbs() {
+			if (this.filterParams === null) {
+				return this.pbs
+			}
+			let myFiltered = this.pbs
+			Object.keys(this.filterParams.columnFilters).forEach(field => {
+				const filterString = this.filterParams.columnFilters[field]
+				if (filterString === '') {
+					return
+				}
+				const columnConfig = this.columns.find(c => c.field === field)
+				myFiltered = myFiltered.filter(pb => {
+					const data = dig(pb, field)
+					return columnConfig.filterOptions.filterFn(data, filterString)
+				})
+			})
+			console.debug('my filtered row list', myFiltered)
+			return myFiltered
+		},
+		rowCount() {
+			return this.filteredPbs.length
+		},
 		topCount() {
 			const tops = {
 				1: 0,
@@ -124,7 +146,7 @@ export default {
 				100: 0,
 				1000: 0,
 			}
-			this.pbs.forEach(pb => {
+			this.filteredPbs.forEach(pb => {
 				const worldPosition = pb.recordPosition.zones.World
 				if (worldPosition === 1) {
 					tops[1]++
@@ -151,7 +173,7 @@ export default {
 				gold: 0,
 				author: 0,
 			}
-			this.pbs.forEach(pb => {
+			this.filteredPbs.forEach(pb => {
 				const medal = pb.record.medal
 				if (medal === 4) {
 					medals.author++
@@ -342,20 +364,7 @@ export default {
 		},
 		// recompute the filtered list to get the total number of rows...because good table no good
 		onColumnFilter(params) {
-			let myFiltered = this.pbs
-			Object.keys(params.columnFilters).forEach(field => {
-				const filterString = params.columnFilters[field]
-				if (filterString === '') {
-					return
-				}
-				const columnConfig = this.columns.find(c => c.field === field)
-				myFiltered = myFiltered.filter(pb => {
-					const data = dig(pb, field)
-					return columnConfig.filterOptions.filterFn(data, filterString)
-				})
-			})
-			this.rowCount = myFiltered.length
-			console.debug('my filtered row list', myFiltered)
+			this.filterParams = params
 		},
 	},
 }
