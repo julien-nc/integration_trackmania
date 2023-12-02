@@ -59,14 +59,14 @@
 				{{ t('integration_trackmania', 'Position in {zone}', { zone: zn }) }}
 			</NcCheckboxRadioSwitch>
 		</div>
+		<br>
 		<span>
 			{{ t('integration_trackmania', '{nb} rows', { nb: rowCount }) }}
 		</span>
 		<VueGoodTable
 			:columns="columns"
-			:rows="pbs()"
-			:fixed-header="true"
-			@on-column-filter="onColumnFilter">
+			:rows="filteredPbs"
+			:fixed-header="true">
 			<template slot="table-row" slot-scope="props">
 				<span v-if="props.column.field === '#'">
 					{{ props.index + 1 }}
@@ -80,6 +80,80 @@
 					{{ props.formattedRow[props.column.field] }}
 				</span>
 			</template>
+			<template slot="column-filter" slot-scope="props">
+				<input
+					v-if="props.column.field === 'mapInfo.name'"
+					:value="mapNameFilter"
+					type="text"
+					@keyup.enter="mapNameFilter = $event.target.value">
+				<input
+					v-else-if="props.column.field === 'record.recordScore.time'"
+					:value="timeFilter"
+					type="text"
+					:placeholder="t('integration_trackmania', '\'{example}\' for less than 10 seconds', { example: '< 10000' }, null, { escape: false, sanitize: false })"
+					@keyup.enter="timeFilter = $event.target.value">
+				<select
+					v-else-if="props.column.field === 'mapInfo.favorite'"
+					v-model="favoriteFilter">
+					<option value="">
+						{{ t('integration_trackmania', 'All') }}
+					</option>
+					<option value="false">
+						{{ '☆ ' + t('integration_trackmania', 'Not favorite') }}
+					</option>
+					<option value="true">
+						{{ '⭐ ' + t('integration_trackmania', 'Favorite') }}
+					</option>
+				</select>
+				<div v-else-if="props.column.field === 'record.unix_timestamp'">
+					<input
+						v-model="dateMinFilter"
+						type="date"
+						@input="onDateChange">
+					{{ '<= ' + t('integration_trackmania', 'Date') + ' <' }}
+					<input
+						v-model="dateMaxFilter"
+						type="date"
+						@input="onDateChange">
+				</div>
+				<select
+					v-else-if="props.column.field === 'record.medal'"
+					v-model="medalFilter">
+					<option value="">
+						{{ t('integration_trackmania', 'No filter') }}
+					</option>
+					<option value="0">
+						{{ t('integration_trackmania', 'None') }}
+					</option>
+					<option value="1">
+						{{ '🟤 ' + t('integration_trackmania', 'Bronze') }}
+					</option>
+					<option value="2">
+						{{ '🔵 ' + t('integration_trackmania', 'Silver') }}
+					</option>
+					<option value="3">
+						{{ '🟡 ' + t('integration_trackmania', 'Gold') }}
+					</option>
+					<option value="4">
+						{{ '🟢 ' + t('integration_trackmania', 'Author') }}
+					</option>
+					<option value=">= 1">
+						{{ '🔵 ' + t('integration_trackmania', 'At least bronze') }}
+					</option>
+					<option value=">= 2">
+						{{ '🔵 ' + t('integration_trackmania', 'At least silver') }}
+					</option>
+					<option value=">= 3">
+						{{ '🟡 ' + t('integration_trackmania', 'At least gold') }}
+					</option>
+				</select>
+				<input
+					v-if="props.column.field.startsWith('recordPosition.zones.')"
+					:value="zonePositionFilters[props.column.field] ?? ''"
+					type="text"
+					:placeholder="t('integration_trackmania', '\'{example}\' for top 100', { example: '<= 100' }, null, { escape: false, sanitize: false })"
+					@keyup.enter="$set(zonePositionFilters, props.column.field, $event.target.value)">
+			</template>
 		</VueGoodTable>
 	</div>
 </template>
@@ -91,6 +165,7 @@ import TrackmaniaIcon from './icons/TrackmaniaIcon.vue'
 
 import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
 import NcCheckboxRadioSwitch from '@nextcloud/vue/dist/Components/NcCheckboxRadioSwitch.js'
+
 import { VueGoodTable } from 'vue-good-table'
 import 'vue-good-table/dist/vue-good-table.css'
 
@@ -99,7 +174,6 @@ import { generateUrl } from '@nextcloud/router'
 import axios from '@nextcloud/axios'
 import { showError } from '@nextcloud/dialogs'
 import { loadState } from '@nextcloud/initial-state'
-import { dig } from '../utils.js'
 import {
 	Time,
 	TextFormatter,
@@ -144,7 +218,6 @@ export default {
 	// TODO check if possible to keep filters when toggling a column
 	data() {
 		return {
-			filterParams: null,
 			showLineNumberColumn: true,
 			showDatesColumn: true,
 			showMedalsColumn: true,
@@ -152,25 +225,44 @@ export default {
 				World: true,
 			},
 			config: configState,
+			// filter values
+			dateMinFilter: configState.filter_dateMin ?? '',
+			dateMaxFilter: configState.filter_dateMax ?? '',
+			mapNameFilter: configState.filter_mapName ?? '',
+			timeFilter: configState.filter_time ?? '',
+			favoriteFilter: configState.filter_favorite ?? '',
+			medalFilter: configState.filter_medal ?? '',
+			zonePositionFilters: {},
 		}
 	},
 
 	computed: {
+		// refilter the pbs with table filters + external filters to count the rows
 		filteredPbs() {
-			if (this.filterParams === null) {
-				return this.pbs()
-			}
 			let myFiltered = this.pbs()
-			Object.keys(this.filterParams.columnFilters).forEach(field => {
-				const filterString = this.filterParams.columnFilters[field]
-				if (filterString === '') {
-					return
+			if (this.dateMinTimestamp) {
+				myFiltered = myFiltered.filter(pb => pb.record.unix_timestamp > this.dateMinTimestamp)
+			}
+			if (this.dateMaxTimestamp) {
+				myFiltered = myFiltered.filter(pb => pb.record.unix_timestamp < this.dateMaxTimestamp)
+			}
+			if (this.mapNameFilter) {
+				myFiltered = myFiltered.filter(pb => this.filterMapName(pb.mapInfo.name, this.mapNameFilter))
+			}
+			if (this.timeFilter) {
+				myFiltered = myFiltered.filter(pb => this.filterNumber(pb.record.recordScore.time, this.timeFilter))
+			}
+			if (this.favoriteFilter) {
+				myFiltered = myFiltered.filter(pb => this.filterFavorite(pb.mapInfo.favorite, this.favoriteFilter))
+			}
+			if (this.medalFilter) {
+				myFiltered = myFiltered.filter(pb => this.filterNumber(pb.record.medal, this.medalFilter))
+			}
+			this.zoneNames.forEach(zn => {
+				const zoneFilterKey = `recordPosition.zones.${zn}`
+				if (this.zonePositionFilters[zoneFilterKey]) {
+					myFiltered = myFiltered.filter(pb => this.filterNumber(pb.recordPosition.zones[zn], this.zonePositionFilters[zoneFilterKey]))
 				}
-				const columnConfig = this.columns.find(c => c.field === field)
-				myFiltered = myFiltered.filter(pb => {
-					const data = dig(pb, field)
-					return columnConfig.filterOptions.filterFn(data, filterString)
-				})
 			})
 			console.debug('my filtered row list', myFiltered)
 			return myFiltered
@@ -248,15 +340,9 @@ export default {
 					type: 'boolean',
 					field: 'mapInfo.favorite',
 					formatFn: this.formatFavorite,
+					// otherwise the filter th is not rendered
 					filterOptions: {
-						enabled: true, // enable filter for this column
-						placeholder: t('integration_trackmania', 'No filter'), // placeholder for filter input
-						filterValue: configState['filter_mapInfo.favorite'],
-						filterDropdownItems: [
-							{ value: 'false', text: '☆ Not favorite' },
-							{ value: 'true', text: '⭐ Favorite' },
-						],
-						filterFn: this.favoriteFilter,
+						enabled: true,
 					},
 				})
 			}
@@ -267,29 +353,12 @@ export default {
 					field: 'mapInfo.name',
 					formatFn: this.formatMapName,
 					tdClass: 'mapNameColumn',
-					filterOptions: {
-						customFilter: true,
-						// styleClass: 'plop',
-						enabled: true, // enable filter for this column
-						placeholder: t('integration_trackmania', 'Filter names'), // placeholder for filter input
-						filterValue: configState['filter_mapInfo.name'], // initial value
-						filterDropdownItems: [],
-						filterFn: this.mapNameFilter,
-						trigger: 'enter',
-					},
 				},
 				{
 					label: t('integration_trackmania', 'PB'),
 					type: 'number',
 					field: 'record.recordScore.time',
 					formatFn: this.formatTime,
-					filterOptions: {
-						enabled: true, // enable filter for this column
-						placeholder: t('integration_trackmania', '"{example}" for less than 10 seconds', { example: '< 10000' }, null, { escape: false, sanitize: false }), // placeholder for filter input
-						filterValue: configState['filter_record.recordScore.time'], // initial value
-						filterFn: this.numberFilter,
-						trigger: 'enter',
-					},
 				},
 			])
 			if (this.config.show_column_date ?? true) {
@@ -306,24 +375,6 @@ export default {
 					type: 'number',
 					field: 'record.medal',
 					formatFn: this.formatMedals,
-					filterOptions: {
-						// styleClass: 'class1', // class to be added to the parent th element
-						enabled: true, // enable filter for this column
-						// filterValue: '', // initial populated value for this filter
-						placeholder: t('integration_trackmania', 'No filter'), // placeholder for filter input
-						filterValue: configState['filter_record.medal'], // initial value
-						filterDropdownItems: [
-							{ value: 0, text: 'None' },
-							{ value: 1, text: '🟤 ' + t('integration_trackmania', 'Bronze') },
-							{ value: 2, text: '🔵 ' + t('integration_trackmania', 'Silver') },
-							{ value: 3, text: '🟡 ' + t('integration_trackmania', 'Gold') },
-							{ value: 4, text: '🟢 ' + t('integration_trackmania', 'Author') },
-							{ value: '>= 1', text: '🔵 ' + t('integration_trackmania', 'At least bronze') },
-							{ value: '>= 2', text: '🔵 ' + t('integration_trackmania', 'At least silver') },
-							{ value: '>= 3', text: '🟡 ' + t('integration_trackmania', 'At least gold') },
-						],
-						filterFn: this.numberFilter,
-					},
 				})
 			}
 			columns.push(
@@ -332,17 +383,22 @@ export default {
 						label: t('integration_trackmania', '# in {zn}', { zn }),
 						type: 'number',
 						field: `recordPosition.zones.${zn}`,
-						filterOptions: {
-							enabled: true, // enable filter for this column
-							placeholder: t('integration_trackmania', '"{example}" for top 100', { example: '<= 100' }, null, { escape: false, sanitize: false }),
-							filterValue: configState['filter_recordPosition.zones.' + zn], // initial value
-							filterFn: this.numberFilter,
-							trigger: 'enter',
-						},
 					}
 				}),
 			)
 			return columns
+		},
+		dateMinTimestamp() {
+			if (this.dateMinFilter) {
+				return moment(this.dateMinFilter).unix()
+			}
+			return ''
+		},
+		dateMaxTimestamp() {
+			if (this.dateMaxFilter) {
+				return moment(this.dateMaxFilter).unix()
+			}
+			return ''
 		},
 	},
 
@@ -393,11 +449,11 @@ export default {
 		stringFilter(data, filterString) {
 			return data.toUpperCase().includes(filterString.toUpperCase())
 		},
-		mapNameFilter(data, filterString) {
+		filterMapName(data, filterString) {
 			// console.debug('aaaaaaaaaaaaa FILTER MAP NAME', data)
 			return TextFormatter.deformat(data).toUpperCase().includes(filterString.toUpperCase())
 		},
-		numberFilter(data, filterString) {
+		filterNumber(data, filterString) {
 			if (filterString.startsWith('<=')) {
 				return data <= parseInt(filterString.replace('<=', ''))
 			} else if (filterString.startsWith('<')) {
@@ -410,7 +466,7 @@ export default {
 				return data === parseInt(filterString)
 			}
 		},
-		favoriteFilter(data, filterValue) {
+		filterFavorite(data, filterValue) {
 			return filterValue === 'false'
 				? data === false
 				: data === true
@@ -437,20 +493,17 @@ export default {
 		},
 		formatFavorite(value) {
 			// checkwhy that's called way too many times
-			// console.debug('aaaaa FAV', value)
+			console.debug('aaaaa format FAV')
 			return value ? '⭐' : '☆'
 		},
 		formatMedals(value) {
 			return MEDAL_STRING[value]
 		},
-		// recompute the filtered list to get the total number of rows...because good table no good
-		onColumnFilter(params) {
-			this.filterParams = params
-			const filterConfigValues = {}
-			Object.keys(params.columnFilters).forEach(k => {
-				filterConfigValues['filter_' + k] = params.columnFilters[k]
+		onDateChange() {
+			this.saveOptions({
+				filter_dateMin: this.dateMinTimestamp,
+				filter_dateMax: this.dateMaxTimestamp,
 			})
-			this.saveOptions(filterConfigValues)
 		},
 	},
 }
