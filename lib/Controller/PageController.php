@@ -60,6 +60,9 @@ class PageController extends Controller {
 			if (str_starts_with($key, 'show_column_')) {
 				$tableConfig[$key] = $this->config->getUserValue($this->userId, Application::APP_ID, $key) === '1';
 			}
+			if (str_starts_with($key, 'filter_')) {
+				$tableConfig[$key] = $this->config->getUserValue($this->userId, Application::APP_ID, $key);
+			}
 		}
 		$this->initialStateService->provideInitialState('table-config', $tableConfig);
 

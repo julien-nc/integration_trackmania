@@ -262,7 +262,7 @@ export default {
 						// styleClass: 'plop',
 						enabled: true, // enable filter for this column
 						placeholder: t('integration_trackmania', 'Filter names'), // placeholder for filter input
-						// filterValue: '', // initial populated value for this filter
+						filterValue: configState['filter_mapInfo.name'], // initial value
 						filterDropdownItems: [],
 						filterFn: this.mapNameFilter,
 						trigger: 'enter',
@@ -276,6 +276,7 @@ export default {
 					filterOptions: {
 						enabled: true, // enable filter for this column
 						placeholder: t('integration_trackmania', '"{example}" for less than 10 seconds', { example: '< 10000' }, null, { escape: false, sanitize: false }), // placeholder for filter input
+						filterValue: configState['filter_record.recordScore.time'], // initial value
 						filterFn: this.numberFilter,
 						trigger: 'enter',
 					},
@@ -300,6 +301,7 @@ export default {
 						enabled: true, // enable filter for this column
 						// filterValue: '', // initial populated value for this filter
 						placeholder: t('integration_trackmania', 'Any medal'), // placeholder for filter input
+						filterValue: configState['filter_record.medal'], // initial value
 						filterDropdownItems: [
 							{ value: 0, text: 'None' },
 							{ value: 1, text: '🟤 ' + t('integration_trackmania', 'Bronze') },
@@ -323,6 +325,7 @@ export default {
 						filterOptions: {
 							enabled: true, // enable filter for this column
 							placeholder: t('integration_trackmania', '"{example}" for top 100', { example: '<= 100' }, null, { escape: false, sanitize: false }),
+							filterValue: configState['filter_recordPosition.zones.' + zn], // initial value
 							filterFn: this.numberFilter,
 							trigger: 'enter',
 						},
@@ -382,8 +385,8 @@ export default {
 			return data.toUpperCase().includes(filterString.toUpperCase())
 		},
 		mapNameFilter(data, filterString) {
-			console.debug('aaaaaaaaaaaaa FILTER MAP NAME', data)
-			return TextFormatter.deformat(data).includes(filterString.toUpperCase())
+			// console.debug('aaaaaaaaaaaaa FILTER MAP NAME', data)
+			return TextFormatter.deformat(data).toUpperCase().includes(filterString.toUpperCase())
 		},
 		numberFilter(data, filterString) {
 			if (filterString.startsWith('<=')) {
@@ -420,7 +423,7 @@ export default {
 		},
 		formatFavorite(value) {
 			// checkwhy that's called way too many times
-			console.debug('aaaaa FAV', value)
+			// console.debug('aaaaa FAV', value)
 			return value ? '⭐' : '☆'
 		},
 		formatMedals(value) {
@@ -429,6 +432,12 @@ export default {
 		// recompute the filtered list to get the total number of rows...because good table no good
 		onColumnFilter(params) {
 			this.filterParams = params
+			console.debug('FFFFFFF', params)
+			const filterConfigValues = {}
+			Object.keys(params.columnFilters).forEach(k => {
+				filterConfigValues['filter_' + k] = params.columnFilters[k]
+			})
+			this.saveOptions(filterConfigValues)
 		},
 	},
 }
