@@ -71,10 +71,19 @@
 				<span v-if="props.column.field === '#'">
 					{{ props.index + 1 }}
 				</span>
-				<span v-else-if="props.column.field === 'mapInfo.name'" v-html="props.formattedRow[props.column.field]" />
+				<span v-else-if="props.column.field === 'mapInfo.cleanName'" v-html="props.row.mapInfo.htmlName" />
+				<span v-else-if="props.column.field === 'mapInfo.favorite'">
+					{{ props.row.mapInfo.formattedFavorite }}
+				</span>
 				<span v-else-if="props.column.field === 'record.medal'"
-					:title="getMedalTime(props)">
-					{{ props.formattedRow[props.column.field] }}
+					:title="getFormattedBestMedal(props.row)">
+					{{ props.row.record.formattedMedal }}
+				</span>
+				<span v-else-if="props.column.field === 'record.recordScore.time'">
+					{{ props.row.record.recordScore.formattedTime }}
+				</span>
+				<span v-else-if="props.column.field === 'record.unix_timestamp'">
+					{{ props.row.record.formattedDate }}
 				</span>
 				<span v-else>
 					{{ props.formattedRow[props.column.field] }}
@@ -82,7 +91,7 @@
 			</template>
 			<template slot="column-filter" slot-scope="props">
 				<input
-					v-if="props.column.field === 'mapInfo.name'"
+					v-if="props.column.field === 'mapInfo.cleanName'"
 					:value="mapNameFilter"
 					type="text"
 					@keyup.enter="mapNameFilter = $event.target.value">
@@ -105,7 +114,8 @@
 						{{ '⭐ ' + t('integration_trackmania', 'Favorite') }}
 					</option>
 				</select>
-				<div v-else-if="props.column.field === 'record.unix_timestamp'">
+				<div v-else-if="props.column.field === 'record.unix_timestamp'"
+					class="date-filters">
 					<input
 						v-model="dateMinFilter"
 						type="date"
@@ -138,7 +148,7 @@
 						{{ '🟢 ' + t('integration_trackmania', 'Author') }}
 					</option>
 					<option value=">= 1">
-						{{ '🔵 ' + t('integration_trackmania', 'At least bronze') }}
+						{{ '🟤 ' + t('integration_trackmania', 'At least bronze') }}
 					</option>
 					<option value=">= 2">
 						{{ '🔵 ' + t('integration_trackmania', 'At least silver') }}
@@ -247,7 +257,7 @@ export default {
 				myFiltered = myFiltered.filter(pb => pb.record.unix_timestamp < this.dateMaxTimestamp)
 			}
 			if (this.mapNameFilter) {
-				myFiltered = myFiltered.filter(pb => this.filterMapName(pb.mapInfo.name, this.mapNameFilter))
+				myFiltered = myFiltered.filter(pb => this.filterString(pb.mapInfo.cleanName, this.mapNameFilter))
 			}
 			if (this.timeFilter) {
 				myFiltered = myFiltered.filter(pb => this.filterNumber(pb.record.recordScore.time, this.timeFilter))
@@ -339,7 +349,6 @@ export default {
 					label: t('integration_trackmania', 'Favorite'),
 					type: 'boolean',
 					field: 'mapInfo.favorite',
-					formatFn: this.formatFavorite,
 					// otherwise the filter th is not rendered
 					filterOptions: {
 						enabled: true,
@@ -350,15 +359,13 @@ export default {
 				{
 					label: t('integration_trackmania', 'Map name'),
 					type: 'text',
-					field: 'mapInfo.name',
-					formatFn: this.formatMapName,
+					field: 'mapInfo.cleanName',
 					tdClass: 'mapNameColumn',
 				},
 				{
 					label: t('integration_trackmania', 'PB'),
 					type: 'number',
 					field: 'record.recordScore.time',
-					formatFn: this.formatTime,
 				},
 			])
 			if (this.config.show_column_date ?? true) {
@@ -366,7 +373,6 @@ export default {
 					label: t('integration_trackmania', 'Date'),
 					type: 'number',
 					field: 'record.unix_timestamp',
-					formatFn: this.formatTimestamp,
 				})
 			}
 			if (this.config.show_column_medals ?? true) {
@@ -374,7 +380,6 @@ export default {
 					label: t('integration_trackmania', 'Medals'),
 					type: 'number',
 					field: 'record.medal',
-					formatFn: this.formatMedals,
 				})
 			}
 			columns.push(
@@ -405,6 +410,24 @@ export default {
 	watch: {
 	},
 
+	beforeMount() {
+		for (let i = 0; i < this.pbs().length; i++) {
+			const name = this.pbs()[i].mapInfo.name
+			this.pbs()[i].mapInfo.cleanName = TextFormatter.deformat(name)
+			this.pbs()[i].mapInfo.htmlName = htmlify(name)
+
+			this.pbs()[i].mapInfo.formattedFavorite = this.formatFavorite(this.pbs()[i].mapInfo.favorite)
+			this.pbs()[i].record.recordScore.formattedTime = this.formatTime(this.pbs()[i].record.recordScore.time)
+			this.pbs()[i].record.formattedDate = this.formatTimestamp(this.pbs()[i].record.unix_timestamp)
+			this.pbs()[i].record.formattedMedal = this.formatMedals(this.pbs()[i].record.medal)
+
+			this.pbs()[i].mapInfo.formattedAuthorTime = this.formatMedalTime(this.pbs()[i], 4)
+			this.pbs()[i].mapInfo.formattedGoldTime = this.formatMedalTime(this.pbs()[i], 3)
+			this.pbs()[i].mapInfo.formattedSilverTime = this.formatMedalTime(this.pbs()[i], 2)
+			this.pbs()[i].mapInfo.formattedBronzeTime = this.formatMedalTime(this.pbs()[i], 1)
+		}
+	},
+
 	mounted() {
 		console.debug('aaaaaaaaaaaaa pbs', this.pbs())
 		console.debug('aaaaaaaaaaaaa tops', this.topCount)
@@ -412,15 +435,27 @@ export default {
 	},
 
 	methods: {
-		getMedalTime(props) {
-			if (props.row.record.medal === 4) {
-				return t('integration_trackmania', 'Author time is {t}', { t: this.formatTime(props.row.mapInfo.authorTime) })
-			} else if (props.row.record.medal === 3) {
-				return t('integration_trackmania', 'Gold time is {t}', { t: this.formatTime(props.row.mapInfo.goldTime) })
-			} else if (props.row.record.medal === 2) {
-				return t('integration_trackmania', 'Silver time is {t}', { t: this.formatTime(props.row.mapInfo.silverTime) })
-			} else if (props.row.record.medal === 1) {
-				return t('integration_trackmania', 'Bronze time is {t}', { t: this.formatTime(props.row.mapInfo.bronzeTime) })
+		getFormattedBestMedal(pb) {
+			if (pb.record.medal === 4) {
+				return pb.mapInfo.formattedAuthorTime
+			} else if (pb.record.medal === 3) {
+				return pb.mapInfo.formattedGoldTime
+			} else if (pb.record.medal === 2) {
+				return pb.mapInfo.formattedSilverTime
+			} else if (pb.record.medal === 1) {
+				return pb.mapInfo.formattedBronzeTime
+			}
+			return ''
+		},
+		formatMedalTime(pb, medal) {
+			if (medal === 4) {
+				return t('integration_trackmania', 'Author time is {t}', { t: this.formatTime(pb.mapInfo.authorTime) })
+			} else if (medal === 3) {
+				return t('integration_trackmania', 'Gold time is {t}', { t: this.formatTime(pb.mapInfo.goldTime) })
+			} else if (medal === 2) {
+				return t('integration_trackmania', 'Silver time is {t}', { t: this.formatTime(pb.mapInfo.silverTime) })
+			} else if (medal === 1) {
+				return t('integration_trackmania', 'Bronze time is {t}', { t: this.formatTime(pb.mapInfo.bronzeTime) })
 			}
 			return ''
 		},
@@ -446,12 +481,8 @@ export default {
 				console.error(error)
 			})
 		},
-		stringFilter(data, filterString) {
+		filterString(data, filterString) {
 			return data.toUpperCase().includes(filterString.toUpperCase())
-		},
-		filterMapName(data, filterString) {
-			// console.debug('aaaaaaaaaaaaa FILTER MAP NAME', data)
-			return TextFormatter.deformat(data).toUpperCase().includes(filterString.toUpperCase())
 		},
 		filterNumber(data, filterString) {
 			if (filterString.startsWith('<=')) {
@@ -472,24 +503,10 @@ export default {
 				: data === true
 		},
 		formatTime(value) {
-			/*
-			const milli = value % 1000
-			const totalSeconds = Math.floor(value / 1000)
-			const hours = Math.floor(totalSeconds / 3600)
-			const minutes = Math.floor(totalSeconds / 60) - (hours * 60)
-			const seconds = totalSeconds - (hours * 3600) - (minutes * 60)
-			return String(hours).padStart(2, '0')
-				+ ':' + String(minutes).padStart(2, '0')
-				+ ':' + String(seconds).padStart(2, '0')
-				+ '.' + milli + ' (' + value + ')'
-			*/
 			return Time.fromMilliseconds(value).toTmString() + ' (' + value + ')'
 		},
 		formatTimestamp(value) {
 			return moment.unix(value).format('LLL')
-		},
-		formatMapName(value) {
-			return htmlify(value)
 		},
 		formatFavorite(value) {
 			// checkwhy that's called way too many times
@@ -534,6 +551,15 @@ export default {
 	:deep(.mapNameColumn) {
 		background: #B0B0B0;
 		font-weight: bold;
+	}
+
+	.date-filters {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		input {
+			flex-grow: 1;
+		}
 	}
 
 	.checkColumns {
