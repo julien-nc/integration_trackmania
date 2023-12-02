@@ -245,9 +245,19 @@ export default {
 			if (this.config.show_column_favorite ?? true) {
 				columns.push({
 					label: t('integration_trackmania', 'Favorite'),
-					type: 'text',
+					type: 'boolean',
 					field: 'mapInfo.favorite',
 					formatFn: this.formatFavorite,
+					filterOptions: {
+						enabled: true, // enable filter for this column
+						placeholder: t('integration_trackmania', 'No filter'), // placeholder for filter input
+						filterValue: configState['filter_mapInfo.favorite'],
+						filterDropdownItems: [
+							{ value: 'false', text: '☆ Not favorite' },
+							{ value: 'true', text: '⭐ Favorite' },
+						],
+						filterFn: this.favoriteFilter,
+					},
 				})
 			}
 			columns.push(...[
@@ -300,7 +310,7 @@ export default {
 						// styleClass: 'class1', // class to be added to the parent th element
 						enabled: true, // enable filter for this column
 						// filterValue: '', // initial populated value for this filter
-						placeholder: t('integration_trackmania', 'Any medal'), // placeholder for filter input
+						placeholder: t('integration_trackmania', 'No filter'), // placeholder for filter input
 						filterValue: configState['filter_record.medal'], // initial value
 						filterDropdownItems: [
 							{ value: 0, text: 'None' },
@@ -372,7 +382,6 @@ export default {
 			}
 			const url = generateUrl('/apps/integration_trackmania/config')
 			axios.put(url, req).then((response) => {
-				console.debug('saved options', response.data)
 			}).catch((error) => {
 				showError(
 					t('integration_trackmania', 'Failed to save options')
@@ -400,6 +409,11 @@ export default {
 			} else {
 				return data === parseInt(filterString)
 			}
+		},
+		favoriteFilter(data, filterValue) {
+			return filterValue === 'false'
+				? data === false
+				: data === true
 		},
 		formatTime(value) {
 			/*
@@ -432,7 +446,6 @@ export default {
 		// recompute the filtered list to get the total number of rows...because good table no good
 		onColumnFilter(params) {
 			this.filterParams = params
-			console.debug('FFFFFFF', params)
 			const filterConfigValues = {}
 			Object.keys(params.columnFilters).forEach(k => {
 				filterConfigValues['filter_' + k] = params.columnFilters[k]
