@@ -55,6 +55,7 @@ import { generateUrl } from '@nextcloud/router'
 import { loadState } from '@nextcloud/initial-state'
 import axios from '@nextcloud/axios'
 import { showError } from '@nextcloud/dialogs'
+import { subscribe, unsubscribe } from '@nextcloud/event-bus'
 
 const state = loadState('integration_trackmania', 'user-config')
 
@@ -110,6 +111,11 @@ export default {
 		if (this.connected) {
 			this.getPbs()
 		}
+		subscribe('get-nb-players', this.getNbPlayers)
+	},
+
+	beforeDestroy() {
+		unsubscribe('get-nb-players', this.getNbPlayers)
 	},
 
 	methods: {
@@ -143,6 +149,19 @@ export default {
 		},
 		getZoneNames(onePb) {
 			return Object.keys(onePb.recordPosition.zones)
+		},
+		getNbPlayers(pb) {
+			const url = generateUrl('/apps/integration_trackmania/map/{mapUid}/finish-count', { mapUid: pb.mapInfo.uid })
+			axios.get(url).then((response) => {
+				this.$set(pb.mapInfo, 'nb_players', response.data)
+				// pb.mapInfo.nb_players = response.data
+			}).catch((error) => {
+				showError(
+					t('integration_trackmania', 'Failed to get player count')
+					+ ': ' + (error.response?.request?.responseText ?? ''),
+				)
+				console.error(error)
+			})
 		},
 	},
 }
