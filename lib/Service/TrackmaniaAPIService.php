@@ -44,6 +44,14 @@ class TrackmaniaAPIService {
 		$this->cache = $cacheFactory->createDistributed(Application::APP_ID);
 	}
 
+	public function getImage(string $url): array {
+		$response = $this->client->get($url);
+		return [
+			'body' => $response->getBody(),
+			'headers' => $response->getHeaders(),
+		];
+	}
+
 	public function getFavoritesWithPosition(string $userId): array {
 		$allFavs = $this->getAllFavorites($userId);
 

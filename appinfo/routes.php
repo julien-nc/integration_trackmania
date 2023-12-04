@@ -19,6 +19,6 @@ return [
 
 		['name' => 'trackmaniaAPI#getMyFavorites', 'url' => '/favorites', 'verb' => 'GET'],
 		['name' => 'trackmaniaAPI#getMyRecords', 'url' => '/pbs', 'verb' => 'GET'],
-		['name' => 'trackmaniaAPI#getUserAvatar', 'url' => '/users/{userId}/image', 'verb' => 'GET'],
+		['name' => 'trackmaniaAPI#getMapThumbnail', 'url' => '/thumbnail/{id}', 'verb' => 'GET'],
 	],
 ];

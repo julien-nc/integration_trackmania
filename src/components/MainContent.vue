@@ -60,18 +60,23 @@
 			</NcCheckboxRadioSwitch>
 		</div>
 		<br>
+		<MapDetailModal v-if="detailPb"
+			:pb="detailPb"
+			@close="detailPb = null" />
 		<span>
 			{{ t('integration_trackmania', '{nb} rows', { nb: rowCount }) }}
 		</span>
 		<VueGoodTable
 			:columns="columns"
 			:rows="filteredPbs"
-			:fixed-header="true">
+			:fixed-header="true"
+			@on-cell-click="onCellClick">
 			<template slot="table-row" slot-scope="props">
 				<span v-if="props.column.field === '#'">
 					{{ props.index + 1 }}
 				</span>
-				<span v-else-if="props.column.field === 'mapInfo.cleanName'" v-html="props.row.mapInfo.htmlName" />
+				<span v-else-if="props.column.field === 'mapInfo.cleanName'"
+					v-html="props.row.mapInfo.htmlName" />
 				<span v-else-if="props.column.field === 'mapInfo.favorite'">
 					{{ props.row.mapInfo.formattedFavorite }}
 				</span>
@@ -176,6 +181,8 @@ import TrackmaniaIcon from './icons/TrackmaniaIcon.vue'
 import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
 import NcCheckboxRadioSwitch from '@nextcloud/vue/dist/Components/NcCheckboxRadioSwitch.js'
 
+import MapDetailModal from './MapDetailModal.vue'
+
 import { VueGoodTable } from 'vue-good-table'
 import 'vue-good-table/dist/vue-good-table.css'
 
@@ -204,6 +211,7 @@ export default {
 	name: 'MainContent',
 
 	components: {
+		MapDetailModal,
 		TrackmaniaIcon,
 		VueGoodTable,
 		NcButton,
@@ -243,6 +251,7 @@ export default {
 			favoriteFilter: configState.filter_favorite ?? '',
 			medalFilter: configState.filter_medal ?? '',
 			zonePositionFilters: {},
+			detailPb: null,
 		}
 	},
 
@@ -522,6 +531,11 @@ export default {
 				filter_dateMax: this.dateMaxTimestamp,
 			})
 		},
+		onCellClick(params) {
+			if (params.column.field === 'mapInfo.cleanName') {
+				this.detailPb = params.row
+			}
+		},
 	},
 }
 </script>
@@ -551,6 +565,13 @@ export default {
 	:deep(.mapNameColumn) {
 		background: #B0B0B0;
 		font-weight: bold;
+		cursor: pointer;
+		&:hover {
+			background: #909090;
+		}
+		* {
+			cursor: pointer !important;
+		}
 	}
 
 	.date-filters {
