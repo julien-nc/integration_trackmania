@@ -4,6 +4,12 @@
 		<div class="modal-content-wrapper">
 			<img :src="thumbnailUrl"
 				class="thumbnail">
+			<span>
+				{{ pb.mapInfo.mapId }}
+			</span>
+			<span>
+				{{ pb.mapInfo.uid }}
+			</span>
 		</div>
 	</NcModal>
 </template>

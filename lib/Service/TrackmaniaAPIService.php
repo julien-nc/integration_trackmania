@@ -414,12 +414,32 @@ class TrackmaniaAPIService {
 			&& $top['tops'][0]['top'][0]['position'] === $position + 1);
 	}
 
+	public function getMapFinishCount3rdParty(string $mapUid): ?int {
+		$url = 'https://map-monitor.xk.io/map/' . $mapUid . '/nb_players/refresh';
+		try {
+			$response = $this->client->get($url);
+			$body = $response->getBody();
+			$parsedBody = json_decode($body, true);
+			if (is_array($parsedBody) && isset($parsedBody['nb_players']) && is_numeric($parsedBody['nb_players'])) {
+				return $parsedBody['nb_players'];
+			}
+		} catch (Exception | Throwable $e) {
+			$this->logger->warning('Failed to get nb players from map-monitor.xk.io', ['app' => Application::APP_ID, 'exception' => $e]);
+		}
+		return null;
+	}
+
 	/**
 	 * @param string $userId
 	 * @param string $mapUid
 	 * @return int
 	 */
 	public function getMapFinishCount(string $userId, string $mapUid): int {
+		$positionFrom3rdParty = $this->getMapFinishCount3rdParty($mapUid);
+		if ($positionFrom3rdParty !== null) {
+			return $positionFrom3rdParty;
+		}
+
 		if (!$this->positionExists($userId, $mapUid, 0)) {
 			return 0;
 		}

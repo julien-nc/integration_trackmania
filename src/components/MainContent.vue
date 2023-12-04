@@ -99,16 +99,19 @@
 					v-if="props.column.field === 'mapInfo.cleanName'"
 					:value="mapNameFilter"
 					type="text"
+					class="text-input-filter"
 					@keyup.enter="mapNameFilter = $event.target.value">
 				<input
 					v-else-if="props.column.field === 'record.recordScore.time'"
 					:value="timeFilter"
 					type="text"
+					class="text-input-filter"
 					:placeholder="t('integration_trackmania', '\'{example}\' for less than 10 seconds', { example: '< 10000' }, null, { escape: false, sanitize: false })"
 					@keyup.enter="timeFilter = $event.target.value">
 				<select
 					v-else-if="props.column.field === 'mapInfo.favorite'"
-					v-model="favoriteFilter">
+					v-model="favoriteFilter"
+					class="select-filter">
 					<option value="">
 						{{ t('integration_trackmania', 'All') }}
 					</option>
@@ -133,7 +136,8 @@
 				</div>
 				<select
 					v-else-if="props.column.field === 'record.medal'"
-					v-model="medalFilter">
+					v-model="medalFilter"
+					class="select-filter">
 					<option value="">
 						{{ t('integration_trackmania', 'No filter') }}
 					</option>
@@ -166,6 +170,7 @@
 					v-if="props.column.field.startsWith('recordPosition.zones.')"
 					:value="zonePositionFilters[props.column.field] ?? ''"
 					type="text"
+					class="text-input-filter"
 					:placeholder="t('integration_trackmania', '\'{example}\' for top 100', { example: '<= 100' }, null, { escape: false, sanitize: false })"
 					@keyup.enter="$set(zonePositionFilters, props.column.field, $event.target.value)">
 			</template>
@@ -581,6 +586,11 @@ export default {
 		input {
 			flex-grow: 1;
 		}
+	}
+
+	.select-filter,
+	.text-input-filter {
+		width: 100%;
 	}
 
 	.checkColumns {
