@@ -20,5 +20,7 @@ return [
 		['name' => 'trackmaniaAPI#getMyFavorites', 'url' => '/favorites', 'verb' => 'GET'],
 		['name' => 'trackmaniaAPI#getMyRecords', 'url' => '/pbs', 'verb' => 'GET'],
 		['name' => 'trackmaniaAPI#getMapThumbnail', 'url' => '/thumbnail/{id}', 'verb' => 'GET'],
+		['name' => 'trackmaniaAPI#getMapTop', 'url' => '/map/{mapUid}/top', 'verb' => 'GET'],
+		['name' => 'trackmaniaAPI#getMapFinishCount', 'url' => '/map/{mapUid}/finish-count', 'verb' => 'GET'],
 	],
 ];

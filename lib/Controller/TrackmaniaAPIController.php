@@ -44,7 +44,7 @@ class TrackmaniaAPIController extends Controller {
 	 */
 	#[NoAdminRequired]
 	#[NoCSRFRequired]
-	public function getMyFavorites() {
+	public function getMyFavorites(): DataResponse {
 		$result = $this->trackmaniaAPIService->getFavoritesWithPosition($this->userId);
 		if (isset($result['error'])) {
 			return new DataResponse($result, Http::STATUS_BAD_REQUEST);
@@ -59,7 +59,7 @@ class TrackmaniaAPIController extends Controller {
 	 */
 	#[NoAdminRequired]
 	#[NoCSRFRequired]
-	public function getMyRecords() {
+	public function getMyRecords():DataResponse {
 		$result = $this->trackmaniaAPIService->getAllMapsWithPosition($this->userId);
 		if (isset($result['error'])) {
 			return new DataResponse($result, Http::STATUS_BAD_REQUEST);
@@ -89,5 +89,34 @@ class TrackmaniaAPIController extends Controller {
 
 		$fallbackAvatarUrl = $this->urlGenerator->linkToRouteAbsolute('core.GuestAvatar.getAvatar', ['guestName' => $fallbackName, 'size' => 200]);
 		return new RedirectResponse($fallbackAvatarUrl);
+	}
+
+
+	/**
+	 * @param string $mapUid
+	 * @param int $offset
+	 * @param int $length
+	 * @param bool $onlyWorld
+	 * @return DataResponse
+	 */
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
+	public function getMapTop(string $mapUid, int $offset = 0, int $length = 100, bool $onlyWorld = true): DataResponse {
+		$result = $this->trackmaniaAPIService->getMapTop($this->userId, $mapUid, $offset, $length, $onlyWorld);
+		if (isset($result['error'])) {
+			return new DataResponse($result, Http::STATUS_BAD_REQUEST);
+		} else {
+			return new DataResponse($result);
+		}
+	}
+
+	/**
+	 * @param string $mapUid
+	 * @return DataResponse
+	 */
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
+	public function getMapFinishCount(string $mapUid): DataResponse {
+		return new DataResponse($this->trackmaniaAPIService->getMapFinishCount($this->userId, $mapUid));
 	}
 }

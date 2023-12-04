@@ -361,6 +361,13 @@ class TrackmaniaAPIService {
 		return $positionsByMapUid;
 	}
 
+	/**
+	 * @param string $userId
+	 * @param string $mapUid
+	 * @param int $score
+	 * @return array|string[]
+	 * @throws PreConditionNotMetException
+	 */
 	public function getScorePosition(string $userId, string $mapUid, int $score): array {
 		$params = [
 			'maps' => [
@@ -373,6 +380,15 @@ class TrackmaniaAPIService {
 		return $this->request($userId, Application::AUDIENCE_LIVE, 'leaderboard/group/map?scores['.$mapUid.']='.$score, $params, 'POST');
 	}
 
+	/**
+	 * @param string $userId
+	 * @param string $mapUid
+	 * @param int $offset
+	 * @param int $length
+	 * @param bool $onlyWorld
+	 * @return array|string[]
+	 * @throws PreConditionNotMetException
+	 */
 	public function getMapTop(string $userId, string $mapUid, int $offset = 0, int $length = 20, bool $onlyWorld = true): array	{
 		$params = [
 			'onlyWorld' => $onlyWorld ? 'true' : 'false',
@@ -380,6 +396,67 @@ class TrackmaniaAPIService {
 			'length' => $length,
 		];
 		return $this->request($userId, Application::AUDIENCE_LIVE, 'leaderboard/group/Personal_Best/map/' . $mapUid . '/top', $params);
+	}
+
+	/**
+	 * @param string $userId
+	 * @param string $mapUid
+	 * @param int $position
+	 * @return bool
+	 * @throws PreConditionNotMetException
+	 */
+	private function positionExists(string $userId, string $mapUid, int $position): bool {
+		$top = $this->getMapTop($userId, $mapUid, $position, 1);
+		// sometimes asking for bigger position than the max always returns the biggest
+		// so we have to check the one we get is the one we want, if not, the one we want probably does not exist
+		return (isset($top['tops']) && is_array($top['tops']) && count($top['tops']) > 0
+			&& isset($top['tops'][0]['top']) && is_array($top['tops'][0]['top']) && count($top['tops'][0]['top']) > 0
+			&& $top['tops'][0]['top'][0]['position'] === $position + 1);
+	}
+
+	/**
+	 * @param string $userId
+	 * @param string $mapUid
+	 * @return int
+	 */
+	public function getMapFinishCount(string $userId, string $mapUid): int {
+		if (!$this->positionExists($userId, $mapUid, 0)) {
+			return 0;
+		}
+
+		// if no more than 10000 finishes, explore 0-10000
+		if (!$this->positionExists($userId, $mapUid, 10000)) {
+			return $this->getMapFinishCountDico($userId, $mapUid, 0, 10000);
+		}
+
+		// find an offset bigger than the number of finishes
+		$minPosition = 10000;
+		$maxPosition = 20000;
+		while ($this->positionExists($userId, $mapUid, $maxPosition)) {
+			$minPosition = $maxPosition;
+			$maxPosition = $maxPosition * 2;
+		}
+		return $this->getMapFinishCountDico($userId, $mapUid, $minPosition, $maxPosition);
+	}
+
+	/**
+	 * @param string $userId
+	 * @param string $mapUid
+	 * @param int $minPosition
+	 * @param int $maxPosition
+	 * @return int
+	 */
+	private function getMapFinishCountDico(string $userId, string $mapUid, int $minPosition, int $maxPosition): int {
+		if ($maxPosition - $minPosition === 1) {
+			return $this->positionExists($userId, $mapUid, $maxPosition) ? $maxPosition + 1 : $minPosition + 1;
+		} elseif ($maxPosition - $minPosition === 0) {
+			return $minPosition + 1;
+		} else {
+			$middlePosition = intdiv($minPosition + $maxPosition, 2);
+			return $this->positionExists($userId, $mapUid, $middlePosition)
+				? $this->getMapFinishCountDico($userId, $mapUid, $middlePosition, $maxPosition)
+				: $this->getMapFinishCountDico($userId, $mapUid, $minPosition, $middlePosition);
+		}
 	}
 
 	/**
