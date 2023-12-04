@@ -195,20 +195,8 @@ import moment from '@nextcloud/moment'
 import { generateUrl } from '@nextcloud/router'
 import axios from '@nextcloud/axios'
 import { showError } from '@nextcloud/dialogs'
+import { emit } from '@nextcloud/event-bus'
 import { loadState } from '@nextcloud/initial-state'
-import {
-	Time,
-	TextFormatter,
-} from 'tm-essentials'
-import { htmlify } from 'tm-text'
-
-const MEDAL_STRING = {
-	0: t('integration_trackmania', 'None'),
-	1: '🟤 ' + t('integration_trackmania', 'Bronze'),
-	2: '🔵 ' + t('integration_trackmania', 'Silver'),
-	3: '🟡 ' + t('integration_trackmania', 'Gold'),
-	4: '🟢 ' + t('integration_trackmania', 'Author'),
-}
 
 const configState = loadState('integration_trackmania', 'table-config')
 
@@ -224,13 +212,11 @@ export default {
 		ReloadIcon,
 	},
 
-	inject: {
-		pbs: {
-			default: () => [],
-		},
-	},
-
 	props: {
+		pbs: {
+			type: Array,
+			required: true,
+		},
 		zoneNames: {
 			type: Array,
 			required: true,
@@ -263,7 +249,7 @@ export default {
 	computed: {
 		// refilter the pbs with table filters + external filters to count the rows
 		filteredPbs() {
-			let myFiltered = this.pbs()
+			let myFiltered = this.pbs
 			if (this.dateMinTimestamp) {
 				myFiltered = myFiltered.filter(pb => pb.record.unix_timestamp > this.dateMinTimestamp)
 			}
@@ -363,6 +349,7 @@ export default {
 					label: t('integration_trackmania', 'Favorite'),
 					type: 'boolean',
 					field: 'mapInfo.favorite',
+					tdClass: 'mapFavoriteColumn',
 					// otherwise the filter th is not rendered
 					filterOptions: {
 						enabled: true,
@@ -425,25 +412,10 @@ export default {
 	},
 
 	beforeMount() {
-		for (let i = 0; i < this.pbs().length; i++) {
-			const name = this.pbs()[i].mapInfo.name
-			this.pbs()[i].mapInfo.cleanName = TextFormatter.deformat(name)
-			this.pbs()[i].mapInfo.htmlName = htmlify(name)
-
-			this.pbs()[i].mapInfo.formattedFavorite = this.formatFavorite(this.pbs()[i].mapInfo.favorite)
-			this.pbs()[i].record.recordScore.formattedTime = this.formatTime(this.pbs()[i].record.recordScore.time)
-			this.pbs()[i].record.formattedDate = this.formatTimestamp(this.pbs()[i].record.unix_timestamp)
-			this.pbs()[i].record.formattedMedal = this.formatMedals(this.pbs()[i].record.medal)
-
-			this.pbs()[i].mapInfo.formattedAuthorTime = this.formatMedalTime(this.pbs()[i], 4)
-			this.pbs()[i].mapInfo.formattedGoldTime = this.formatMedalTime(this.pbs()[i], 3)
-			this.pbs()[i].mapInfo.formattedSilverTime = this.formatMedalTime(this.pbs()[i], 2)
-			this.pbs()[i].mapInfo.formattedBronzeTime = this.formatMedalTime(this.pbs()[i], 1)
-		}
 	},
 
 	mounted() {
-		console.debug('aaaaaaaaaaaaa pbs', this.pbs())
+		console.debug('aaaaaaaaaaaaa pbs', this.pbs)
 		console.debug('aaaaaaaaaaaaa tops', this.topCount)
 		console.debug('aaaaaaaaaaaaa medals', this.medalCount)
 	},
@@ -458,18 +430,6 @@ export default {
 				return pb.mapInfo.formattedSilverTime
 			} else if (pb.record.medal === 1) {
 				return pb.mapInfo.formattedBronzeTime
-			}
-			return ''
-		},
-		formatMedalTime(pb, medal) {
-			if (medal === 4) {
-				return t('integration_trackmania', 'Author time is {t}', { t: this.formatTime(pb.mapInfo.authorTime) })
-			} else if (medal === 3) {
-				return t('integration_trackmania', 'Gold time is {t}', { t: this.formatTime(pb.mapInfo.goldTime) })
-			} else if (medal === 2) {
-				return t('integration_trackmania', 'Silver time is {t}', { t: this.formatTime(pb.mapInfo.silverTime) })
-			} else if (medal === 1) {
-				return t('integration_trackmania', 'Bronze time is {t}', { t: this.formatTime(pb.mapInfo.bronzeTime) })
 			}
 			return ''
 		},
@@ -516,20 +476,6 @@ export default {
 				? data === false
 				: data === true
 		},
-		formatTime(value) {
-			return Time.fromMilliseconds(value).toTmString() + ' (' + value + ')'
-		},
-		formatTimestamp(value) {
-			return moment.unix(value).format('LLL')
-		},
-		formatFavorite(value) {
-			// checkwhy that's called way too many times
-			console.debug('aaaaa format FAV')
-			return value ? '⭐' : '☆'
-		},
-		formatMedals(value) {
-			return MEDAL_STRING[value]
-		},
 		onDateChange() {
 			this.saveOptions({
 				filter_dateMin: this.dateMinTimestamp,
@@ -539,6 +485,8 @@ export default {
 		onCellClick(params) {
 			if (params.column.field === 'mapInfo.cleanName') {
 				this.detailPb = params.row
+			} else if (params.column.field === 'mapInfo.favorite') {
+				emit('toggle-favorite', params.row)
 			}
 		},
 	},
@@ -574,6 +522,14 @@ export default {
 		&:hover {
 			background: #909090;
 		}
+		* {
+			cursor: pointer !important;
+		}
+	}
+
+	:deep(.mapFavoriteColumn) {
+		text-align: center;
+		cursor: pointer;
 		* {
 			cursor: pointer !important;
 		}

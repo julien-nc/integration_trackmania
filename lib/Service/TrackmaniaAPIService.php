@@ -117,7 +117,7 @@ class TrackmaniaAPIService {
 		}
 
 		$pbs = $this->getMapRecords($userId);
-		$pbs = array_slice($pbs, 0, 100);
+//		$pbs = array_slice($pbs, 0, 100);
 		$pbTimesByMapId = [];
 		foreach ($pbs as $pb) {
 			$pbTimesByMapId[$pb['mapId']] = $pb['recordScore']['time'];
@@ -281,6 +281,14 @@ class TrackmaniaAPIService {
 		}
 
 		return $results;
+	}
+
+	public function toggleFavorite(string $userId, string $mapUid, string $action): array {
+		if ($action === 'add' || $action === 'remove') {
+			$response = $this->request($userId, Application::AUDIENCE_LIVE, 'map/favorite/' . $mapUid . '/' . $action, [], 'POST', false);
+			return ['body' => $response];
+		}
+		return [];
 	}
 
 	public function getAllFavorites(string $userId): array {

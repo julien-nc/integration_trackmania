@@ -25,6 +25,7 @@
 				</template>
 			</NcEmptyContent>
 			<MainContent v-else-if="hasData"
+				:pbs="pbs"
 				:zone-names="zoneNames"
 				@reload="reloadData" />
 			<NcEmptyContent v-else
@@ -57,6 +58,8 @@ import axios from '@nextcloud/axios'
 import { showError } from '@nextcloud/dialogs'
 import { subscribe, unsubscribe } from '@nextcloud/event-bus'
 
+import { formatPbs } from './utils.js'
+
 const state = loadState('integration_trackmania', 'user-config')
 
 export default {
@@ -73,14 +76,6 @@ export default {
 		NcLoadingIcon,
 	},
 
-	provide() {
-		return {
-			pbs: () => {
-				return this.$options.pbs
-			},
-		}
-	},
-
 	props: {
 	},
 
@@ -88,14 +83,17 @@ export default {
 		return {
 			state,
 			loadingData: false,
-			hasData: false,
 			zoneNames: null,
+			pbs: [],
 		}
 	},
 
 	computed: {
 		connected() {
 			return !!this.state.user_name && !!this.state.core_token
+		},
+		hasData() {
+			return this.pbs.length > 0
 		},
 	},
 
@@ -107,15 +105,16 @@ export default {
 	},
 
 	mounted() {
-		this.$options.pbs = []
 		if (this.connected) {
 			this.getPbs()
 		}
 		subscribe('get-nb-players', this.getNbPlayers)
+		subscribe('toggle-favorite', this.toggleFavorite)
 	},
 
 	beforeDestroy() {
 		unsubscribe('get-nb-players', this.getNbPlayers)
+		unsubscribe('toggle-favorite', this.toggleFavorite)
 	},
 
 	methods: {
@@ -126,8 +125,7 @@ export default {
 			this.getPbs()
 		},
 		reloadData() {
-			this.hasData = false
-			this.$options.pbs = []
+			this.pbs = []
 			this.getPbs()
 		},
 		getPbs() {
@@ -135,8 +133,7 @@ export default {
 			const url = generateUrl('/apps/integration_trackmania/pbs')
 			axios.get(url).then((response) => {
 				this.zoneNames = this.getZoneNames(response.data[0])
-				this.$options.pbs = response.data
-				this.hasData = true
+				this.pbs = formatPbs(response.data)
 			}).catch((error) => {
 				showError(
 					t('integration_trackmania', 'Failed to get data')
@@ -154,13 +151,30 @@ export default {
 			const url = generateUrl('/apps/integration_trackmania/map/{mapUid}/finish-count', { mapUid: pb.mapInfo.uid })
 			axios.get(url).then((response) => {
 				this.$set(pb.mapInfo, 'nb_players', response.data)
-				// pb.mapInfo.nb_players = response.data
 			}).catch((error) => {
 				showError(
 					t('integration_trackmania', 'Failed to get player count')
 					+ ': ' + (error.response?.request?.responseText ?? ''),
 				)
 				console.error(error)
+			})
+		},
+		toggleFavorite(pb) {
+			const realPb = this.pbs.find(e => e.mapInfo.uid === pb.mapInfo.uid)
+			this.$set(realPb.mapInfo, 'formattedFavorite', '…')
+			const url = pb.mapInfo.favorite
+				? generateUrl('/apps/integration_trackmania/map/favorite/{mapUid}/remove', { mapUid: pb.mapInfo.uid })
+				: generateUrl('/apps/integration_trackmania/map/favorite/{mapUid}/add', { mapUid: pb.mapInfo.uid })
+			axios.post(url).then((response) => {
+				this.$set(realPb.mapInfo, 'favorite', !pb.mapInfo.favorite)
+			}).catch((error) => {
+				showError(
+					t('integration_trackmania', 'Failed to add/remove favorite map')
+					+ ': ' + (error.response?.request?.responseText ?? ''),
+				)
+				console.error(error)
+			}).then(() => {
+				this.$set(realPb.mapInfo, 'formattedFavorite', realPb.mapInfo.favorite ? '⭐' : '☆')
 			})
 		},
 	},

@@ -130,4 +130,20 @@ class TrackmaniaAPIController extends Controller {
 	public function getMapTimePosition(string $mapUid, int $time): DataResponse {
 		return new DataResponse($this->trackmaniaAPIService->getScorePosition($this->userId, $mapUid, $time));
 	}
+
+	/**
+	 * @param string $mapUid
+	 * @param string $maction
+	 * @return DataResponse
+	 */
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
+	public function toggleFavorite(string $mapUid, string $maction): DataResponse {
+		$result = $this->trackmaniaAPIService->toggleFavorite($this->userId, $mapUid, $maction);
+		if (isset($result['error'])) {
+			return new DataResponse($result, Http::STATUS_BAD_REQUEST);
+		} else {
+			return new DataResponse($result);
+		}
+	}
 }
