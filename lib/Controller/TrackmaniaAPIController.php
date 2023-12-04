@@ -119,4 +119,15 @@ class TrackmaniaAPIController extends Controller {
 	public function getMapFinishCount(string $mapUid): DataResponse {
 		return new DataResponse($this->trackmaniaAPIService->getMapFinishCount($this->userId, $mapUid));
 	}
+
+	/**
+	 * @param string $mapUid
+	 * @param int $time
+	 * @return DataResponse
+	 */
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
+	public function getMapTimePosition(string $mapUid, int $time): DataResponse {
+		return new DataResponse($this->trackmaniaAPIService->getScorePosition($this->userId, $mapUid, $time));
+	}
 }
