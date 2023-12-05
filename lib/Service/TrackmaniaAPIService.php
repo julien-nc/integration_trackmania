@@ -423,6 +423,18 @@ class TrackmaniaAPIService {
 	}
 
 	public function getMapFinishCount3rdParty(string $mapUid): ?int {
+		$url = 'https://tm.waalrus.xyz/np/map/' . $mapUid;
+		try {
+			$response = $this->client->get($url);
+			$body = $response->getBody();
+			$parsedBody = json_decode($body, true);
+			if (is_array($parsedBody) && isset($parsedBody['player_count']) && is_numeric($parsedBody['player_count'])) {
+				return $parsedBody['player_count'];
+			}
+		} catch (Exception | Throwable $e) {
+			$this->logger->warning('Failed to get nb players from tm.waalrus.xyz', ['app' => Application::APP_ID, 'exception' => $e]);
+		}
+
 		$url = 'https://map-monitor.xk.io/map/' . $mapUid . '/nb_players/refresh';
 		try {
 			$response = $this->client->get($url);
@@ -434,6 +446,7 @@ class TrackmaniaAPIService {
 		} catch (Exception | Throwable $e) {
 			$this->logger->warning('Failed to get nb players from map-monitor.xk.io', ['app' => Application::APP_ID, 'exception' => $e]);
 		}
+
 		return null;
 	}
 
