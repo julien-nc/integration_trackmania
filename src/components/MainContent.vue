@@ -4,25 +4,37 @@
 			<TrackmaniaIcon class="icon" />
 			<span>{{ t('integration_trackmania', 'Trackmania integration') }}</span>
 		</h2>
-		<NcButton @click="$emit('reload')">
-			<template #icon>
-				<ReloadIcon />
-			</template>
-			{{ t('integration_trackmania', 'Reload data') }}
-		</NcButton>
-		<br>
+		<div class="header">
+			<NcButton @click="$emit('reload')">
+				<template #icon>
+					<ReloadIcon />
+				</template>
+				{{ t('integration_trackmania', 'Reload data') }}
+			</NcButton>
+			<NcButton @click="$emit('disconnect')">
+				<template #icon>
+					<CloseIcon />
+				</template>
+				{{ t('integration_trackmania', 'Disconnect') }}
+			</NcButton>
+		</div>
 		<div class="summary">
 			<div class="summary__medals">
-				<p>🟢 {{ t('integration_trackmania', '{nb} Author medals', { nb: medalCount.author }) }}</p>
-				<p>🟡 {{ t('integration_trackmania', '{nb} Gold medals', { nb: medalCount.gold }) }}</p>
-				<p>🔵 {{ t('integration_trackmania', '{nb} Silver medals', { nb: medalCount.silver }) }}</p>
-				<p>🟤 {{ t('integration_trackmania', '{nb} Bronze medals', { nb: medalCount.bronze }) }}</p>
+				<h3>{{ t('integration_trackmania', 'Medals') }}</h3>
+				<p>🟢 {{ t('integration_trackmania', '{nb} Author', { nb: medalCount.author }) }}</p>
+				<p>🟡 {{ t('integration_trackmania', '{nb} Gold', { nb: medalCount.gold }) }}</p>
+				<p>🔵 {{ t('integration_trackmania', '{nb} Silver', { nb: medalCount.silver }) }}</p>
+				<p>🟤 {{ t('integration_trackmania', '{nb} Bronze', { nb: medalCount.bronze }) }}</p>
+				<p>{{ t('integration_trackmania', '{nb} tracks without any medal', { nb: medalCount.none }) }}</p>
 			</div>
-			<div class="summary__top">
-				<p>{{ t('integration_trackmania', '{nb} records in top 1', { nb: topCount[1] }) }}</p>
-				<p>{{ t('integration_trackmania', '{nb} records in top 10', { nb: topCount[10] }) }}</p>
-				<p>{{ t('integration_trackmania', '{nb} records in top 100', { nb: topCount[100] }) }}</p>
-				<p>{{ t('integration_trackmania', '{nb} records in top 1000', { nb: topCount[1000] }) }}</p>
+			<div v-for="zn in enabledZones"
+				:key="zn"
+				class="summary__top">
+				<h3>{{ zn }}</h3>
+				<p>{{ t('integration_trackmania', '{nb} records in top 1', { nb: topCount[zn][1] }) }}</p>
+				<p>{{ t('integration_trackmania', '{nb} records in top 10', { nb: topCount[zn][10] }) }}</p>
+				<p>{{ t('integration_trackmania', '{nb} records in top 100', { nb: topCount[zn][100] }) }}</p>
+				<p>{{ t('integration_trackmania', '{nb} records in top 1000', { nb: topCount[zn][1000] }) }}</p>
 			</div>
 		</div>
 		<div class="checkColumns">
@@ -180,6 +192,7 @@
 
 <script>
 import ReloadIcon from 'vue-material-design-icons/Reload.vue'
+import CloseIcon from 'vue-material-design-icons/Close.vue'
 
 import TrackmaniaIcon from './icons/TrackmaniaIcon.vue'
 
@@ -210,6 +223,7 @@ export default {
 		NcButton,
 		NcCheckboxRadioSwitch,
 		ReloadIcon,
+		CloseIcon,
 	},
 
 	props: {
@@ -280,39 +294,47 @@ export default {
 		rowCount() {
 			return this.filteredPbs.length
 		},
+		enabledZones() {
+			return this.zoneNames.filter(zn => this.config['show_column_zone_' + zn] ?? false)
+		},
 		topCount() {
-			const tops = {
-				1: 0,
-				10: 0,
-				100: 0,
-				1000: 0,
-			}
-			this.filteredPbs.forEach(pb => {
-				const worldPosition = pb.recordPosition.zones.World
-				if (worldPosition === 1) {
-					tops[1]++
-					tops[10]++
-					tops[100]++
-					tops[1000]++
-				} else if (worldPosition <= 10) {
-					tops[10]++
-					tops[100]++
-					tops[1000]++
-				} else if (worldPosition <= 100) {
-					tops[100]++
-					tops[1000]++
-				} else if (worldPosition <= 1000) {
-					tops[1000]++
+			const tops = {}
+			this.zoneNames.forEach(zn => {
+				const zoneTops = {
+					1: 0,
+					10: 0,
+					100: 0,
+					1000: 0,
 				}
+				this.filteredPbs.forEach(pb => {
+					const position = pb.recordPosition.zones[zn]
+					if (position === 1) {
+						zoneTops[1]++
+						zoneTops[10]++
+						zoneTops[100]++
+						zoneTops[1000]++
+					} else if (position <= 10) {
+						zoneTops[10]++
+						zoneTops[100]++
+						zoneTops[1000]++
+					} else if (position <= 100) {
+						zoneTops[100]++
+						zoneTops[1000]++
+					} else if (position <= 1000) {
+						zoneTops[1000]++
+					}
+				})
+				tops[zn] = zoneTops
 			})
 			return tops
 		},
 		medalCount() {
 			const medals = {
-				bronze: 0,
-				silver: 0,
-				gold: 0,
 				author: 0,
+				gold: 0,
+				silver: 0,
+				bronze: 0,
+				none: 0,
 			}
 			this.filteredPbs.forEach(pb => {
 				const medal = pb.record.medal
@@ -330,6 +352,8 @@ export default {
 					medals.bronze++
 				} else if (medal === 1) {
 					medals.bronze++
+				} else {
+					medals.none++
 				}
 			})
 			return medals
@@ -502,6 +526,12 @@ export default {
 		.icon {
 			margin-right: 8px;
 		}
+	}
+
+	.header {
+		margin-bottom: 24px;
+		display: flex;
+		gap: 8px;
 	}
 
 	#trackmania-content {

@@ -97,11 +97,15 @@ export default {
 			type: Boolean,
 			default: true,
 		},
+		config: {
+			type: Object,
+			default: () => null,
+		},
 	},
 
 	data() {
 		return {
-			state: loadState('integration_trackmania', 'user-config'),
+			state: this.config !== null ? { ...this.config } : loadState('integration_trackmania', 'user-config'),
 			loading: false,
 			redirect_uri: window.location.protocol + '//' + window.location.host + generateUrl('/apps/integration_trackmania/oauth-redirect'),
 			login: '',

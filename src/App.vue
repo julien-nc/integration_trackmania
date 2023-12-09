@@ -15,6 +15,7 @@
 				<PersonalSettings
 					class="settings"
 					:show-title="true"
+					:config="state"
 					@connected="onConnected" />
 			</div>
 			<NcEmptyContent v-else-if="loadingData"
@@ -27,6 +28,7 @@
 			<MainContent v-else-if="hasData"
 				:pbs="pbs"
 				:zone-names="zoneNames"
+				@disconnect="disconnect"
 				@reload="reloadData" />
 			<NcEmptyContent v-else
 				class="main-empty-content"
@@ -60,8 +62,6 @@ import { subscribe, unsubscribe } from '@nextcloud/event-bus'
 
 import { formatPbs } from './utils.js'
 
-const state = loadState('integration_trackmania', 'user-config')
-
 export default {
 	name: 'App',
 
@@ -81,7 +81,7 @@ export default {
 
 	data() {
 		return {
-			state,
+			state: loadState('integration_trackmania', 'user-config'),
 			loadingData: false,
 			zoneNames: null,
 			pbs: [],
@@ -123,6 +123,25 @@ export default {
 			this.state.account_id = accountId
 			this.state.core_token = 'plop'
 			this.getPbs()
+		},
+		disconnect() {
+			const req = {
+				values: {
+					core_token: '',
+				},
+			}
+			const url = generateUrl('/apps/integration_trackmania/config')
+			axios.put(url, req)
+				.then((response) => {
+					this.state.core_token = ''
+				})
+				.catch((error) => {
+					showError(
+						t('integration_trackmania', 'Failed to disconnect')
+						+ ': ' + (error.response?.request?.responseText ?? ''),
+					)
+					console.error(error)
+				})
 		},
 		reloadData() {
 			this.pbs = []
