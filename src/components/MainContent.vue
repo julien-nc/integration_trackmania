@@ -37,6 +37,9 @@
 				<p>{{ t('integration_trackmania', '{nb} records in top 1000', { nb: topCount[zn][1000] }) }}</p>
 			</div>
 		</div>
+		<!--div class="charts">
+			<NbRecordsPerPosition :pbs="filteredPbs" />
+		</div-->
 		<div class="checkColumns">
 			<NcCheckboxRadioSwitch
 				:checked="config.show_column_line_number ?? true"
@@ -200,6 +203,7 @@ import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
 import NcCheckboxRadioSwitch from '@nextcloud/vue/dist/Components/NcCheckboxRadioSwitch.js'
 
 import MapDetailModal from './MapDetailModal.vue'
+// import NbRecordsPerPosition from './charts/NbRecordsPerPosition.vue'
 
 import { VueGoodTable } from 'vue-good-table'
 import 'vue-good-table/dist/vue-good-table.css'
@@ -217,6 +221,7 @@ export default {
 	name: 'MainContent',
 
 	components: {
+		// NbRecordsPerPosition,
 		MapDetailModal,
 		TrackmaniaIcon,
 		VueGoodTable,

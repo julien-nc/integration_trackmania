@@ -25,5 +25,6 @@ return [
 		['name' => 'trackmaniaAPI#getMapFinishCount', 'url' => '/map/{mapUid}/finish-count', 'verb' => 'GET'],
 		['name' => 'trackmaniaAPI#getMapTimePosition', 'url' => '/map/{mapUid}/position/{time}', 'verb' => 'GET'],
 		// TODO implement what would be my position if i gain 1ms 10ms 100ms 1000ms
+		// TODO graph number of tracks / position in leaderboard
 	],
 ];
