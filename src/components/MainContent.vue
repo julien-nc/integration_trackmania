@@ -78,9 +78,17 @@
 		<MapDetailModal v-if="detailPb"
 			:pb="detailPb"
 			@close="detailPb = null" />
-		<span>
-			{{ t('integration_trackmania', '{nb} rows', { nb: rowCount }) }}
-		</span>
+		<div class="table-header">
+			<span>
+				{{ t('integration_trackmania', '{nb} rows', { nb: rowCount }) }}
+			</span>
+			<NcButton @click="clearFilters">
+				<template #icon>
+					<FilterRemoveIcon />
+				</template>
+				{{ t('integration_trackmania', 'Clear table filters') }}
+			</NcButton>
+		</div>
 		<VueGoodTable
 			:columns="columns"
 			:rows="filteredPbs"
@@ -200,6 +208,7 @@
 <script>
 import ReloadIcon from 'vue-material-design-icons/Reload.vue'
 import CloseIcon from 'vue-material-design-icons/Close.vue'
+import FilterRemoveIcon from 'vue-material-design-icons/FilterRemove.vue'
 
 import TrackmaniaIcon from './icons/TrackmaniaIcon.vue'
 
@@ -233,6 +242,7 @@ export default {
 		NcCheckboxRadioSwitch,
 		ReloadIcon,
 		CloseIcon,
+		FilterRemoveIcon,
 	},
 
 	props: {
@@ -546,7 +556,6 @@ export default {
 				: data === true
 		},
 		onDateChange() {
-			console.debug('new date', this.dateMinFilter)
 			this.saveOptions({
 				filter_dateMin: this.dateMinTimestamp,
 				filter_dateMax: this.dateMaxTimestamp,
@@ -580,6 +589,27 @@ export default {
 			this.saveOptions({
 				['filter_position_zone_' + zn]: value,
 			})
+		},
+		clearFilters() {
+			const values = {
+				filter_medal: '',
+				filter_favorite: '',
+				filter_time: '',
+				filter_mapName: '',
+				filter_dateMin: '',
+				filter_dateMax: '',
+			}
+			this.zoneNames.forEach(zn => {
+				values['filter_position_zone_' + zn] = ''
+				this.$set(this.zonePositionFilters, 'recordPosition.zones.' + zn, '')
+			})
+			this.saveOptions(values)
+			this.medalFilter = ''
+			this.favoriteFilter = ''
+			this.timeFilter = ''
+			this.mapNameFilter = ''
+			this.dateMinFilter = ''
+			this.dateMaxFilter = ''
 		},
 		onCellClick(params) {
 			if (params.column.field === 'mapInfo.cleanName') {
@@ -629,6 +659,13 @@ export default {
 		margin-bottom: 24px;
 		display: flex;
 		gap: 8px;
+	}
+
+	.table-header {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		margin-bottom: 12px;
 	}
 
 	#trackmania-content {
