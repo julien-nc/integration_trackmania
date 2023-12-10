@@ -133,6 +133,17 @@ class TrackmaniaAPIController extends Controller {
 
 	/**
 	 * @param string $mapUid
+	 * @param int $time
+	 * @return DataResponse
+	 */
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
+	public function getMapTimeImprovements(string $mapUid, int $time): DataResponse {
+		return new DataResponse($this->trackmaniaAPIService->getScoreImprovements($this->userId, $mapUid, $time));
+	}
+
+	/**
+	 * @param string $mapUid
 	 * @param string $maction
 	 * @return DataResponse
 	 */

@@ -391,6 +391,22 @@ class TrackmaniaAPIService {
 	/**
 	 * @param string $userId
 	 * @param string $mapUid
+	 * @param int $score
+	 * @return array|string[]
+	 * @throws PreConditionNotMetException
+	 */
+	public function getScoreImprovements(string $userId, string $mapUid, int $score): array {
+		$improvements = [1, 10, 100, 1000];
+		$results = [];
+		foreach ($improvements as $improvement) {
+			$results[$improvement] = $this->getScorePosition($userId, $mapUid, $score - $improvement);
+		}
+		return $results;
+	}
+
+	/**
+	 * @param string $userId
+	 * @param string $mapUid
 	 * @param int $offset
 	 * @param int $length
 	 * @param bool $onlyWorld
