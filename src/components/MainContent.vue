@@ -115,18 +115,19 @@
 					:value="mapNameFilter"
 					type="text"
 					class="text-input-filter"
-					@keyup.enter="mapNameFilter = $event.target.value">
+					@keyup.enter="onMapNameFilterChange">
 				<input
 					v-else-if="props.column.field === 'record.recordScore.time'"
 					:value="timeFilter"
 					type="text"
 					class="text-input-filter"
 					:placeholder="t('integration_trackmania', '\'{example}\' for less than 10 seconds', { example: '< 10000' }, null, { escape: false, sanitize: false })"
-					@keyup.enter="timeFilter = $event.target.value">
+					@keyup.enter="onTimeFilterChange">
 				<select
 					v-else-if="props.column.field === 'mapInfo.favorite'"
 					v-model="favoriteFilter"
-					class="select-filter">
+					class="select-filter"
+					@input="onFavoriteFilterChange">
 					<option value="">
 						{{ t('integration_trackmania', 'All') }}
 					</option>
@@ -152,7 +153,8 @@
 				<select
 					v-else-if="props.column.field === 'record.medal'"
 					v-model="medalFilter"
-					class="select-filter">
+					class="select-filter"
+					@input="onMedalFilterChange">
 					<option value="">
 						{{ t('integration_trackmania', 'No filter') }}
 					</option>
@@ -187,7 +189,7 @@
 					type="text"
 					class="text-input-filter"
 					:placeholder="t('integration_trackmania', '\'{example}\' for top 100', { example: '<= 100' }, null, { escape: false, sanitize: false })"
-					@keyup.enter="$set(zonePositionFilters, props.column.field, $event.target.value)">
+					@keyup.enter="onZonePositionFilterChange(props.column.field, $event.target.value)">
 			</template>
 		</VueGoodTable>
 	</div>
@@ -242,20 +244,13 @@ export default {
 		},
 	},
 
-	// TODO save/restore enabled columns and filters
-	// TODO check if possible to keep filters when toggling a column
+	// TODO save/restore sort orders
 	data() {
 		return {
-			showLineNumberColumn: true,
-			showDatesColumn: true,
-			showMedalsColumn: true,
-			zoneColumnsEnabled: {
-				World: true,
-			},
 			config: configState,
 			// filter values
-			dateMinFilter: configState.filter_dateMin ?? '',
-			dateMaxFilter: configState.filter_dateMax ?? '',
+			dateMinFilter: configState.filter_dateMin ? moment.unix(configState.filter_dateMin).format('YYYY-MM-DD') : '',
+			dateMaxFilter: configState.filter_dateMax ? moment.unix(configState.filter_dateMax).format('YYYY-MM-DD') : '',
 			mapNameFilter: configState.filter_mapName ?? '',
 			timeFilter: configState.filter_time ?? '',
 			favoriteFilter: configState.filter_favorite ?? '',
@@ -371,6 +366,10 @@ export default {
 					type: 'number',
 					field: '#',
 					sortable: false,
+					// otherwise the filter th is not rendered
+					filterOptions: {
+						enabled: true,
+					},
 				})
 			}
 			if (this.config.show_column_favorite ?? true) {
@@ -447,6 +446,13 @@ export default {
 		console.debug('aaaaaaaaaaaaa pbs', this.pbs)
 		console.debug('aaaaaaaaaaaaa tops', this.topCount)
 		console.debug('aaaaaaaaaaaaa medals', this.medalCount)
+		console.debug('aaaaaaaaaaaaa config', configState)
+		Object.keys(this.config).forEach(configKey => {
+			if (configKey.startsWith('filter_position_zone_')) {
+				const zn = configKey.replace('filter_position_zone_', '')
+				this.$set(this.zonePositionFilters, 'recordPosition.zones.' + zn, this.config[configKey])
+			}
+		})
 	},
 
 	methods: {
@@ -506,9 +512,39 @@ export default {
 				: data === true
 		},
 		onDateChange() {
+			console.debug('new date', this.dateMinFilter)
 			this.saveOptions({
 				filter_dateMin: this.dateMinTimestamp,
 				filter_dateMax: this.dateMaxTimestamp,
+			})
+		},
+		onMapNameFilterChange(e) {
+			this.mapNameFilter = e.target.value
+			this.saveOptions({
+				filter_mapName: this.mapNameFilter,
+			})
+		},
+		onTimeFilterChange(e) {
+			this.timeFilter = e.target.value
+			this.saveOptions({
+				filter_time: this.timeFilter,
+			})
+		},
+		onFavoriteFilterChange(e) {
+			this.saveOptions({
+				filter_favorite: e.target.value,
+			})
+		},
+		onMedalFilterChange(e) {
+			this.saveOptions({
+				filter_medal: e.target.value,
+			})
+		},
+		onZonePositionFilterChange(field, value) {
+			const zn = field.replace('recordPosition.zones.', '')
+			this.$set(this.zonePositionFilters, field, value)
+			this.saveOptions({
+				['filter_position_zone_' + zn]: value,
 			})
 		},
 		onCellClick(params) {
