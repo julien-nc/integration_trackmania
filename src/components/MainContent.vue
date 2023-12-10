@@ -85,7 +85,9 @@
 			:columns="columns"
 			:rows="filteredPbs"
 			:fixed-header="true"
-			@on-cell-click="onCellClick">
+			:sort-options="tableSortOptions"
+			@on-cell-click="onCellClick"
+			@on-sort-change="onSortOrderChange">
 			<template slot="table-row" slot-scope="props">
 				<span v-if="props.column.field === '#'">
 					{{ props.index + 1 }}
@@ -247,6 +249,9 @@ export default {
 	// TODO save/restore sort orders
 	data() {
 		return {
+			tableSortOptions: {
+				multipleColumns: true,
+			},
 			config: configState,
 			// filter values
 			dateMinFilter: configState.filter_dateMin ? moment.unix(configState.filter_dateMin).format('YYYY-MM-DD') : '',
@@ -440,6 +445,41 @@ export default {
 	},
 
 	beforeMount() {
+		// initialize filter for each zone position
+		Object.keys(this.config).forEach(configKey => {
+			if (configKey.startsWith('filter_position_zone_')) {
+				const zn = configKey.replace('filter_position_zone_', '')
+				this.$set(this.zonePositionFilters, 'recordPosition.zones.' + zn, this.config[configKey])
+			}
+		})
+		// initialize sort order
+		if (this.config.sort_columns) {
+			const columns = this.config.sort_columns.split(',')
+			const orders = this.config.sort_orders.split(',')
+			if (columns.length === orders.length) {
+				const fields = columns.map(c => {
+					if (c.startsWith('position_')) {
+						return c.replace('position_', 'recordPosition.zones.')
+					} else if (c === 'date') {
+						return 'record.unix_timestamp'
+					} else if (c === 'name') {
+						return 'mapInfo.cleanName'
+					} else if (c === 'time') {
+						return 'record.recordScore.time'
+					} else if (c === 'medal') {
+						return 'record.medal'
+					}
+					return ''
+				})
+				this.$set(this.tableSortOptions, 'initialSortBy', [])
+				for (let i = 0; i < columns.length; i++) {
+					this.tableSortOptions.initialSortBy.push({
+						field: fields[i],
+						type: orders[i],
+					})
+				}
+			}
+		}
 	},
 
 	mounted() {
@@ -447,12 +487,6 @@ export default {
 		console.debug('aaaaaaaaaaaaa tops', this.topCount)
 		console.debug('aaaaaaaaaaaaa medals', this.medalCount)
 		console.debug('aaaaaaaaaaaaa config', configState)
-		Object.keys(this.config).forEach(configKey => {
-			if (configKey.startsWith('filter_position_zone_')) {
-				const zn = configKey.replace('filter_position_zone_', '')
-				this.$set(this.zonePositionFilters, 'recordPosition.zones.' + zn, this.config[configKey])
-			}
-		})
 	},
 
 	methods: {
@@ -553,6 +587,28 @@ export default {
 			} else if (params.column.field === 'mapInfo.favorite') {
 				emit('toggle-favorite', params.row)
 			}
+		},
+		onSortOrderChange(params) {
+			const columns = params.map(p => {
+				if (p.field.startsWith('recordPosition.zones.')) {
+					const zn = p.field.replace('recordPosition.zones.', '')
+					return 'position_' + zn
+				} else if (p.field === 'record.unix_timestamp') {
+					return 'date'
+				} else if (p.field === 'mapInfo.cleanName') {
+					return 'name'
+				} else if (p.field === 'record.recordScore.time') {
+					return 'time'
+				} else if (p.field === 'record.medal') {
+					return 'medal'
+				}
+				return ''
+			})
+			const orders = params.map(p => p.type)
+			this.saveOptions({
+				sort_columns: columns.join(','),
+				sort_orders: orders.join(','),
+			})
 		},
 	},
 }

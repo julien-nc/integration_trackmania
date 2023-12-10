@@ -63,6 +63,9 @@ class PageController extends Controller {
 			if (str_starts_with($key, 'filter_')) {
 				$tableConfig[$key] = $this->config->getUserValue($this->userId, Application::APP_ID, $key);
 			}
+			if (str_starts_with($key, 'sort_')) {
+				$tableConfig[$key] = $this->config->getUserValue($this->userId, Application::APP_ID, $key);
+			}
 		}
 		$this->initialStateService->provideInitialState('table-config', $tableConfig);
 
