@@ -15,7 +15,7 @@
 				<PersonalSettings
 					class="settings"
 					:show-title="true"
-					:config="state"
+					:config="userState"
 					@connected="onConnected" />
 			</div>
 			<NcEmptyContent v-else-if="loadingData"
@@ -28,6 +28,7 @@
 			<MainContent v-else-if="hasData"
 				:pbs="pbs"
 				:zone-names="zoneNames"
+				:config-state="tableState"
 				@disconnect="disconnect"
 				@reload="reloadData" />
 			<NcEmptyContent v-else
@@ -81,7 +82,8 @@ export default {
 
 	data() {
 		return {
-			state: loadState('integration_trackmania', 'user-config'),
+			userState: loadState('integration_trackmania', 'user-config'),
+			tableState: loadState('integration_trackmania', 'table-config'),
 			loadingData: false,
 			zoneNames: null,
 			pbs: [],
@@ -90,7 +92,7 @@ export default {
 
 	computed: {
 		connected() {
-			return !!this.state.user_name && !!this.state.core_token
+			return !!this.userState.user_name && !!this.userState.core_token
 		},
 		hasData() {
 			return this.pbs.length > 0
@@ -101,7 +103,7 @@ export default {
 	},
 
 	beforeMount() {
-		// console.debug('state', this.state)
+		// console.debug('userState', this.userState)
 	},
 
 	mounted() {
@@ -110,18 +112,20 @@ export default {
 		}
 		subscribe('get-nb-players', this.getNbPlayers)
 		subscribe('toggle-favorite', this.toggleFavorite)
+		subscribe('save-options', this.saveOptions)
 	},
 
 	beforeDestroy() {
 		unsubscribe('get-nb-players', this.getNbPlayers)
 		unsubscribe('toggle-favorite', this.toggleFavorite)
+		unsubscribe('save-options', this.saveOptions)
 	},
 
 	methods: {
 		onConnected(userName, accountId) {
-			this.state.user_name = userName
-			this.state.account_id = accountId
-			this.state.core_token = 'plop'
+			this.userState.user_name = userName
+			this.userState.account_id = accountId
+			this.userState.core_token = 'plop'
 			this.getPbs()
 		},
 		disconnect() {
@@ -133,7 +137,7 @@ export default {
 			const url = generateUrl('/apps/integration_trackmania/config')
 			axios.put(url, req)
 				.then((response) => {
-					this.state.core_token = ''
+					this.userState.core_token = ''
 				})
 				.catch((error) => {
 					showError(
@@ -194,6 +198,21 @@ export default {
 				console.error(error)
 			}).then(() => {
 				this.$set(realPb.mapInfo, 'formattedFavorite', realPb.mapInfo.favorite ? '⭐' : '☆')
+			})
+		},
+		saveOptions(values) {
+			Object.assign(this.tableState, values)
+			const req = {
+				values,
+			}
+			const url = generateUrl('/apps/integration_trackmania/config')
+			axios.put(url, req).then((response) => {
+			}).catch((error) => {
+				showError(
+					t('integration_trackmania', 'Failed to save options')
+					+ ': ' + (error.response?.request?.responseText ?? ''),
+				)
+				console.error(error)
 			})
 		},
 	},

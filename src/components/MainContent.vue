@@ -216,13 +216,8 @@ import { VueGoodTable } from 'vue-good-table'
 import 'vue-good-table/dist/vue-good-table.css'
 
 import moment from '@nextcloud/moment'
-import { generateUrl, imagePath } from '@nextcloud/router'
-import axios from '@nextcloud/axios'
-import { showError } from '@nextcloud/dialogs'
+import { imagePath } from '@nextcloud/router'
 import { emit } from '@nextcloud/event-bus'
-import { loadState } from '@nextcloud/initial-state'
-
-const configState = loadState('integration_trackmania', 'table-config')
 
 export default {
 	name: 'MainContent',
@@ -247,6 +242,10 @@ export default {
 		},
 		zoneNames: {
 			type: Array,
+			required: true,
+		},
+		configState: {
+			type: Object,
 			required: true,
 		},
 	},
@@ -302,14 +301,14 @@ export default {
 			tableSortOptions: {
 				multipleColumns: true,
 			},
-			config: configState,
+			config: this.configState,
 			// filter values
-			dateMinFilter: configState.filter_dateMin ? moment.unix(configState.filter_dateMin).format('YYYY-MM-DD') : '',
-			dateMaxFilter: configState.filter_dateMax ? moment.unix(configState.filter_dateMax).format('YYYY-MM-DD') : '',
-			mapNameFilter: configState.filter_mapName ?? '',
-			timeFilter: configState.filter_time ?? '',
-			favoriteFilter: configState.filter_favorite ?? '',
-			medalFilter: configState.filter_medal ?? '',
+			dateMinFilter: this.configState.filter_dateMin ? moment.unix(this.configState.filter_dateMin).format('YYYY-MM-DD') : '',
+			dateMaxFilter: this.configState.filter_dateMax ? moment.unix(this.configState.filter_dateMax).format('YYYY-MM-DD') : '',
+			mapNameFilter: this.configState.filter_mapName ?? '',
+			timeFilter: this.configState.filter_time ?? '',
+			favoriteFilter: this.configState.filter_favorite ?? '',
+			medalFilter: this.configState.filter_medal ?? '',
 			zonePositionFilters: {},
 			detailPb: null,
 		}
@@ -540,7 +539,7 @@ export default {
 		console.debug('aaaaaaaaaaaaa pbs', this.pbs)
 		console.debug('aaaaaaaaaaaaa tops', this.topCount)
 		console.debug('aaaaaaaaaaaaa medals', this.medalCount)
-		console.debug('aaaaaaaaaaaaa config', configState)
+		console.debug('aaaaaaaaaaaaa config', this.configState)
 	},
 
 	methods: {
@@ -577,18 +576,7 @@ export default {
 			this.saveOptions({ [key]: checked ? '1' : '0' })
 		},
 		saveOptions(values) {
-			const req = {
-				values,
-			}
-			const url = generateUrl('/apps/integration_trackmania/config')
-			axios.put(url, req).then((response) => {
-			}).catch((error) => {
-				showError(
-					t('integration_trackmania', 'Failed to save options')
-					+ ': ' + (error.response?.request?.responseText ?? ''),
-				)
-				console.error(error)
-			})
+			emit('save-options', values)
 		},
 		filterString(data, filterString) {
 			return data.toUpperCase().includes(filterString.toUpperCase())
