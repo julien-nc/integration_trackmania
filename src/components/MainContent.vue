@@ -21,10 +21,10 @@
 		<div class="summary">
 			<div class="summary__medals">
 				<h3>{{ t('integration_trackmania', 'Medals') }}</h3>
-				<p>🟢 {{ t('integration_trackmania', '{nb} Author', { nb: medalCount.author }) }}</p>
-				<p>🟡 {{ t('integration_trackmania', '{nb} Gold', { nb: medalCount.gold }) }}</p>
-				<p>🔵 {{ t('integration_trackmania', '{nb} Silver', { nb: medalCount.silver }) }}</p>
-				<p>🟤 {{ t('integration_trackmania', '{nb} Bronze', { nb: medalCount.bronze }) }}</p>
+				<p><img :src="authorMedalImageUrl"> {{ t('integration_trackmania', '{nb} Author', { nb: medalCount.author }) }}</p>
+				<p><img :src="goldMedalImageUrl">  {{ t('integration_trackmania', '{nb} Gold', { nb: medalCount.gold }) }}</p>
+				<p><img :src="silverMedalImageUrl">  {{ t('integration_trackmania', '{nb} Silver', { nb: medalCount.silver }) }}</p>
+				<p><img :src="bronzeMedalImageUrl">  {{ t('integration_trackmania', '{nb} Bronze', { nb: medalCount.bronze }) }}</p>
 				<p>{{ t('integration_trackmania', '{nb} tracks without any medal', { nb: medalCount.none }) }}</p>
 			</div>
 			<div v-for="zn in enabledZones"
@@ -106,8 +106,10 @@
 					{{ props.row.mapInfo.formattedFavorite }}
 				</span>
 				<span v-else-if="props.column.field === 'record.medal'"
-					:title="getFormattedBestMedal(props.row)">
-					{{ props.row.record.formattedMedal }}
+					:title="getFormattedBestMedal(props.row)"
+					class="medal-cell">
+					<span>{{ props.row.record.formattedMedal }}</span>
+					<img :src="getMedalImageUrl(props.row.record.medal)">
 				</span>
 				<span v-else-if="props.column.field === 'record.recordScore.time'">
 					{{ props.row.record.recordScore.formattedTime }}
@@ -160,39 +162,30 @@
 						type="date"
 						@input="onDateChange">
 				</div>
-				<select
+				<NcSelect
 					v-else-if="props.column.field === 'record.medal'"
-					v-model="medalFilter"
-					class="select-filter"
+					:value="selectedMedalFilter"
+					:options="medalFilterOptions"
+					:placeholder="t('integration_trackmania', 'No filter')"
+					class="medal-filter-select"
 					@input="onMedalFilterChange">
-					<option value="">
-						{{ t('integration_trackmania', 'No filter') }}
-					</option>
-					<option value="0">
-						{{ t('integration_trackmania', 'None') }}
-					</option>
-					<option value="1">
-						{{ '🟤 ' + t('integration_trackmania', 'Bronze') }}
-					</option>
-					<option value="2">
-						{{ '🔵 ' + t('integration_trackmania', 'Silver') }}
-					</option>
-					<option value="3">
-						{{ '🟡 ' + t('integration_trackmania', 'Gold') }}
-					</option>
-					<option value="4">
-						{{ '🟢 ' + t('integration_trackmania', 'Author') }}
-					</option>
-					<option value=">= 1">
-						{{ '🟤 ' + t('integration_trackmania', 'At least bronze') }}
-					</option>
-					<option value=">= 2">
-						{{ '🔵 ' + t('integration_trackmania', 'At least silver') }}
-					</option>
-					<option value=">= 3">
-						{{ '🟡 ' + t('integration_trackmania', 'At least gold') }}
-					</option>
-				</select>
+					<template #option="option">
+						<div class="medal-filter-select__option" style="display: flex; gap: 4px; align-items: center;">
+							<img v-if="option.medalImageUrl"
+								:src="option.medalImageUrl"
+								style="width: 32px;">
+							{{ option.label }}
+						</div>
+					</template>
+					<template #selected-option="option">
+						<div class="medal-filter-select__option" style="display: flex; gap: 4px; align-items: center;">
+							<img v-if="option.medalImageUrl"
+								:src="option.medalImageUrl"
+								style="width: 32px;">
+							{{ option.label }}
+						</div>
+					</template>
+				</NcSelect>
 				<input
 					v-if="props.column.field.startsWith('recordPosition.zones.')"
 					:value="zonePositionFilters[props.column.field] ?? ''"
@@ -212,6 +205,7 @@ import FilterRemoveIcon from 'vue-material-design-icons/FilterRemove.vue'
 
 import TrackmaniaIcon from './icons/TrackmaniaIcon.vue'
 
+import NcSelect from '@nextcloud/vue/dist/Components/NcSelect.js'
 import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
 import NcCheckboxRadioSwitch from '@nextcloud/vue/dist/Components/NcCheckboxRadioSwitch.js'
 
@@ -222,7 +216,7 @@ import { VueGoodTable } from 'vue-good-table'
 import 'vue-good-table/dist/vue-good-table.css'
 
 import moment from '@nextcloud/moment'
-import { generateUrl } from '@nextcloud/router'
+import { generateUrl, imagePath } from '@nextcloud/router'
 import axios from '@nextcloud/axios'
 import { showError } from '@nextcloud/dialogs'
 import { emit } from '@nextcloud/event-bus'
@@ -238,6 +232,7 @@ export default {
 		MapDetailModal,
 		TrackmaniaIcon,
 		VueGoodTable,
+		NcSelect,
 		NcButton,
 		NcCheckboxRadioSwitch,
 		ReloadIcon,
@@ -259,6 +254,51 @@ export default {
 	// TODO save/restore sort orders
 	data() {
 		return {
+			authorMedalImageUrl: imagePath('integration_trackmania', 'medal.author.png'),
+			goldMedalImageUrl: imagePath('integration_trackmania', 'medal.gold.png'),
+			silverMedalImageUrl: imagePath('integration_trackmania', 'medal.silver.png'),
+			bronzeMedalImageUrl: imagePath('integration_trackmania', 'medal.bronze.custom.png'),
+			medalFilterOptions: [
+				{
+					id: '0',
+					label: t('integration_trackmania', 'None'),
+				},
+				{
+					id: '1',
+					label: t('integration_trackmania', 'Bronze'),
+					medalImageUrl: imagePath('integration_trackmania', 'medal.bronze.custom.png'),
+				},
+				{
+					id: '2',
+					label: t('integration_trackmania', 'Silver'),
+					medalImageUrl: imagePath('integration_trackmania', 'medal.silver.png'),
+				},
+				{
+					id: '3',
+					label: t('integration_trackmania', 'Gold'),
+					medalImageUrl: imagePath('integration_trackmania', 'medal.gold.png'),
+				},
+				{
+					id: '4',
+					label: t('integration_trackmania', 'Author'),
+					medalImageUrl: imagePath('integration_trackmania', 'medal.author.png'),
+				},
+				{
+					id: '>= 1',
+					label: t('integration_trackmania', 'At least bronze'),
+					medalImageUrl: imagePath('integration_trackmania', 'medal.bronze.custom.png'),
+				},
+				{
+					id: '>= 2',
+					label: t('integration_trackmania', 'At least silver'),
+					medalImageUrl: imagePath('integration_trackmania', 'medal.silver.png'),
+				},
+				{
+					id: '>= 3',
+					label: t('integration_trackmania', 'At least gold'),
+					medalImageUrl: imagePath('integration_trackmania', 'medal.gold.png'),
+				},
+			],
 			tableSortOptions: {
 				multipleColumns: true,
 			},
@@ -276,6 +316,9 @@ export default {
 	},
 
 	computed: {
+		selectedMedalFilter() {
+			return this.medalFilterOptions.find(mf => mf.id === this.medalFilter)
+		},
 		// refilter the pbs with table filters + external filters to count the rows
 		filteredPbs() {
 			let myFiltered = this.pbs
@@ -424,6 +467,7 @@ export default {
 					label: t('integration_trackmania', 'Medals'),
 					type: 'number',
 					field: 'record.medal',
+					tdClass: 'mapMedalColumn',
 				})
 			}
 			columns.push(
@@ -500,6 +544,18 @@ export default {
 	},
 
 	methods: {
+		getMedalImageUrl(medal) {
+			if (medal === 4) {
+				return this.authorMedalImageUrl
+			} else if (medal === 3) {
+				return this.goldMedalImageUrl
+			} else if (medal === 2) {
+				return this.silverMedalImageUrl
+			} else if (medal === 1) {
+				return this.bronzeMedalImageUrl
+			}
+			return ''
+		},
 		getFormattedBestMedal(pb) {
 			if (pb.record.medal === 4) {
 				return pb.mapInfo.formattedAuthorTime
@@ -578,9 +634,14 @@ export default {
 				filter_favorite: e.target.value,
 			})
 		},
-		onMedalFilterChange(e) {
+		onMedalFilterChange(value) {
+			if (value === null) {
+				this.medalFilter = ''
+			} else {
+				this.medalFilter = value.id
+			}
 			this.saveOptions({
-				filter_medal: e.target.value,
+				filter_medal: this.medalFilter,
 			})
 		},
 		onZonePositionFilterChange(field, value) {
@@ -677,6 +738,14 @@ export default {
 		align-items: center;
 		gap: 44px;
 		margin-bottom: 24px;
+		&__medals p {
+			display: flex;
+			gap: 8px;
+			align-items: center;
+			img {
+				width: 38px;
+			}
+		}
 	}
 
 	:deep(.mapNameColumn) {
@@ -699,6 +768,16 @@ export default {
 		}
 	}
 
+	:deep(.mapMedalColumn) .medal-cell {
+		display: flex;
+		align-items: center;
+		justify-content: end;
+		gap: 4px;
+		img {
+			width: 32px;
+		}
+	}
+
 	.date-filters {
 		display: flex;
 		align-items: center;
@@ -709,6 +788,7 @@ export default {
 	}
 
 	.select-filter,
+	.medal-filter-select,
 	.text-input-filter {
 		width: 100%;
 	}

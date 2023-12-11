@@ -4,10 +4,10 @@ import moment from '@nextcloud/moment'
 
 const MEDAL_STRING = {
 	0: t('integration_trackmania', 'None'),
-	1: '🟤 ' + t('integration_trackmania', 'Bronze'),
-	2: '🔵 ' + t('integration_trackmania', 'Silver'),
-	3: '🟡 ' + t('integration_trackmania', 'Gold'),
-	4: '🟢 ' + t('integration_trackmania', 'Author'),
+	1: t('integration_trackmania', 'Bronze'),
+	2: t('integration_trackmania', 'Silver'),
+	3: t('integration_trackmania', 'Gold'),
+	4: t('integration_trackmania', 'Author'),
 }
 
 let mytimer = 0
