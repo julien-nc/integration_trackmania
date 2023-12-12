@@ -75,6 +75,7 @@ class TrackmaniaAPIController extends Controller {
 	#[NoAdminRequired]
 	#[NoCSRFRequired]
 	public function getMapThumbnail(string $thumbnailId, string $fallbackName = '?'): Response {
+		$thumbnailId = preg_replace('/\//', '', $thumbnailId);
 		$url = Application::AUDIENCES[Application::AUDIENCE_CORE]['base_url'] . 'storageObjects/' . $thumbnailId;
 		$image = $this->trackmaniaAPIService->getImage($url);
 		if ($image !== null && isset($image['body'], $image['headers'])) {

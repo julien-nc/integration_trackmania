@@ -117,25 +117,29 @@ class TrackmaniaAPIService {
 		}
 
 		$pbs = $this->getMapRecords($userId);
-		$pbs = array_slice($pbs, 0, 100);
+//		$pbs = array_slice($pbs, 0, 100);
 		$pbTimesByMapId = [];
 		foreach ($pbs as $pb) {
 			$pbTimesByMapId[$pb['mapId']] = $pb['recordScore']['time'];
 		}
 		$coreMapInfos = $this->getCoreMapInfo($userId, array_keys($pbTimesByMapId));
+		$coreMapInfoByMapId = [];
 		$allMyPbTimesByMapUid = [];
 		foreach ($coreMapInfos as $mapInfo) {
+			$coreMapInfoByMapId[$mapInfo['mapId']] = $mapInfo;
 			$time = $pbTimesByMapId[$mapInfo['mapId']];
 			if ($time !== null) {
 				$allMyPbTimesByMapUid[$mapInfo['mapUid']] = $time;
 			}
 		}
-		// there is more information in the live endpoint
+		/*
+		// there is more information in the live endpoint but nothing we really need
 		$liveMapInfos = $this->getLiveMapInfo($userId, array_keys($allMyPbTimesByMapUid));
 		$liveMapInfoByMapId = [];
 		foreach ($liveMapInfos as $mapInfo) {
 			$liveMapInfoByMapId[$mapInfo['mapId']] = $mapInfo;
 		}
+		*/
 		$positionsByMapUid = $this->getScorePositions($userId, $allMyPbTimesByMapUid);
 		$results = [];
 		foreach ($pbs as $k => $pb) {
@@ -143,9 +147,9 @@ class TrackmaniaAPIService {
 				'record' => $pb,
 			];
 			$mapId = $pb['mapId'];
-			if (isset($liveMapInfoByMapId[$mapId])) {
-				$mapUid = $liveMapInfoByMapId[$mapId]['uid'];
-				$oneResult['mapInfo'] = $liveMapInfoByMapId[$mapId];
+			if (isset($coreMapInfoByMapId[$mapId])) {
+				$mapUid = $coreMapInfoByMapId[$mapId]['mapUid'];
+				$oneResult['mapInfo'] = $coreMapInfoByMapId[$mapId];
 				$oneResult['mapInfo']['favorite'] = isset($allFavsByMapId[$mapId]);
 				if (isset($allMyPbTimesByMapUid[$mapUid])) {
 					$oneResult['recordPosition'] = $positionsByMapUid[$mapUid];
@@ -169,14 +173,14 @@ class TrackmaniaAPIService {
 					'unix_timestamp' => (new DateTime($item['record']['timestamp']))->getTimestamp(),
 				],
 				'mapInfo' => [
-					'uid' => $item['mapInfo']['uid'],
+					'uid' => $item['mapInfo']['mapUid'],
 					'mapId' => $item['mapInfo']['mapId'],
 					'name' => $item['mapInfo']['name'],
 					'favorite' => $item['mapInfo']['favorite'],
-					'authorTime' => $item['mapInfo']['authorTime'],
-					'goldTime' => $item['mapInfo']['goldTime'],
-					'silverTime' => $item['mapInfo']['silverTime'],
-					'bronzeTime' => $item['mapInfo']['bronzeTime'],
+					'authorTime' => $item['mapInfo']['authorScore'],
+					'goldTime' => $item['mapInfo']['goldScore'],
+					'silverTime' => $item['mapInfo']['silverScore'],
+					'bronzeTime' => $item['mapInfo']['bronzeScore'],
 					'thumbnailUrl' => $item['mapInfo']['thumbnailUrl'],
 				],
 				'recordPosition' => [
