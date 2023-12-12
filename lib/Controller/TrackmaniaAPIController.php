@@ -74,8 +74,8 @@ class TrackmaniaAPIController extends Controller {
 	 */
 	#[NoAdminRequired]
 	#[NoCSRFRequired]
-	public function getMapThumbnail(string $id, string $fallbackName = '?'): Response {
-		$url = Application::AUDIENCES[Application::AUDIENCE_CORE]['base_url'] . 'storageObjects/' . $id;
+	public function getMapThumbnail(string $thumbnailId, string $fallbackName = '?'): Response {
+		$url = Application::AUDIENCES[Application::AUDIENCE_CORE]['base_url'] . 'storageObjects/' . $thumbnailId;
 		$image = $this->trackmaniaAPIService->getImage($url);
 		if ($image !== null && isset($image['body'], $image['headers'])) {
 			$response = new DataDisplayResponse(
@@ -91,6 +91,50 @@ class TrackmaniaAPIController extends Controller {
 		return new RedirectResponse($fallbackAvatarUrl);
 	}
 
+	/**
+	 * @param string $mapUid
+	 * @return DataResponse
+	 */
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
+	public function getLiveMapInfo(string $mapUid): DataResponse {
+		$result = $this->trackmaniaAPIService->getLiveMapInfo($this->userId, [$mapUid]);
+		if (isset($result['error'])) {
+			return new DataResponse($result, Http::STATUS_BAD_REQUEST);
+		} else {
+			return new DataResponse($result);
+		}
+	}
+
+	/**
+	 * @param string $mapId
+	 * @return DataResponse
+	 */
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
+	public function getCoreMapInfoById(string $mapId): DataResponse {
+		$result = $this->trackmaniaAPIService->getCoreMapInfo($this->userId, [$mapId]);
+		if (isset($result['error'])) {
+			return new DataResponse($result, Http::STATUS_BAD_REQUEST);
+		} else {
+			return new DataResponse($result);
+		}
+	}
+
+	/**
+	 * @param string $mapUid
+	 * @return DataResponse
+	 */
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
+	public function getCoreMapInfoByUid(string $mapUid): DataResponse {
+		$result = $this->trackmaniaAPIService->getCoreMapInfo($this->userId, null, [$mapUid]);
+		if (isset($result['error'])) {
+			return new DataResponse($result, Http::STATUS_BAD_REQUEST);
+		} else {
+			return new DataResponse($result);
+		}
+	}
 
 	/**
 	 * @param string $mapUid

@@ -185,7 +185,6 @@ class TrackmaniaAPIService {
 				],
 			];
 			foreach ($item['recordPosition']['zones'] as $zone) {
-//				$formatted['recordPosition']['zones'][$zone['zoneName']] = $zone;
 				$formatted['recordPosition']['zones'][$zone['zoneName']] = $zone['ranking']['position'];
 			}
 			return $formatted;
