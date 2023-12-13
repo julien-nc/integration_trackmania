@@ -40,6 +40,15 @@ class TrackmaniaAPIController extends Controller {
 
 	/**
 	 * @return DataResponse
+	 */
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
+	public function test(): DataResponse {
+		return new DataResponse($this->trackmaniaAPIService->test($this->userId));
+	}
+
+	/**
+	 * @return DataResponse
 	 * @throws Exception
 	 */
 	#[NoAdminRequired]

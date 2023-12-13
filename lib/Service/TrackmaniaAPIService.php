@@ -44,6 +44,14 @@ class TrackmaniaAPIService {
 		$this->cache = $cacheFactory->createDistributed(Application::APP_ID);
 	}
 
+	public function test(string $userId): array {
+		$prefix = Application::AUDIENCES[Application::AUDIENCE_CORE]['token_config_key_prefix'];
+		$accountId = $this->config->getUserValue($userId, Application::APP_ID, $prefix . 'account_id');
+//		$accountId = $this->config->getUserValue($userId, Application::APP_ID, 'user_id');
+		return $this->request($userId, Application::AUDIENCE_CORE, 'accounts/' . $accountId);
+//		return $this->request($userId, Application::AUDIENCE_CORE, 'mapRecords/');
+	}
+
 	public function getImage(string $url): array {
 		$response = $this->client->get($url);
 		return [

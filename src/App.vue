@@ -201,7 +201,10 @@ export default {
 			})
 		},
 		saveOptions(values) {
-			Object.assign(this.tableState, values)
+			// Object.assign(this.tableState, values)
+			Object.keys(values).forEach(k => {
+				this.$set(this.tableState, k, values[k])
+			})
 			const req = {
 				values,
 			}

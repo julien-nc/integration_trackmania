@@ -42,25 +42,25 @@
 		</div-->
 		<div class="checkColumns">
 			<NcCheckboxRadioSwitch
-				:checked="config.show_column_line_number ?? true"
+				:checked="configState.show_column_line_number !== '0'"
 				class="checkColumn"
 				@update:checked="onColumnCheck('show_column_line_number', $event)">
 				{{ t('integration_trackmania', 'Line numbers') }}
 			</NcCheckboxRadioSwitch>
 			<NcCheckboxRadioSwitch
-				:checked="config.show_column_date ?? true"
+				:checked="configState.show_column_date !== 0"
 				class="checkColumn"
 				@update:checked="onColumnCheck('show_column_date', $event)">
 				{{ t('integration_trackmania', 'Date') }}
 			</NcCheckboxRadioSwitch>
 			<NcCheckboxRadioSwitch
-				:checked="config.show_column_favorite ?? true"
+				:checked="configState.show_column_favorite !== '0'"
 				class="checkColumn"
 				@update:checked="onColumnCheck('show_column_favorite', $event)">
 				{{ t('integration_trackmania', 'Favorite') }}
 			</NcCheckboxRadioSwitch>
 			<NcCheckboxRadioSwitch
-				:checked="config.show_column_medals ?? true"
+				:checked="configState.show_column_medals !== '0'"
 				class="checkColumn"
 				@update:checked="onColumnCheck('show_column_medals', $event)">
 				{{ t('integration_trackmania', 'Medals') }}
@@ -68,7 +68,7 @@
 			<NcCheckboxRadioSwitch
 				v-for="zn in zoneNames"
 				:key="zn"
-				:checked="config['show_column_zone_' + zn] ?? zn === 'World'"
+				:checked="configState['show_column_zone_' + zn] !== '0'"
 				class="checkColumn"
 				@update:checked="onZoneCheck(zn, $event)">
 				{{ t('integration_trackmania', 'Position in {zone}', { zone: zn }) }}
@@ -301,7 +301,6 @@ export default {
 			tableSortOptions: {
 				multipleColumns: true,
 			},
-			config: this.configState,
 			// filter values
 			dateMinFilter: this.configState.filter_dateMin ? moment.unix(this.configState.filter_dateMin).format('YYYY-MM-DD') : '',
 			dateMaxFilter: this.configState.filter_dateMax ? moment.unix(this.configState.filter_dateMax).format('YYYY-MM-DD') : '',
@@ -352,7 +351,7 @@ export default {
 			return this.filteredPbs.length
 		},
 		enabledZones() {
-			return this.zoneNames.filter(zn => this.config['show_column_zone_' + zn] ?? false)
+			return this.zoneNames.filter(zn => this.configState['show_column_zone_' + zn] !== '0')
 		},
 		topCount() {
 			const tops = {}
@@ -417,7 +416,7 @@ export default {
 		},
 		columns() {
 			const columns = []
-			if (this.config.show_column_line_number ?? true) {
+			if (this.configState.show_column_line_number !== '0') {
 				columns.push({
 					label: '#',
 					type: 'number',
@@ -429,7 +428,7 @@ export default {
 					},
 				})
 			}
-			if (this.config.show_column_favorite ?? true) {
+			if (this.configState.show_column_favorite !== '0') {
 				columns.push({
 					label: t('integration_trackmania', 'Favorite'),
 					type: 'boolean',
@@ -454,14 +453,14 @@ export default {
 					field: 'record.recordScore.time',
 				},
 			])
-			if (this.config.show_column_date ?? true) {
+			if (this.configState.show_column_date !== '0') {
 				columns.push({
 					label: t('integration_trackmania', 'Date'),
 					type: 'number',
 					field: 'record.unix_timestamp',
 				})
 			}
-			if (this.config.show_column_medals ?? true) {
+			if (this.configState.show_column_medals !== '0') {
 				columns.push({
 					label: t('integration_trackmania', 'Medals'),
 					type: 'number',
@@ -470,7 +469,7 @@ export default {
 				})
 			}
 			columns.push(
-				...this.zoneNames.filter(zn => this.config['show_column_zone_' + zn] ?? zn === 'World').map(zn => {
+				...this.zoneNames.filter(zn => this.configState['show_column_zone_' + zn] !== '0').map(zn => {
 					return {
 						label: t('integration_trackmania', '# in {zn}', { zn }),
 						type: 'number',
@@ -499,16 +498,16 @@ export default {
 
 	beforeMount() {
 		// initialize filter for each zone position
-		Object.keys(this.config).forEach(configKey => {
+		Object.keys(this.configState).forEach(configKey => {
 			if (configKey.startsWith('filter_position_zone_')) {
 				const zn = configKey.replace('filter_position_zone_', '')
-				this.$set(this.zonePositionFilters, 'recordPosition.zones.' + zn, this.config[configKey])
+				this.$set(this.zonePositionFilters, 'recordPosition.zones.' + zn, this.configState[configKey])
 			}
 		})
 		// initialize sort order
-		if (this.config.sort_columns) {
-			const columns = this.config.sort_columns.split(',')
-			const orders = this.config.sort_orders.split(',')
+		if (this.configState.sort_columns) {
+			const columns = this.configState.sort_columns.split(',')
+			const orders = this.configState.sort_orders.split(',')
 			if (columns.length === orders.length) {
 				const fields = columns.map(c => {
 					if (c.startsWith('position_')) {
@@ -568,11 +567,9 @@ export default {
 			return ''
 		},
 		onZoneCheck(zn, checked) {
-			this.$set(this.config, 'show_column_zone_' + zn, checked)
 			this.saveOptions({ ['show_column_zone_' + zn]: checked ? '1' : '0' })
 		},
 		onColumnCheck(key, checked) {
-			this.$set(this.config, key, checked)
 			this.saveOptions({ [key]: checked ? '1' : '0' })
 		},
 		saveOptions(values) {

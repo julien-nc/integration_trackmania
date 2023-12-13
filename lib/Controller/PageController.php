@@ -58,7 +58,7 @@ class PageController extends Controller {
 		$tableConfig = [];
 		foreach ($this->config->getUserKeys($this->userId, Application::APP_ID) as $key) {
 			if (str_starts_with($key, 'show_column_')) {
-				$tableConfig[$key] = $this->config->getUserValue($this->userId, Application::APP_ID, $key) === '1';
+				$tableConfig[$key] = $this->config->getUserValue($this->userId, Application::APP_ID, $key);
 			}
 			if (str_starts_with($key, 'filter_')) {
 				$tableConfig[$key] = $this->config->getUserValue($this->userId, Application::APP_ID, $key);
