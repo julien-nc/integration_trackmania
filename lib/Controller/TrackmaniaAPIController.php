@@ -12,6 +12,7 @@
 namespace OCA\Trackmania\Controller;
 
 use Exception;
+use GuzzleHttp\Exception\ClientException;
 use OCA\Trackmania\AppInfo\Application;
 use OCA\Trackmania\Service\TrackmaniaAPIService;
 use OCP\AppFramework\Http;
@@ -69,7 +70,22 @@ class TrackmaniaAPIController extends Controller {
 	#[NoAdminRequired]
 	#[NoCSRFRequired]
 	public function getMyRecords():DataResponse {
-		$result = $this->trackmaniaAPIService->getAllMapsWithPosition($this->userId);
+		try {
+			$result = $this->trackmaniaAPIService->getAllMapsWithPosition($this->userId);
+		} catch (ClientException $e) {
+			$response = $e->getResponse();
+			$statusCode = $response->getStatusCode();
+			if ($statusCode === Http::STATUS_UNAUTHORIZED) {
+				$body = $response->getBody();
+				$parsedResponse = json_decode($body, true);
+				$result = [
+					'error' => 'trackmania_request_failed',
+					'status_code' => $statusCode,
+					'response' => $parsedResponse,
+				];
+				return new DataResponse($result, Http::STATUS_BAD_REQUEST);
+			}
+		}
 		if (isset($result['error'])) {
 			return new DataResponse($result, Http::STATUS_BAD_REQUEST);
 		} else {

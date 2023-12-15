@@ -17,6 +17,7 @@ use GuzzleHttp\Exception\ClientException;
 use GuzzleHttp\Exception\ServerException;
 use OCA\Trackmania\AppInfo\Application;
 use OCA\Trackmania\Controller\ConfigController;
+use OCP\AppFramework\Http;
 use OCP\Http\Client\IClient;
 use OCP\ICache;
 use OCP\ICacheFactory;
@@ -541,7 +542,6 @@ class TrackmaniaAPIService {
 		$pos = null;
 		$offset = 0;
 		while ($pos === null && $offset < 10000) {
-			error_log('getMyPosition[' . $offset . ']');
 			$top = $this->getMapTop($userId, $mapUid, $offset, $chunkSize);
 			if (isset($top['error'])) {
 				return null;
@@ -701,15 +701,19 @@ class TrackmaniaAPIService {
 				}
 				return false;
 			}
-		} catch (Exception $e) {
-			error_log('refresh exception '.$e->getMessage());
-			$this->logger->error(
-				$audience . ' token is not valid anymore. Impossible to refresh it. '
-				. $result['error'] . ' '
-				. $result['error_description'] ?? '[no error description]',
-				['app' => Application::APP_ID]
-			);
-			return false;
+		} catch (ClientException $e) {
+			$response = $e->getResponse();
+			$statusCode = $response->getStatusCode();
+			if ($statusCode === Http::STATUS_UNAUTHORIZED) {
+				$body = $response->getBody();
+				$parsedResponse = json_decode($body, true);
+				$this->logger->error(
+					$audience . ' token is not valid anymore. Impossible to refresh it. '
+					. ($parsedResponse['message'] ?? '[no error message]'),
+					['app' => Application::APP_ID]
+				);
+			}
+			throw $e;
 		}
 	}
 
