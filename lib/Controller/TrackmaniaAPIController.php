@@ -69,6 +69,66 @@ class TrackmaniaAPIController extends Controller {
 	 */
 	#[NoAdminRequired]
 	#[NoCSRFRequired]
+	public function getMyRawRecords():DataResponse {
+		try {
+			$result = $this->trackmaniaAPIService->getMapRecordsAndFavorites($this->userId);
+		} catch (ClientException $e) {
+			$response = $e->getResponse();
+			$statusCode = $response->getStatusCode();
+			if ($statusCode === Http::STATUS_UNAUTHORIZED) {
+				$body = $response->getBody();
+				$parsedResponse = json_decode($body, true);
+				$result = [
+					'error' => 'trackmania_request_failed',
+					'status_code' => $statusCode,
+					'response' => $parsedResponse,
+				];
+				return new DataResponse($result, Http::STATUS_BAD_REQUEST);
+			}
+		}
+		if (isset($result['error'])) {
+			return new DataResponse($result, Http::STATUS_BAD_REQUEST);
+		} else {
+			return new DataResponse($result);
+		}
+	}
+
+	/**
+	 * @param array $pbTimesByMapId
+	 * @return DataResponse
+	 */
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
+	public function getMoreRecordInfo(array $pbTimesByMapId):DataResponse {
+		try {
+			$result = $this->trackmaniaAPIService->getMapsInfoAndRecordPositions($this->userId, $pbTimesByMapId);
+		} catch (ClientException $e) {
+			$response = $e->getResponse();
+			$statusCode = $response->getStatusCode();
+			if ($statusCode === Http::STATUS_UNAUTHORIZED) {
+				$body = $response->getBody();
+				$parsedResponse = json_decode($body, true);
+				$result = [
+					'error' => 'trackmania_request_failed',
+					'status_code' => $statusCode,
+					'response' => $parsedResponse,
+				];
+				return new DataResponse($result, Http::STATUS_BAD_REQUEST);
+			}
+		}
+		if (isset($result['error'])) {
+			return new DataResponse($result, Http::STATUS_BAD_REQUEST);
+		} else {
+			return new DataResponse($result);
+		}
+	}
+
+	/**
+	 * @return DataResponse
+	 * @throws Exception
+	 */
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
 	public function getMyRecords():DataResponse {
 		try {
 			$result = $this->trackmaniaAPIService->getAllMapsWithPosition($this->userId);

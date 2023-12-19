@@ -24,6 +24,12 @@
 				<template #icon>
 					<NcLoadingIcon />
 				</template>
+				<template #action>
+					<div class="loading-progress">
+						{{ infoLoadingPercent }} %
+						<NcProgressBar :value="infoLoadingPercent" size="medium" />
+					</div>
+				</template>
 			</NcEmptyContent>
 			<MainContent v-else-if="hasData"
 				:pbs="pbs"
@@ -51,6 +57,7 @@ import NcLoadingIcon from '@nextcloud/vue/dist/Components/NcLoadingIcon.js'
 import NcAppContent from '@nextcloud/vue/dist/Components/NcAppContent.js'
 import NcContent from '@nextcloud/vue/dist/Components/NcContent.js'
 import NcEmptyContent from '@nextcloud/vue/dist/Components/NcEmptyContent.js'
+import NcProgressBar from '@nextcloud/vue/dist/Components/NcProgressBar.js'
 
 import PersonalSettings from './components/PersonalSettings.vue'
 import MainContent from './components/MainContent.vue'
@@ -75,6 +82,7 @@ export default {
 		NcContent,
 		NcEmptyContent,
 		NcLoadingIcon,
+		NcProgressBar,
 	},
 
 	props: {
@@ -87,6 +95,7 @@ export default {
 			loadingData: false,
 			zoneNames: null,
 			pbs: [],
+			infoLoadingPercent: 0,
 		}
 	},
 
@@ -152,6 +161,94 @@ export default {
 			this.getPbs()
 		},
 		getPbs() {
+			this.infoLoadingPercent = 0
+			this.loadingData = true
+			const url = generateUrl('/apps/integration_trackmania/pbs/raw')
+			axios.get(url).then((response) => {
+				this.$options.rawPbs = response.data
+				this.$options.pbsWithInfo = []
+				this.getPbsInfo()
+			}).catch((error) => {
+				const data = error.response?.data
+				if (data?.error === 'trackmania_request_failed' && data?.status_code === 401) {
+					showError(
+						t('integration_trackmania', 'Your Trackmania session has expired and cannot be refreshed anymore. Please reconnect'),
+					)
+					this.disconnect()
+				} else {
+					showError(
+						t('integration_trackmania', 'Failed to get data')
+						+ ': ' + (data?.error ?? ''),
+					)
+				}
+				console.debug(error)
+			}).then(() => {
+			})
+		},
+		getPbsInfo() {
+			const rawPbs = this.$options.rawPbs
+			const chunks = []
+			let i = 0
+			while (i < rawPbs.length) {
+				let j = 0
+				const currentChunk = []
+				while (j < 100 && i < rawPbs.length) {
+					currentChunk.push(rawPbs[i])
+					i++
+					j++
+				}
+				chunks.push(currentChunk)
+			}
+			Promise.all(chunks.map(c => this.getPbsChunkInfo(c)))
+				.then(result => {
+					console.debug('----- all done', this.$options.pbsWithInfo)
+					this.zoneNames = this.getZoneNames(this.$options.pbsWithInfo[0])
+					this.pbs = formatPbs(this.$options.pbsWithInfo)
+					this.$options.rawPbs = null
+					this.$options.pbsWithInfo = null
+				})
+				.catch(error => {
+					console.error(error)
+				})
+				.then(() => {
+					this.loadingData = false
+				})
+		},
+		getPbsChunkInfo(chunk) {
+			const pbTimesByMapId = {}
+			for (let i = 0; i < chunk.length; i++) {
+				const mapId = chunk[i].mapInfo.mapId
+				const time = chunk[i].record.recordScore.time
+				pbTimesByMapId[mapId] = time
+			}
+			const url = generateUrl('/apps/integration_trackmania/pbs/info')
+			const req = {
+				pbTimesByMapId,
+			}
+			return axios.post(url, req).then((response) => {
+				const infoByMapId = response.data
+				const chunkWithInfo = chunk.map(c => {
+					if (c.mapInfo.mapId in infoByMapId) {
+						const info = infoByMapId[c.mapInfo.mapId]
+						return {
+							mapInfo: {
+								...c.mapInfo,
+								...info.mapInfo,
+							},
+							record: c.record,
+							recordPosition: info.recordPosition,
+						}
+					}
+					return c
+				})
+				this.$options.pbsWithInfo.push(...chunkWithInfo)
+				this.infoLoadingPercent = parseInt(this.$options.pbsWithInfo.length / this.$options.rawPbs.length * 100)
+				console.debug('----- ONE done', this.infoLoadingPercent)
+			}).catch((error) => {
+				console.error(error)
+			})
+		},
+		getPbsAndInfo() {
 			this.loadingData = true
 			const url = generateUrl('/apps/integration_trackmania/pbs')
 			axios.get(url).then((response) => {
@@ -245,5 +342,11 @@ body {
 
 .main-empty-content {
 	margin-top: 24px;
+}
+
+.loading-progress {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
 }
 </style>

@@ -117,6 +117,84 @@ class TrackmaniaAPIService {
 		return $this->formatMapResults($results);
 	}
 
+	// Partial loading flow
+	public function getMapRecordsAndFavorites(string $userId): array {
+		// get favorites because liveMapInfo always says favorite: false
+		$allFavs = $this->getAllFavorites($userId);
+		$allFavsByMapId = [];
+		foreach ($allFavs as $fav) {
+			$allFavsByMapId[$fav['mapId']] = 1;
+		}
+
+		$pbs = $this->getMapRecords($userId);
+		return $this->formatRecordsAndFavorites($pbs, $allFavsByMapId);
+	}
+
+	public function formatRecordsAndFavorites(array $pbs, array $allFavsByMapId): array {
+		return array_map(static function(array $pb) use ($allFavsByMapId) {
+			$mapId = $pb['mapId'];
+			return [
+				'record' => [
+					'accountId' => $pb['accountId'],
+					'medal' => $pb['medal'],
+					'recordScore' => $pb['recordScore'],
+					'unix_timestamp' => (new DateTime($pb['timestamp']))->getTimestamp(),
+				],
+				'mapInfo' => [
+					'favorite' => isset($allFavsByMapId[$mapId]) && $allFavsByMapId[$mapId] === 1,
+					'mapId' => $mapId,
+				],
+			];
+		}, $pbs);
+	}
+
+	public function getMapsInfoAndRecordPositions(string $userId, array $pbTimesByMapId): array {
+		$coreMapInfos = $this->getCoreMapInfo($userId, array_keys($pbTimesByMapId));
+		$coreMapInfoByMapId = [];
+		$allMyPbTimesByMapUid = [];
+		foreach ($coreMapInfos as $mapInfo) {
+			$coreMapInfoByMapId[$mapInfo['mapId']] = $mapInfo;
+			$time = $pbTimesByMapId[$mapInfo['mapId']];
+			if ($time !== null) {
+				$allMyPbTimesByMapUid[$mapInfo['mapUid']] = $time;
+			}
+		}
+		$positionsByMapUid = $this->getScorePositions($userId, $allMyPbTimesByMapUid);
+		$results = [];
+		foreach ($pbTimesByMapId as $mapId => $time) {
+			if (isset($coreMapInfoByMapId[$mapId])) {
+				$mapUid = $coreMapInfoByMapId[$mapId]['mapUid'];
+				$results[$mapId] = $this->formatMapInfoAndRecordPosition($coreMapInfoByMapId[$mapId], $positionsByMapUid[$mapUid]);
+			}
+		}
+
+		return $results;
+	}
+
+	public function formatMapInfoAndRecordPosition(array $mapInfo, array $position): array {
+		$formatted = [
+			'mapInfo' => [
+				'uid' => $mapInfo['mapUid'],
+				'mapId' => $mapInfo['mapId'],
+				'name' => $mapInfo['name'],
+				'authorTime' => $mapInfo['authorScore'],
+				'goldTime' => $mapInfo['goldScore'],
+				'silverTime' => $mapInfo['silverScore'],
+				'bronzeTime' => $mapInfo['bronzeScore'],
+				'thumbnailUrl' => $mapInfo['thumbnailUrl'],
+			],
+			'recordPosition' => [
+				'score' => $position['score'],
+				'zones' => [],
+			],
+		];
+		foreach ($position['zones'] as $zone) {
+			$formatted['recordPosition']['zones'][$zone['zoneName']] = $zone['ranking']['position'];
+		}
+		return $formatted;
+	}
+	// END Partial loading flow
+
 	public function getAllMapsWithPosition(string $userId): array {
 		// get favorites because liveMapInfo always says favorite: false
 		$allFavs = $this->getAllFavorites($userId);

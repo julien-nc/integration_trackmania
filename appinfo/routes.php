@@ -20,6 +20,10 @@ return [
 		['name' => 'trackmaniaAPI#getMyFavorites', 'url' => '/favorites', 'verb' => 'GET'],
 		['name' => 'trackmaniaAPI#toggleFavorite', 'url' => '/map/favorite/{mapUid}/{maction}', 'verb' => 'POST'],
 		['name' => 'trackmaniaAPI#getMyRecords', 'url' => '/pbs', 'verb' => 'GET'],
+		// partial load
+		['name' => 'trackmaniaAPI#getMyRawRecords', 'url' => '/pbs/raw', 'verb' => 'GET'],
+		['name' => 'trackmaniaAPI#getMoreRecordInfo', 'url' => '/pbs/info', 'verb' => 'POST'],
+		// end partial load
 		['name' => 'trackmaniaAPI#getMapThumbnail', 'url' => '/thumbnail/{thumbnailId}', 'verb' => 'GET'],
 		['name' => 'trackmaniaAPI#getLiveMapInfo', 'url' => '/map/{mapUid}', 'verb' => 'GET'],
 		['name' => 'trackmaniaAPI#getCoreMapInfoById', 'url' => '/core/map/id/{mapId}', 'verb' => 'GET'],
