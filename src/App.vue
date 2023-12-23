@@ -160,6 +160,9 @@ export default {
 			this.pbs = []
 			this.getPbs()
 		},
+		/**
+		 * first get records and then map info by chunks
+		 */
 		getPbs() {
 			this.infoLoadingPercent = 0
 			this.loadingData = true
@@ -248,6 +251,9 @@ export default {
 				console.error(error)
 			})
 		},
+		/**
+		 * get all at once
+		 */
 		getPbsAndInfo() {
 			this.loadingData = true
 			const url = generateUrl('/apps/integration_trackmania/pbs')

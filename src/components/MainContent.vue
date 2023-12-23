@@ -89,54 +89,54 @@
 				{{ t('integration_trackmania', 'Clear table filters') }}
 			</NcButton>
 		</div>
-		<VueGoodTable
+		<SimpleTable
 			:columns="columns"
-			:rows="filteredPbs"
-			:fixed-header="true"
-			:sort-options="tableSortOptions"
-			@on-cell-click="onCellClick"
-			@on-sort-change="onSortOrderChange">
-			<template slot="table-row" slot-scope="props">
-				<span v-if="props.column.field === '#'">
-					{{ props.index + 1 }}
+			:rows="sortedFilteredPbs"
+			:sort-options="sortOptions"
+			@cell-clicked="onCellClick"
+			@header-clicked="onHeaderClick"
+			@header-shift-clicked="onHeaderShiftClick">
+			<template #cell="{row, column, index}">
+				<span v-if="column.field === '#'">
+					{{ index + 1 }}
 				</span>
-				<span v-else-if="props.column.field === 'mapInfo.cleanName'"
-					v-html="props.row.mapInfo.htmlName" />
-				<span v-else-if="props.column.field === 'mapInfo.favorite'">
-					{{ props.row.mapInfo.formattedFavorite }}
+				<span v-else-if="column.field === 'mapInfo.cleanName'"
+					v-html="row.mapInfo.htmlName" />
+				<span v-else-if="column.field === 'mapInfo.favorite'">
+					{{ row.mapInfo.formattedFavorite }}
 				</span>
-				<span v-else-if="props.column.field === 'record.medal'"
-					:title="getFormattedBestMedal(props.row)"
+				<span v-else-if="column.field === 'record.medal'"
+					:title="getFormattedBestMedal(row)"
 					class="medal-cell">
-					<span>{{ props.row.record.formattedMedal }}</span>
-					<img :src="getMedalImageUrl(props.row.record.medal)">
+					<span>{{ row.record.formattedMedal }}</span>
+					<img :src="getMedalImageUrl(row.record.medal)">
 				</span>
-				<span v-else-if="props.column.field === 'record.recordScore.time'">
-					{{ props.row.record.recordScore.formattedTime }}
+				<span v-else-if="column.field === 'record.recordScore.time'">
+					{{ row.record.recordScore.formattedTime }}
 				</span>
-				<span v-else-if="props.column.field === 'record.unix_timestamp'">
-					{{ props.row.record.formattedDate }}
+				<span v-else-if="column.field === 'record.unix_timestamp'">
+					{{ row.record.formattedDate }}
 				</span>
 				<span v-else>
-					{{ props.formattedRow[props.column.field] }}
+					{{ getRawCellValue(row, column.field) }}
 				</span>
 			</template>
-			<template slot="column-filter" slot-scope="props">
+			<template #filter="{column}">
 				<input
-					v-if="props.column.field === 'mapInfo.cleanName'"
+					v-if="column.field === 'mapInfo.cleanName'"
 					:value="mapNameFilter"
 					type="text"
 					class="text-input-filter"
 					@keyup.enter="onMapNameFilterChange">
 				<input
-					v-else-if="props.column.field === 'record.recordScore.time'"
+					v-else-if="column.field === 'record.recordScore.time'"
 					:value="timeFilter"
 					type="text"
 					class="text-input-filter"
 					:placeholder="t('integration_trackmania', '\'{example}\' for less than 10 seconds', { example: '< 10000' }, null, { escape: false, sanitize: false })"
 					@keyup.enter="onTimeFilterChange">
 				<select
-					v-else-if="props.column.field === 'mapInfo.favorite'"
+					v-else-if="column.field === 'mapInfo.favorite'"
 					v-model="favoriteFilter"
 					class="select-filter"
 					@input="onFavoriteFilterChange">
@@ -150,7 +150,7 @@
 						{{ '⭐ ' + t('integration_trackmania', 'Favorite') }}
 					</option>
 				</select>
-				<div v-else-if="props.column.field === 'record.unix_timestamp'"
+				<div v-else-if="column.field === 'record.unix_timestamp'"
 					class="date-filters">
 					<input
 						v-model="dateMinFilter"
@@ -163,7 +163,7 @@
 						@input="onDateChange">
 				</div>
 				<NcSelect
-					v-else-if="props.column.field === 'record.medal'"
+					v-else-if="column.field === 'record.medal'"
 					:value="selectedMedalFilter"
 					:options="medalFilterOptions"
 					:multiple="true"
@@ -188,14 +188,14 @@
 					</template>
 				</NcSelect>
 				<input
-					v-if="props.column.field.startsWith('recordPosition.zones.')"
-					:value="zonePositionFilters[props.column.field] ?? ''"
+					v-if="column.field.startsWith('recordPosition.zones.')"
+					:value="zonePositionFilters[column.field] ?? ''"
 					type="text"
 					class="text-input-filter"
 					:placeholder="t('integration_trackmania', '\'{example}\' for top 100', { example: '<= 100' }, null, { escape: false, sanitize: false })"
-					@keyup.enter="onZonePositionFilterChange(props.column.field, $event.target.value)">
+					@keyup.enter="onZonePositionFilterChange(column.field, $event.target.value)">
 			</template>
-		</VueGoodTable>
+		</SimpleTable>
 	</div>
 </template>
 
@@ -210,24 +210,23 @@ import NcSelect from '@nextcloud/vue/dist/Components/NcSelect.js'
 import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
 import NcCheckboxRadioSwitch from '@nextcloud/vue/dist/Components/NcCheckboxRadioSwitch.js'
 
+import SimpleTable from './SimpleTable.vue'
 import MapDetailModal from './MapDetailModal.vue'
 // import NbRecordsPerPosition from './charts/NbRecordsPerPosition.vue'
-
-import { VueGoodTable } from 'vue-good-table'
-import 'vue-good-table/dist/vue-good-table.css'
 
 import moment from '@nextcloud/moment'
 import { imagePath } from '@nextcloud/router'
 import { emit } from '@nextcloud/event-bus'
+import { dig } from '../utils.js'
 
 export default {
 	name: 'MainContent',
 
 	components: {
+		SimpleTable,
 		// NbRecordsPerPosition,
 		MapDetailModal,
 		TrackmaniaIcon,
-		VueGoodTable,
 		NcSelect,
 		NcButton,
 		NcCheckboxRadioSwitch,
@@ -251,7 +250,6 @@ export default {
 		},
 	},
 
-	// TODO save/restore sort orders
 	data() {
 		return {
 			authorMedalImageUrl: imagePath('integration_trackmania', 'medal.author.png'),
@@ -295,6 +293,7 @@ export default {
 			favoriteFilter: this.configState.filter_favorite ?? '',
 			medalFilter: this.configState.filter_medal ? this.configState.filter_medal.split(',').map(v => parseInt(v)) : [],
 			zonePositionFilters: {},
+			sortOptions: this.initSortOptions(),
 			detailPb: null,
 		}
 	},
@@ -334,6 +333,17 @@ export default {
 			})
 			console.debug('my filtered row list', myFiltered)
 			return myFiltered
+		},
+		sortedFilteredPbs() {
+			if (this.sortOptions.length === 0) {
+				return this.filteredPbs
+			}
+			const columns = this.sortOptions.map(so => this.columns.find(c => c.sortName === so.sortName)).filter(c => c !== null)
+			if (columns.length > 0) {
+				const sortFun = this.getSortFunction(columns, this.sortOptions)
+				return this.filteredPbs.slice().sort(sortFun)
+			}
+			return this.filteredPbs
 		},
 		rowCount() {
 			return this.filteredPbs.length
@@ -422,10 +432,7 @@ export default {
 					type: 'boolean',
 					field: 'mapInfo.favorite',
 					tdClass: 'mapFavoriteColumn',
-					// otherwise the filter th is not rendered
-					filterOptions: {
-						enabled: true,
-					},
+					sortName: 'favorite',
 				})
 			}
 			columns.push(...[
@@ -434,11 +441,13 @@ export default {
 					type: 'text',
 					field: 'mapInfo.cleanName',
 					tdClass: 'mapNameColumn',
+					sortName: 'mapName',
 				},
 				{
 					label: t('integration_trackmania', 'PB'),
 					type: 'number',
 					field: 'record.recordScore.time',
+					sortName: 'time',
 				},
 			])
 			if (this.configState.show_column_date !== '0') {
@@ -446,6 +455,7 @@ export default {
 					label: t('integration_trackmania', 'Date'),
 					type: 'number',
 					field: 'record.unix_timestamp',
+					sortName: 'date',
 				})
 			}
 			if (this.configState.show_column_medals !== '0') {
@@ -454,6 +464,7 @@ export default {
 					type: 'number',
 					field: 'record.medal',
 					tdClass: 'mapMedalColumn',
+					sortName: 'medal',
 				})
 			}
 			columns.push(
@@ -462,6 +473,7 @@ export default {
 						label: t('integration_trackmania', '# in {zn}', { zn }),
 						type: 'number',
 						field: `recordPosition.zones.${zn}`,
+						sortName: `position_${zn}`,
 					}
 				}),
 			)
@@ -492,34 +504,6 @@ export default {
 				this.$set(this.zonePositionFilters, 'recordPosition.zones.' + zn, this.configState[configKey])
 			}
 		})
-		// initialize sort order
-		if (this.configState.sort_columns) {
-			const columns = this.configState.sort_columns.split(',')
-			const orders = this.configState.sort_orders.split(',')
-			if (columns.length === orders.length) {
-				const fields = columns.map(c => {
-					if (c.startsWith('position_')) {
-						return c.replace('position_', 'recordPosition.zones.')
-					} else if (c === 'date') {
-						return 'record.unix_timestamp'
-					} else if (c === 'name') {
-						return 'mapInfo.cleanName'
-					} else if (c === 'time') {
-						return 'record.recordScore.time'
-					} else if (c === 'medal') {
-						return 'record.medal'
-					}
-					return ''
-				})
-				this.$set(this.tableSortOptions, 'initialSortBy', [])
-				for (let i = 0; i < columns.length; i++) {
-					this.tableSortOptions.initialSortBy.push({
-						field: fields[i],
-						type: orders[i],
-					})
-				}
-			}
-		}
 	},
 
 	mounted() {
@@ -530,6 +514,90 @@ export default {
 	},
 
 	methods: {
+		getSortFunction(columns, sortOptions) {
+			const firstColumn = columns[0]
+			const firstSortOption = sortOptions[0]
+			const field = firstColumn.field
+			const type = firstColumn.type
+			const order = firstSortOption.order
+			const nextSortFunction = columns.length > 1
+				? this.getSortFunction(columns.slice(1), sortOptions.slice(1))
+				: () => 0
+
+			if (type === 'boolean') {
+				return order === 'asc'
+					? (a, b) => {
+						const vA = this.getRawCellValue(a, field)
+						const vB = this.getRawCellValue(b, field)
+						return vA === vB
+							? nextSortFunction(a, b)
+							: (vA ? 1 : -1)
+					}
+					: (a, b) => {
+						const vA = this.getRawCellValue(a, field)
+						const vB = this.getRawCellValue(b, field)
+						return vA === vB
+							? nextSortFunction(a, b)
+							: (vB ? 1 : -1)
+					}
+			} else if (type === 'number') {
+				return order === 'asc'
+					? (a, b) => {
+						const vA = this.getRawCellValue(a, field)
+						const vB = this.getRawCellValue(b, field)
+						return vA > vB
+							? 1
+							: vA < vB
+								? -1
+								: nextSortFunction(a, b)
+					}
+					: (a, b) => {
+						const vA = this.getRawCellValue(a, field)
+						const vB = this.getRawCellValue(b, field)
+						return vA > vB
+							? -1
+							: vA < vB
+								? 1
+								: nextSortFunction(a, b)
+					}
+			} else if (type === 'string') {
+				return order === 'asc'
+					? (a, b) => {
+						const vA = this.getRawCellValue(a, field)
+						const vB = this.getRawCellValue(b, field)
+						return vA === vB
+							? nextSortFunction(a, b)
+							: vA.localeCompare(vB)
+					}
+					: (a, b) => {
+						const vA = this.getRawCellValue(a, field)
+						const vB = this.getRawCellValue(b, field)
+						return vA === vB
+							? nextSortFunction(a, b)
+							: vB.localeCompare(vA)
+					}
+			}
+		},
+		initSortOptions() {
+			if (this.configState.sort_columns && this.configState.sort_orders) {
+				const cols = this.configState.sort_columns.split(',')
+				const orders = this.configState.sort_orders.split(',')
+				if (cols.length === orders.length) {
+					const sortOptions = []
+					for (let i = 0; i < cols.length; i++) {
+						sortOptions.push({
+							sortName: cols[i],
+							order: orders[i],
+						})
+					}
+					return sortOptions
+				}
+			}
+			return []
+		},
+		getRawCellValue(row, field) {
+			return dig(row, field)
+		},
 		getMedalImageUrl(medal) {
 			if (medal === 4) {
 				return this.authorMedalImageUrl
@@ -645,33 +713,57 @@ export default {
 			this.dateMinFilter = ''
 			this.dateMaxFilter = ''
 		},
-		onCellClick(params) {
-			if (params.column.field === 'mapInfo.cleanName') {
-				this.detailPb = params.row
-			} else if (params.column.field === 'mapInfo.favorite') {
-				emit('toggle-favorite', params.row)
+		onCellClick(column, row) {
+			if (column.field === 'mapInfo.cleanName') {
+				this.detailPb = row
+			} else if (column.field === 'mapInfo.favorite') {
+				emit('toggle-favorite', row)
 			}
 		},
-		onSortOrderChange(params) {
-			const columns = params.map(p => {
-				if (p.field.startsWith('recordPosition.zones.')) {
-					const zn = p.field.replace('recordPosition.zones.', '')
-					return 'position_' + zn
-				} else if (p.field === 'record.unix_timestamp') {
-					return 'date'
-				} else if (p.field === 'mapInfo.cleanName') {
-					return 'name'
-				} else if (p.field === 'record.recordScore.time') {
-					return 'time'
-				} else if (p.field === 'record.medal') {
-					return 'medal'
+		onHeaderShiftClick(column) {
+			if (this.sortOptions.length === 0) {
+				this.onHeaderClick(column)
+				return
+			}
+			const existingSortOption = this.sortOptions.find(so => so.sortName === column.sortName)
+			if (existingSortOption) {
+				if (existingSortOption.order === 'desc') {
+					const index = this.sortOptions.findIndex(so => so.sortName === column.sortName)
+					this.sortOptions.splice(index, 1)
+				} else {
+					existingSortOption.order = 'desc'
 				}
-				return ''
-			})
-			const orders = params.map(p => p.type)
+			} else {
+				this.sortOptions.push({
+					sortName: column.sortName,
+					order: 'asc',
+				})
+			}
 			this.saveOptions({
-				sort_columns: columns.join(','),
-				sort_orders: orders.join(','),
+				sort_columns: this.sortOptions.map(so => so.sortName).join(','),
+				sort_orders: this.sortOptions.map(so => so.order).join(','),
+			})
+		},
+		onHeaderClick(column) {
+			if (this.sortOptions.length > 0 && this.sortOptions[0].sortName === column.sortName) {
+				if (this.sortOptions[0].order === 'desc') {
+					this.sortOptions = []
+				} else {
+					this.sortOptions = [{
+						sortName: column.sortName,
+						order: 'desc',
+					}]
+				}
+			} else {
+				this.sortOptions = [{
+					sortName: column.sortName,
+					order: 'asc',
+				}]
+			}
+
+			this.saveOptions({
+				sort_columns: this.sortOptions.map(so => so.sortName).join(','),
+				sort_orders: this.sortOptions.map(so => so.order).join(','),
 			})
 		},
 	},
