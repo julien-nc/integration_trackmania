@@ -4,8 +4,9 @@
 			<tr>
 				<th v-for="c in columns"
 					:key="c.field"
+					class="header"
 					@click="onClick($event, c)">
-					<div class="label-header">
+					<div class="label">
 						<span>
 							{{ c.label }}
 						</span>
@@ -93,6 +94,9 @@ export default {
 
 	methods: {
 		onClick(e, c) {
+			if (!c.sortName) {
+				return
+			}
 			if (e.shiftKey) {
 				this.$emit('header-shift-clicked', c)
 			} else {
@@ -110,10 +114,17 @@ export default {
 		border-collapse: collapse;
 	}
 	tr {
-		.label-header {
-			display: flex;
-			.spacer {
-				flex-grow: 1;
+		.header {
+			cursor: pointer;
+			* {
+				cursor: pointer;
+			}
+			.label {
+				display: flex;
+
+				.spacer {
+					flex-grow: 1;
+				}
 			}
 		}
 		&:hover {

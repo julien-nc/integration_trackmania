@@ -419,11 +419,6 @@ export default {
 					label: '#',
 					type: 'number',
 					field: '#',
-					sortable: false,
-					// otherwise the filter th is not rendered
-					filterOptions: {
-						enabled: true,
-					},
 				})
 			}
 			if (this.configState.show_column_favorite !== '0') {
