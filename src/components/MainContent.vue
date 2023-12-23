@@ -166,6 +166,7 @@
 					v-else-if="props.column.field === 'record.medal'"
 					:value="selectedMedalFilter"
 					:options="medalFilterOptions"
+					:multiple="true"
 					:placeholder="t('integration_trackmania', 'No filter')"
 					class="medal-filter-select"
 					@input="onMedalFilterChange">
@@ -259,43 +260,28 @@ export default {
 			bronzeMedalImageUrl: imagePath('integration_trackmania', 'medal.bronze.custom.png'),
 			medalFilterOptions: [
 				{
-					id: '0',
+					id: 0,
 					label: t('integration_trackmania', 'None'),
 				},
 				{
-					id: '1',
+					id: 1,
 					label: t('integration_trackmania', 'Bronze'),
 					medalImageUrl: imagePath('integration_trackmania', 'medal.bronze.custom.png'),
 				},
 				{
-					id: '2',
+					id: 2,
 					label: t('integration_trackmania', 'Silver'),
 					medalImageUrl: imagePath('integration_trackmania', 'medal.silver.png'),
 				},
 				{
-					id: '3',
+					id: 3,
 					label: t('integration_trackmania', 'Gold'),
 					medalImageUrl: imagePath('integration_trackmania', 'medal.gold.png'),
 				},
 				{
-					id: '4',
+					id: 4,
 					label: t('integration_trackmania', 'Author'),
 					medalImageUrl: imagePath('integration_trackmania', 'medal.author.png'),
-				},
-				{
-					id: '>= 1',
-					label: t('integration_trackmania', 'At least bronze'),
-					medalImageUrl: imagePath('integration_trackmania', 'medal.bronze.custom.png'),
-				},
-				{
-					id: '>= 2',
-					label: t('integration_trackmania', 'At least silver'),
-					medalImageUrl: imagePath('integration_trackmania', 'medal.silver.png'),
-				},
-				{
-					id: '>= 3',
-					label: t('integration_trackmania', 'At least gold'),
-					medalImageUrl: imagePath('integration_trackmania', 'medal.gold.png'),
 				},
 			],
 			tableSortOptions: {
@@ -307,7 +293,7 @@ export default {
 			mapNameFilter: this.configState.filter_mapName ?? '',
 			timeFilter: this.configState.filter_time ?? '',
 			favoriteFilter: this.configState.filter_favorite ?? '',
-			medalFilter: this.configState.filter_medal ?? '',
+			medalFilter: this.configState.filter_medal ? this.configState.filter_medal.split(',').map(v => parseInt(v)) : [],
 			zonePositionFilters: {},
 			detailPb: null,
 		}
@@ -315,7 +301,9 @@ export default {
 
 	computed: {
 		selectedMedalFilter() {
-			return this.medalFilterOptions.find(mf => mf.id === this.medalFilter)
+			return this.medalFilter.map(mid => {
+				return this.medalFilterOptions.find(option => option.id === mid)
+			})
 		},
 		// refilter the pbs with table filters + external filters to count the rows
 		filteredPbs() {
@@ -335,8 +323,8 @@ export default {
 			if (this.favoriteFilter) {
 				myFiltered = myFiltered.filter(pb => this.filterFavorite(pb.mapInfo.favorite, this.favoriteFilter))
 			}
-			if (this.medalFilter) {
-				myFiltered = myFiltered.filter(pb => this.filterNumber(pb.record.medal, this.medalFilter))
+			if (this.medalFilter.length > 0) {
+				myFiltered = myFiltered.filter(pb => this.medalFilter.includes(pb.record.medal))
 			}
 			this.zoneNames.forEach(zn => {
 				const zoneFilterKey = `recordPosition.zones.${zn}`
@@ -621,12 +609,12 @@ export default {
 		},
 		onMedalFilterChange(value) {
 			if (value === null) {
-				this.medalFilter = ''
+				this.medalFilter = []
 			} else {
-				this.medalFilter = value.id
+				this.medalFilter = value.map(option => parseInt(option.id))
 			}
 			this.saveOptions({
-				filter_medal: this.medalFilter,
+				filter_medal: this.medalFilter.join(','),
 			})
 		},
 		onZonePositionFilterChange(field, value) {
@@ -650,7 +638,7 @@ export default {
 				this.$set(this.zonePositionFilters, 'recordPosition.zones.' + zn, '')
 			})
 			this.saveOptions(values)
-			this.medalFilter = ''
+			this.medalFilter = []
 			this.favoriteFilter = ''
 			this.timeFilter = ''
 			this.mapNameFilter = ''
