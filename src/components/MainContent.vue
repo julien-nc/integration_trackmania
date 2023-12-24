@@ -48,16 +48,16 @@
 				{{ t('integration_trackmania', 'Line numbers') }}
 			</NcCheckboxRadioSwitch>
 			<NcCheckboxRadioSwitch
-				:checked="configState.show_column_date !== 0"
-				class="checkColumn"
-				@update:checked="onColumnCheck('show_column_date', $event)">
-				{{ t('integration_trackmania', 'Date') }}
-			</NcCheckboxRadioSwitch>
-			<NcCheckboxRadioSwitch
 				:checked="configState.show_column_favorite !== '0'"
 				class="checkColumn"
 				@update:checked="onColumnCheck('show_column_favorite', $event)">
 				{{ t('integration_trackmania', 'Favorite') }}
+			</NcCheckboxRadioSwitch>
+			<NcCheckboxRadioSwitch
+				:checked="configState.show_column_date !== '0'"
+				class="checkColumn"
+				@update:checked="onColumnCheck('show_column_date', $event)">
+				{{ t('integration_trackmania', 'Date') }}
 			</NcCheckboxRadioSwitch>
 			<NcCheckboxRadioSwitch
 				:checked="configState.show_column_medals !== '0'"
@@ -82,7 +82,7 @@
 			<span>
 				{{ t('integration_trackmania', '{nb} rows', { nb: rowCount }) }}
 			</span>
-			<NcButton @click="clearFilters">
+			<NcButton v-if="hasFilters" @click="clearFilters">
 				<template #icon>
 					<FilterRemoveIcon />
 				</template>
@@ -122,19 +122,26 @@
 				</span>
 			</template>
 			<template #filter="{column}">
-				<input
+				<NcTextField
 					v-if="column.field === 'mapInfo.cleanName'"
 					:value="mapNameFilter"
 					type="text"
+					:label="t('integration_trackmania', 'Map name filter')"
+					:placeholder="t('integration_trackmania', 'summer 2023')"
+					:show-trailing-button="!!mapNameFilter"
 					class="text-input-filter"
-					@keyup.enter="onMapNameFilterChange">
-				<input
+					@keyup.enter="onMapNameFilterChange"
+					@trailing-button-click="setMapNameFilter('')" />
+				<NcTextField
 					v-else-if="column.field === 'record.recordScore.time'"
 					:value="timeFilter"
 					type="text"
+					:label="t('integration_trackmania', 'Record time filter')"
+					:show-trailing-button="!!timeFilter"
 					class="text-input-filter"
 					:placeholder="t('integration_trackmania', '\'{example}\' for less than 10 seconds', { example: '< 10000' }, null, { escape: false, sanitize: false })"
-					@keyup.enter="onTimeFilterChange">
+					@keyup.enter="onTimeFilterChange"
+					@trailing-button-click="setTimeFilter('')" />
 				<select
 					v-else-if="column.field === 'mapInfo.favorite'"
 					v-model="favoriteFilter"
@@ -187,13 +194,16 @@
 						</div>
 					</template>
 				</NcSelect>
-				<input
+				<NcTextField
 					v-if="column.field.startsWith('recordPosition.zones.')"
 					:value="zonePositionFilters[column.field] ?? ''"
 					type="text"
+					:label="t('integration_trackmania', 'Position filter')"
+					:show-trailing-button="!!zonePositionFilters[column.field]"
 					class="text-input-filter"
 					:placeholder="t('integration_trackmania', '\'{example}\' for top 100', { example: '<= 100' }, null, { escape: false, sanitize: false })"
-					@keyup.enter="onZonePositionFilterChange(column.field, $event.target.value)">
+					@keyup.enter="onZonePositionFilterChange(column.field, $event.target.value)"
+					@trailing-button-click="onZonePositionFilterChange(column.field, '')" />
 			</template>
 		</SimpleTable>
 	</div>
@@ -206,6 +216,7 @@ import FilterRemoveIcon from 'vue-material-design-icons/FilterRemove.vue'
 
 import TrackmaniaIcon from './icons/TrackmaniaIcon.vue'
 
+import NcTextField from '@nextcloud/vue/dist/Components/NcTextField.js'
 import NcSelect from '@nextcloud/vue/dist/Components/NcSelect.js'
 import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
 import NcCheckboxRadioSwitch from '@nextcloud/vue/dist/Components/NcCheckboxRadioSwitch.js'
@@ -229,6 +240,7 @@ export default {
 		TrackmaniaIcon,
 		NcSelect,
 		NcButton,
+		NcTextField,
 		NcCheckboxRadioSwitch,
 		ReloadIcon,
 		CloseIcon,
@@ -299,6 +311,9 @@ export default {
 	},
 
 	computed: {
+		hasFilters() {
+			return this.medalFilter.length > 0 || this.favoriteFilter || this.timeFilter || this.mapNameFilter || this.dateMinFilter || this.dateMaxFilter
+		},
 		selectedMedalFilter() {
 			return this.medalFilter.map(mid => {
 				return this.medalFilterOptions.find(option => option.id === mid)
@@ -338,7 +353,7 @@ export default {
 			if (this.sortOptions.length === 0) {
 				return this.filteredPbs
 			}
-			const columns = this.sortOptions.map(so => this.columns.find(c => c.sortName === so.sortName)).filter(c => c !== null)
+			const columns = this.sortOptions.map(so => this.columns.find(c => c.sortName === so.sortName)).filter(c => !!c)
 			if (columns.length > 0) {
 				const sortFun = this.getSortFunction(columns, this.sortOptions)
 				return this.filteredPbs.slice().sort(sortFun)
@@ -654,13 +669,20 @@ export default {
 			})
 		},
 		onMapNameFilterChange(e) {
-			this.mapNameFilter = e.target.value
+			console.debug('eeeeeee', e)
+			this.setMapNameFilter(e.target.value)
+		},
+		setMapNameFilter(value) {
+			this.mapNameFilter = value
 			this.saveOptions({
 				filter_mapName: this.mapNameFilter,
 			})
 		},
 		onTimeFilterChange(e) {
-			this.timeFilter = e.target.value
+			this.setTimeFilter(e.target.value)
+		},
+		setTimeFilter(value) {
+			this.timeFilter = value
 			this.saveOptions({
 				filter_time: this.timeFilter,
 			})

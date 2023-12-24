@@ -7,12 +7,16 @@
 					class="header"
 					@click="onClick($event, c)">
 					<div class="label">
-						<span>
+						<span class="title">
 							{{ c.label }}
 						</span>
 						<span class="spacer" />
-						<span class="sort-suffix">
+						<span v-if="columnSortSuffix[c.sortName]" class="sort-suffix">
 							{{ columnSortSuffix[c.sortName] }}
+						</span>
+						<span v-else-if="c.sortName" class="sort-suffix">
+							<span>⯅</span>
+							<span>⯆</span>
 						</span>
 					</div>
 				</th>
@@ -77,7 +81,7 @@ export default {
 		columnSortSuffix() {
 			const suffixByFieldName = {}
 			this.sortOptions.forEach((so, i) => {
-				suffixByFieldName[so.sortName] = (i + 1) + (so.order === 'asc' ? '⮟' : '⮝')
+				suffixByFieldName[so.sortName] = (i + 1) + (so.order === 'asc' ? '⯅' : '⯆')
 			})
 			return suffixByFieldName
 		},
@@ -115,6 +119,7 @@ export default {
 	}
 	tr {
 		.header {
+			user-select: none;
 			cursor: pointer;
 			* {
 				cursor: pointer;
@@ -125,6 +130,9 @@ export default {
 				.spacer {
 					flex-grow: 1;
 				}
+				.title {
+					font-weight: bold;
+				}
 			}
 		}
 		&:hover {
@@ -132,6 +140,14 @@ export default {
 		}
 		th {
 			background-color: var(--color-primary-element-light);
+			.sort-suffix {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				line-height: 12px;
+				color: var(--color-primary);
+			}
 		}
 
 		th, td {
