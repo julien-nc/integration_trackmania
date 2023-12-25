@@ -1,5 +1,5 @@
 <template>
-	<div id="trackmania_main" class="section">
+	<div id="trackmania_main">
 		<h2>
 			<TrackmaniaIcon class="icon" />
 			<span>{{ t('integration_trackmania', 'Trackmania integration') }}</span>
@@ -834,6 +834,8 @@ export default {
 <style scoped lang="scss">
 #trackmania_main {
 	overflow-x: scroll;
+	height: 100%;
+	padding: 30px;
 
 	>h2 {
 		display: flex;

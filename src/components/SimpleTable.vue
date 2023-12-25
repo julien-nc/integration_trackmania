@@ -23,7 +23,8 @@
 			</tr>
 			<tr>
 				<th v-for="c in columns"
-					:key="c.field">
+					:key="c.field"
+					class="filter-header">
 					<slot name="filter" :column="c" />
 				</th>
 			</tr>
@@ -113,6 +114,7 @@ export default {
 
 <style scoped lang="scss">
 .simple-table {
+	position: relative;
 	&, th, td {
 		border: 1px solid var(--color-border-dark);
 		//border-collapse: collapse;
@@ -139,6 +141,16 @@ export default {
 			background-color: var(--color-background-hover);
 		}
 		th {
+			&.header {
+				position: sticky;
+				top: -30px;
+				z-index: 999;
+			}
+			&.filter-header {
+				position: sticky;
+				top: 4px;
+				z-index: 999;
+			}
 			background-color: var(--color-primary-element-light);
 			.sort-suffix {
 				display: flex;
