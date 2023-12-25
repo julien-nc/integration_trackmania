@@ -103,7 +103,9 @@
 				<span v-else-if="column.field === 'mapInfo.cleanName'"
 					v-html="row.mapInfo.htmlName" />
 				<span v-else-if="column.field === 'mapInfo.favorite'">
-					{{ row.mapInfo.formattedFavorite }}
+					<NcLoadingIcon v-if="row.mapInfo.favoriteLoading" />
+					<StarIcon v-else-if="row.mapInfo.favorite" style="color: var(--color-warning);" />
+					<StarOutlineIcon v-else style="color: var(--color-text-maxcontrast);" />
 				</span>
 				<span v-else-if="column.field === 'record.medal'"
 					:title="getFormattedBestMedal(row)"
@@ -142,32 +144,47 @@
 					:placeholder="t('integration_trackmania', '\'{example}\' for less than 10 seconds', { example: '< 10000' }, null, { escape: false, sanitize: false })"
 					@keyup.enter="onTimeFilterChange"
 					@trailing-button-click="setTimeFilter('')" />
-				<select
+				<NcSelect
 					v-else-if="column.field === 'mapInfo.favorite'"
-					v-model="favoriteFilter"
+					:value="selectedFavoriteFilter"
+					:options="favoriteFilterOptions"
+					:multiple="false"
+					:placeholder="t('integration_trackmania', 'No filter')"
 					class="select-filter"
 					@input="onFavoriteFilterChange">
-					<option value="">
-						{{ t('integration_trackmania', 'All') }}
-					</option>
-					<option value="false">
-						{{ '☆ ' + t('integration_trackmania', 'Not favorite') }}
-					</option>
-					<option value="true">
-						{{ '⭐ ' + t('integration_trackmania', 'Favorite') }}
-					</option>
-				</select>
+					<template #option="option">
+						<div class="favorite-filter-select__option" style="display: flex; gap: 4px; align-items: center;">
+							<StarIcon v-if="option.value === 'true'" style="color: var(--color-warning);" />
+							<StarOutlineIcon v-else-if="option.value === 'false'" style="color: var(--color-text-maxcontrast);" />
+							{{ option.label }}
+						</div>
+					</template>
+					<template #selected-option="option">
+						<div class="favorite-filter-select__option" style="display: flex; gap: 4px; align-items: center;">
+							<StarIcon v-if="option.value === 'true'" style="color: var(--color-warning);" />
+							<StarOutlineIcon v-else-if="option.value === 'false'" style="color: var(--color-text-maxcontrast);" />
+							{{ option.label }}
+						</div>
+					</template>
+				</NcSelect>
 				<div v-else-if="column.field === 'record.unix_timestamp'"
 					class="date-filters">
-					<input
+					<NcDateTimePicker
 						v-model="dateMinFilter"
+						class="date-picker"
 						type="date"
-						@input="onDateChange">
-					{{ '<= ' + t('integration_trackmania', 'Date') + ' <' }}
-					<input
+						:placeholder="t('integration_trackmania', 'Min date')"
+						:confirm="false"
+						:clearable="true"
+						@input="onDateChange" />
+					<NcDateTimePicker
 						v-model="dateMaxFilter"
+						class="date-picker"
 						type="date"
-						@input="onDateChange">
+						:placeholder="t('integration_trackmania', 'Max date')"
+						:confirm="false"
+						:clearable="true"
+						@input="onDateChange" />
 				</div>
 				<NcSelect
 					v-else-if="column.field === 'record.medal'"
@@ -210,12 +227,16 @@
 </template>
 
 <script>
+import StarIcon from 'vue-material-design-icons/Star.vue'
+import StarOutlineIcon from 'vue-material-design-icons/StarOutline.vue'
 import ReloadIcon from 'vue-material-design-icons/Reload.vue'
 import CloseIcon from 'vue-material-design-icons/Close.vue'
 import FilterRemoveIcon from 'vue-material-design-icons/FilterRemove.vue'
 
 import TrackmaniaIcon from './icons/TrackmaniaIcon.vue'
 
+import NcLoadingIcon from '@nextcloud/vue/dist/Components/NcLoadingIcon.js'
+import NcDateTimePicker from '@nextcloud/vue/dist/Components/NcDateTimePicker.js'
 import NcTextField from '@nextcloud/vue/dist/Components/NcTextField.js'
 import NcSelect from '@nextcloud/vue/dist/Components/NcSelect.js'
 import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
@@ -240,11 +261,15 @@ export default {
 		TrackmaniaIcon,
 		NcSelect,
 		NcButton,
+		NcLoadingIcon,
 		NcTextField,
+		NcDateTimePicker,
 		NcCheckboxRadioSwitch,
 		ReloadIcon,
 		CloseIcon,
 		FilterRemoveIcon,
+		StarIcon,
+		StarOutlineIcon,
 	},
 
 	props: {
@@ -268,10 +293,20 @@ export default {
 			goldMedalImageUrl: imagePath('integration_trackmania', 'medal.gold.png'),
 			silverMedalImageUrl: imagePath('integration_trackmania', 'medal.silver.png'),
 			bronzeMedalImageUrl: imagePath('integration_trackmania', 'medal.bronze.custom.png'),
+			favoriteFilterOptions: [
+				{
+					value: 'true',
+					label: t('integration_trackmania', 'Favorite'),
+				},
+				{
+					value: 'false',
+					label: t('integration_trackmania', 'Not favorite'),
+				},
+			],
 			medalFilterOptions: [
 				{
 					id: 0,
-					label: t('integration_trackmania', 'None'),
+					label: t('integration_trackmania', 'No medal'),
 				},
 				{
 					id: 1,
@@ -298,8 +333,8 @@ export default {
 				multipleColumns: true,
 			},
 			// filter values
-			dateMinFilter: this.configState.filter_dateMin ? moment.unix(this.configState.filter_dateMin).format('YYYY-MM-DD') : '',
-			dateMaxFilter: this.configState.filter_dateMax ? moment.unix(this.configState.filter_dateMax).format('YYYY-MM-DD') : '',
+			dateMinFilter: this.configState.filter_dateMin ? moment.unix(this.configState.filter_dateMin).toDate() : '',
+			dateMaxFilter: this.configState.filter_dateMax ? moment.unix(this.configState.filter_dateMax).toDate() : '',
 			mapNameFilter: this.configState.filter_mapName ?? '',
 			timeFilter: this.configState.filter_time ?? '',
 			favoriteFilter: this.configState.filter_favorite ?? '',
@@ -318,6 +353,9 @@ export default {
 			return this.medalFilter.map(mid => {
 				return this.medalFilterOptions.find(option => option.id === mid)
 			})
+		},
+		selectedFavoriteFilter() {
+			return this.favoriteFilterOptions.find(option => option.value === this.favoriteFilter)
 		},
 		// refilter the pbs with table filters + external filters to count the rows
 		filteredPbs() {
@@ -663,6 +701,7 @@ export default {
 				: data === true
 		},
 		onDateChange() {
+			console.debug('date change')
 			this.saveOptions({
 				filter_dateMin: this.dateMinTimestamp,
 				filter_dateMax: this.dateMaxTimestamp,
@@ -687,9 +726,14 @@ export default {
 				filter_time: this.timeFilter,
 			})
 		},
-		onFavoriteFilterChange(e) {
+		onFavoriteFilterChange(option) {
+			if (option === null) {
+				this.favoriteFilter = ''
+			} else {
+				this.favoriteFilter = option.value
+			}
 			this.saveOptions({
-				filter_favorite: e.target.value,
+				filter_favorite: this.favoriteFilter,
 			})
 		},
 		onMedalFilterChange(value) {
@@ -867,6 +911,14 @@ export default {
 		input {
 			flex-grow: 1;
 		}
+	}
+
+	.select-filter {
+		min-width: 170px;
+	}
+
+	.text-input-filter {
+		margin: 0;
 	}
 
 	.select-filter,

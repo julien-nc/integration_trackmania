@@ -295,7 +295,7 @@ export default {
 		},
 		toggleFavorite(pb) {
 			const realPb = this.pbs.find(e => e.mapInfo.uid === pb.mapInfo.uid)
-			this.$set(realPb.mapInfo, 'formattedFavorite', '…')
+			this.$set(realPb.mapInfo, 'favoriteLoading', true)
 			const url = pb.mapInfo.favorite
 				? generateUrl('/apps/integration_trackmania/map/favorite/{mapUid}/remove', { mapUid: pb.mapInfo.uid })
 				: generateUrl('/apps/integration_trackmania/map/favorite/{mapUid}/add', { mapUid: pb.mapInfo.uid })
@@ -308,7 +308,7 @@ export default {
 				)
 				console.error(error)
 			}).then(() => {
-				this.$set(realPb.mapInfo, 'formattedFavorite', realPb.mapInfo.favorite ? '⭐' : '☆')
+				this.$set(realPb.mapInfo, 'favoriteLoading', false)
 			})
 		},
 		saveOptions(values) {

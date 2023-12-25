@@ -41,7 +41,6 @@ export function formatPbs(pbs) {
 		pb.mapInfo.cleanName = TextFormatter.deformat(name)
 		pb.mapInfo.htmlName = htmlify(name)
 
-		pb.mapInfo.formattedFavorite = pb.mapInfo.favorite ? '⭐' : '☆'
 		pb.record.recordScore.formattedTime = formatTime(pb.record.recordScore.time)
 		pb.record.formattedDate = formatTimestamp(pb.record.unix_timestamp)
 		pb.record.formattedMedal = formatMedals(pb.record.medal)

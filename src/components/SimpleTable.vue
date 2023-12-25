@@ -115,7 +115,7 @@ export default {
 .simple-table {
 	&, th, td {
 		border: 1px solid var(--color-border-dark);
-		border-collapse: collapse;
+		//border-collapse: collapse;
 	}
 	tr {
 		.header {
