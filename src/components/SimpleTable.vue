@@ -7,7 +7,7 @@
 					class="header"
 					@click="onClick($event, c)">
 					<div class="label">
-						<span class="title">
+						<span :class="{ title: true, sorted: !!columnSortSuffix[c.sortName] }">
 							{{ c.label }}
 						</span>
 						<span class="spacer" />
@@ -133,7 +133,9 @@ export default {
 					flex-grow: 1;
 				}
 				.title {
-					font-weight: bold;
+					&.sorted {
+						font-weight: bold;
+					}
 				}
 			}
 		}

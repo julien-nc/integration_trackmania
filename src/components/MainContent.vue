@@ -101,8 +101,10 @@
 					{{ index + 1 }}
 				</span>
 				<span v-else-if="column.field === 'mapInfo.cleanName'"
+					:title="row.mapInfo.cleanName"
 					v-html="row.mapInfo.htmlName" />
-				<span v-else-if="column.field === 'mapInfo.favorite'">
+				<span v-else-if="column.field === 'mapInfo.favorite'"
+					:title="t('integration_trackmania', 'Click to toggle favorite')">
 					<NcLoadingIcon v-if="row.mapInfo.favoriteLoading" />
 					<StarIcon v-else-if="row.mapInfo.favorite" style="color: var(--color-warning);" />
 					<StarOutlineIcon v-else style="color: var(--color-text-maxcontrast);" />
@@ -249,7 +251,10 @@ import MapDetailModal from './MapDetailModal.vue'
 import moment from '@nextcloud/moment'
 import { imagePath } from '@nextcloud/router'
 import { emit } from '@nextcloud/event-bus'
-import { dig } from '../utils.js'
+import {
+	dig, getFormattedBestMedal, getMedalImageUrl,
+	authorMedalImageUrl, goldMedalImageUrl, silverMedalImageUrl, bronzeMedalImageUrl,
+} from '../utils.js'
 
 export default {
 	name: 'MainContent',
@@ -289,10 +294,10 @@ export default {
 
 	data() {
 		return {
-			authorMedalImageUrl: imagePath('integration_trackmania', 'medal.author.png'),
-			goldMedalImageUrl: imagePath('integration_trackmania', 'medal.gold.png'),
-			silverMedalImageUrl: imagePath('integration_trackmania', 'medal.silver.png'),
-			bronzeMedalImageUrl: imagePath('integration_trackmania', 'medal.bronze.custom.png'),
+			authorMedalImageUrl,
+			goldMedalImageUrl,
+			silverMedalImageUrl,
+			bronzeMedalImageUrl,
 			favoriteFilterOptions: [
 				{
 					value: 'true',
@@ -647,28 +652,10 @@ export default {
 			return dig(row, field)
 		},
 		getMedalImageUrl(medal) {
-			if (medal === 4) {
-				return this.authorMedalImageUrl
-			} else if (medal === 3) {
-				return this.goldMedalImageUrl
-			} else if (medal === 2) {
-				return this.silverMedalImageUrl
-			} else if (medal === 1) {
-				return this.bronzeMedalImageUrl
-			}
-			return ''
+			return getMedalImageUrl(medal)
 		},
 		getFormattedBestMedal(pb) {
-			if (pb.record.medal === 4) {
-				return pb.mapInfo.formattedAuthorTime
-			} else if (pb.record.medal === 3) {
-				return pb.mapInfo.formattedGoldTime
-			} else if (pb.record.medal === 2) {
-				return pb.mapInfo.formattedSilverTime
-			} else if (pb.record.medal === 1) {
-				return pb.mapInfo.formattedBronzeTime
-			}
-			return ''
+			return getFormattedBestMedal(pb)
 		},
 		onZoneCheck(zn, checked) {
 			this.saveOptions({ ['show_column_zone_' + zn]: checked ? '1' : '0' })
@@ -871,7 +858,7 @@ export default {
 			gap: 8px;
 			align-items: center;
 			img {
-				width: 38px;
+				width: 32px;
 			}
 		}
 	}

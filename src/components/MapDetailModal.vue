@@ -19,6 +19,26 @@
 			<span v-if="pb.mapInfo.nb_players">
 				{{ t('integration_trackmania', 'My position') }}: {{ pb.recordPosition.zones.World }} / {{ pb.mapInfo.nb_players }} ({{ positionPercent }})
 			</span>
+			<span>
+				{{ t('integration_trackmania', 'My time') }}: {{ pb.record.recordScore.formattedTime }}
+			</span>
+			<span :title="formattedBestMedal"
+				class="medal">
+				<span>{{ pb.record.formattedMedal }}</span>
+				<img :src="getMedalImageUrl(pb.record.medal)">
+			</span>
+			<span :class="{ medalTime: true, success: pb.record.recordScore.time - pb.mapInfo.authorTime < 0 }">
+				{{ pb.mapInfo.formattedAuthorTime }}
+			</span>
+			<span :class="{ medalTime: true, success: pb.record.recordScore.time - pb.mapInfo.goldTime < 0 }">
+				{{ pb.mapInfo.formattedGoldTime }}
+			</span>
+			<span :class="{ medalTime: true, success: pb.record.recordScore.time - pb.mapInfo.silverTime < 0 }">
+				{{ pb.mapInfo.formattedSilverTime }}
+			</span>
+			<span :class="{ medalTime: true, success: pb.record.recordScore.time - pb.mapInfo.bronzeTime < 0 }">
+				{{ pb.mapInfo.formattedBronzeTime }}
+			</span>
 		</div>
 	</NcModal>
 </template>
@@ -29,6 +49,7 @@ import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
 
 import { generateUrl } from '@nextcloud/router'
 import { emit } from '@nextcloud/event-bus'
+import { getFormattedBestMedal, getMedalImageUrl } from '../utils.js'
 
 export default {
 	name: 'MapDetailModal',
@@ -67,6 +88,9 @@ export default {
 			}
 			return ''
 		},
+		formattedBestMedal() {
+			return getFormattedBestMedal(this.pb)
+		},
 	},
 
 	watch: {
@@ -82,6 +106,9 @@ export default {
 	},
 
 	methods: {
+		getMedalImageUrl(medal) {
+			return getMedalImageUrl(medal)
+		},
 	},
 }
 </script>
@@ -103,6 +130,20 @@ export default {
 	}
 	.map-name-button {
 		background-color: #909090;
+	}
+	.medal {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		img {
+			width: 32px;
+		}
+	}
+	.medalTime {
+		color: var(--color-error);
+	}
+	.success {
+		color: var(--color-success);
 	}
 }
 </style>
