@@ -613,7 +613,7 @@ export default {
 								? 1
 								: nextSortFunction(a, b)
 					}
-			} else if (type === 'string') {
+			} else if (type === 'text') {
 				return order === 'asc'
 					? (a, b) => {
 						const vA = this.getRawCellValue(a, field)
@@ -864,6 +864,7 @@ export default {
 	}
 
 	:deep(.mapNameColumn) {
+		color: #111;
 		background: #B0B0B0;
 		font-weight: bold;
 		cursor: pointer;
