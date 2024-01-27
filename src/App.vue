@@ -27,7 +27,9 @@
 				<template #action>
 					<div class="loading-progress">
 						{{ infoLoadingPercent }} %
-						<NcProgressBar :value="infoLoadingPercent" size="medium" />
+						<NcProgressBar :value="infoLoadingPercent"
+							type="linear"
+							size="medium" />
 					</div>
 				</template>
 			</NcEmptyContent>
