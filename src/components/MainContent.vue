@@ -151,6 +151,8 @@
 					:value="selectedFavoriteFilter"
 					:options="favoriteFilterOptions"
 					:multiple="false"
+					:label-outside="true"
+					:aria-label-combobox="t('integration_trackmania', 'Favorite filter')"
 					:placeholder="t('integration_trackmania', 'No filter')"
 					class="select-filter"
 					@input="onFavoriteFilterChange">
@@ -193,6 +195,8 @@
 					:value="selectedMedalFilter"
 					:options="medalFilterOptions"
 					:multiple="true"
+					:label-outside="true"
+					:aria-label-combobox="t('integration_trackmania', 'Medal filter')"
 					:placeholder="t('integration_trackmania', 'No filter')"
 					class="medal-filter-select"
 					@input="onMedalFilterChange">
