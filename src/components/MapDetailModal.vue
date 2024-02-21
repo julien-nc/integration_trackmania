@@ -39,6 +39,18 @@
 			<span :class="{ medalTime: true, success: pb.record.recordScore.time - pb.mapInfo.bronzeTime < 0 }">
 				{{ pb.mapInfo.formattedBronzeTime }}
 			</span>
+			<NcTextField
+				:value.sync="accountIdForGhostUrl"
+				type="text"
+				:label="t('integration_trackmania', 'Get ghost of account')"
+				:show-trailing-button="!!accountIdForGhostUrl"
+				class="text-input"
+				:placeholder="t('integration_trackmania', 'account ID')"
+				@keyup.enter="onGetGhostUrl"
+				@trailing-button-click="accountIdForGhostUrl = ''" />
+			<a v-if="ghostUrl" :href="ghostUrl">
+				{{ ghostUrl }}
+			</a>
 		</div>
 	</NcModal>
 </template>
@@ -46,9 +58,12 @@
 <script>
 import NcModal from '@nextcloud/vue/dist/Components/NcModal.js'
 import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
+import NcTextField from '@nextcloud/vue/dist/Components/NcTextField.js'
 
 import { generateUrl } from '@nextcloud/router'
 import { emit } from '@nextcloud/event-bus'
+import axios from '@nextcloud/axios'
+import { showError } from '@nextcloud/dialogs'
 import { getFormattedBestMedal, getMedalImageUrl } from '../utils.js'
 
 export default {
@@ -57,6 +72,7 @@ export default {
 	components: {
 		NcModal,
 		NcButton,
+		NcTextField,
 	},
 
 	props: {
@@ -72,6 +88,8 @@ export default {
 
 	data() {
 		return {
+			accountIdForGhostUrl: '',
+			ghostUrl: '',
 		}
 	},
 
@@ -108,6 +126,18 @@ export default {
 	methods: {
 		getMedalImageUrl(medal) {
 			return getMedalImageUrl(medal)
+		},
+		onGetGhostUrl() {
+			const url = generateUrl('/apps/integration_trackmania/map/{mapId}/record/{accountId}', { mapId: this.pb.mapInfo.mapId, accountId: this.accountIdForGhostUrl })
+			axios.get(url).then((response) => {
+				this.ghostUrl = response.data[0]?.url
+			}).catch((error) => {
+				showError(
+					t('integration_trackmania', 'Failed to get player count')
+					+ ': ' + (error.response?.request?.responseText ?? ''),
+				)
+				console.error(error)
+			})
 		},
 	},
 }

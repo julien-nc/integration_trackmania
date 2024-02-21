@@ -26,6 +26,7 @@ use OCP\AppFramework\Http\DataResponse;
 use OCP\AppFramework\Controller;
 
 use OCP\IURLGenerator;
+use OCP\PreConditionNotMetException;
 
 class TrackmaniaAPIController extends Controller {
 
@@ -286,5 +287,18 @@ class TrackmaniaAPIController extends Controller {
 		} else {
 			return new DataResponse($result);
 		}
+	}
+
+	/**
+	 * @param string $mapId
+	 * @param string $accountId
+	 * @return DataResponse
+	 * @throws PreConditionNotMetException
+	 */
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
+	public function getAccountRecordOnMap(string $mapId, string $accountId): DataResponse {
+		$result = $this->trackmaniaAPIService->getMapRecords($this->userId, [$accountId], [$mapId]);
+		return new DataResponse($result);
 	}
 }
