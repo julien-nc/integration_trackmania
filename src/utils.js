@@ -42,7 +42,12 @@ export function formatPbs(pbs) {
 		pb.mapInfo.cleanName = TextFormatter.deformat(name)
 		pb.mapInfo.htmlName = htmlify(name)
 
-		pb.record.recordScore.formattedTime = formatTime(pb.record.recordScore.time) + ' (' + pb.record.recordScore.time + ')'
+		pb.record.recordScore.formattedTime = formatTime(pb.record.recordScore.time)
+		if (pb.otherRecordPosition?.score) {
+			const delta = pb.record.recordScore.time - pb.otherRecordPosition.score
+			const prefix = delta > 0 ? '+' : ''
+			pb.otherRecordPosition.formattedTime = formatTime(pb.otherRecordPosition.score) + ' (' + prefix + formatTime(delta) + ')'
+		}
 		pb.record.formattedDate = formatTimestamp(pb.record.unix_timestamp)
 		pb.record.formattedMedal = formatMedals(pb.record.medal)
 

@@ -17,6 +17,15 @@
 				</template>
 				{{ t('integration_trackmania', 'Disconnect') }}
 			</NcButton>
+			<NcTextField
+				:value.sync="otherAccountId"
+				type="text"
+				:label="t('integration_trackmania', 'Compare with other account')"
+				:show-trailing-button="!!otherAccountId"
+				class="text-input"
+				:placeholder="t('integration_trackmania', 'account ID')"
+				@keyup.enter="$emit('reload', otherAccountId)"
+				@trailing-button-click="otherAccountId = ''" />
 		</div>
 		<div class="summary">
 			<div class="summary__medals">
@@ -52,6 +61,12 @@
 				class="checkColumn"
 				@update:checked="onColumnCheck('show_column_favorite', $event)">
 				{{ t('integration_trackmania', 'Favorite') }}
+			</NcCheckboxRadioSwitch>
+			<NcCheckboxRadioSwitch
+				:checked="configState.show_column_other_time !== '0'"
+				class="checkColumn"
+				@update:checked="onColumnCheck('show_column_other_time', $event)">
+				{{ t('integration_trackmania', 'Other PB') }}
 			</NcCheckboxRadioSwitch>
 			<NcCheckboxRadioSwitch
 				:checked="configState.show_column_date !== '0'"
@@ -118,6 +133,9 @@
 				<span v-else-if="column.field === 'record.recordScore.time'">
 					{{ row.record.recordScore.formattedTime }}
 				</span>
+				<span v-else-if="column.field === 'otherRecordPosition.score'">
+					{{ row.otherRecordPosition?.formattedTime ?? '' }}
+				</span>
 				<span v-else-if="column.field === 'record.unix_timestamp'">
 					{{ row.record.formattedDate }}
 				</span>
@@ -146,6 +164,16 @@
 					:placeholder="t('integration_trackmania', '\'{example}\' for less than 10 seconds', { example: '< 10000' }, null, { escape: false, sanitize: false })"
 					@keyup.enter="onTimeFilterChange"
 					@trailing-button-click="setTimeFilter('')" />
+				<NcTextField
+					v-else-if="column.field === 'otherRecordPosition.score'"
+					:value="otherTimeFilter"
+					type="text"
+					:label="t('integration_trackmania', 'Other time filter')"
+					:show-trailing-button="!!otherTimeFilter"
+					class="text-input-filter"
+					:placeholder="t('integration_trackmania', '\'{example}\' for less than 10 seconds', { example: '< 10000' }, null, { escape: false, sanitize: false })"
+					@keyup.enter="onOtherTimeFilterChange"
+					@trailing-button-click="setOtherTimeFilter('')" />
 				<NcSelect
 					v-else-if="column.field === 'mapInfo.favorite'"
 					:value="selectedFavoriteFilter"
@@ -346,17 +374,25 @@ export default {
 			dateMaxFilter: this.configState.filter_dateMax ? moment.unix(this.configState.filter_dateMax).toDate() : '',
 			mapNameFilter: this.configState.filter_mapName ?? '',
 			timeFilter: this.configState.filter_time ?? '',
+			otherTimeFilter: this.configState.filter_other_time ?? '',
 			favoriteFilter: this.configState.filter_favorite ?? '',
 			medalFilter: this.configState.filter_medal ? this.configState.filter_medal.split(',').map(v => parseInt(v)) : [],
 			zonePositionFilters: {},
 			sortOptions: this.initSortOptions(),
 			detailPb: null,
+			otherAccountId: '',
 		}
 	},
 
 	computed: {
 		hasFilters() {
-			return this.medalFilter.length > 0 || this.favoriteFilter || this.timeFilter || this.mapNameFilter || this.dateMinFilter || this.dateMaxFilter
+			return this.medalFilter.length > 0
+				|| this.favoriteFilter
+				|| this.timeFilter
+				|| this.otherTimeFilter
+				|| this.mapNameFilter
+				|| this.dateMinFilter
+				|| this.dateMaxFilter
 		},
 		selectedMedalFilter() {
 			return this.medalFilter.map(mid => {
@@ -380,6 +416,9 @@ export default {
 			}
 			if (this.timeFilter) {
 				myFiltered = myFiltered.filter(pb => this.filterNumber(pb.record.recordScore.time, this.timeFilter))
+			}
+			if (this.otherTimeFilter) {
+				myFiltered = myFiltered.filter(pb => this.filterNumber(pb.otherRecordPosition?.score, this.otherTimeFilter))
 			}
 			if (this.favoriteFilter) {
 				myFiltered = myFiltered.filter(pb => this.filterFavorite(pb.mapInfo.favorite, this.favoriteFilter))
@@ -507,6 +546,14 @@ export default {
 					sortName: 'time',
 				},
 			])
+			if (this.configState.show_column_other_time !== '0') {
+				columns.push({
+					label: t('integration_trackmania', 'other PB'),
+					type: 'number',
+					field: 'otherRecordPosition.score',
+					sortName: 'otherTime',
+				})
+			}
 			if (this.configState.show_column_date !== '0') {
 				columns.push({
 					label: t('integration_trackmania', 'Date'),
@@ -600,8 +647,8 @@ export default {
 			} else if (type === 'number') {
 				return order === 'asc'
 					? (a, b) => {
-						const vA = this.getRawCellValue(a, field)
-						const vB = this.getRawCellValue(b, field)
+						const vA = this.getRawCellValue(a, field) ?? null
+						const vB = this.getRawCellValue(b, field) ?? null
 						return vA > vB
 							? 1
 							: vA < vB
@@ -609,8 +656,8 @@ export default {
 								: nextSortFunction(a, b)
 					}
 					: (a, b) => {
-						const vA = this.getRawCellValue(a, field)
-						const vB = this.getRawCellValue(b, field)
+						const vA = this.getRawCellValue(a, field) ?? null
+						const vB = this.getRawCellValue(b, field) ?? null
 						return vA > vB
 							? -1
 							: vA < vB
@@ -674,17 +721,20 @@ export default {
 			return data.toUpperCase().includes(filterString.toUpperCase())
 		},
 		filterNumber(data, filterString) {
-			if (filterString.startsWith('<=')) {
-				return data <= parseInt(filterString.replace('<=', ''))
-			} else if (filterString.startsWith('<')) {
-				return data < parseInt(filterString.replace('<', ''))
-			} else if (filterString.startsWith('>=')) {
-				return data >= parseInt(filterString.replace('>=', ''))
-			} else if (filterString.startsWith('>')) {
-				return data > parseInt(filterString.replace('>', ''))
-			} else {
-				return data === parseInt(filterString)
+			if (data) {
+				if (filterString.startsWith('<=')) {
+					return data <= parseInt(filterString.replace('<=', ''))
+				} else if (filterString.startsWith('<')) {
+					return data < parseInt(filterString.replace('<', ''))
+				} else if (filterString.startsWith('>=')) {
+					return data >= parseInt(filterString.replace('>=', ''))
+				} else if (filterString.startsWith('>')) {
+					return data > parseInt(filterString.replace('>', ''))
+				} else {
+					return data === parseInt(filterString)
+				}
 			}
+			return false
 		},
 		filterFavorite(data, filterValue) {
 			return filterValue === 'false'
@@ -715,6 +765,15 @@ export default {
 			this.timeFilter = value
 			this.saveOptions({
 				filter_time: this.timeFilter,
+			})
+		},
+		onOtherTimeFilterChange(e) {
+			this.setOtherTimeFilter(e.target.value)
+		},
+		setOtherTimeFilter(value) {
+			this.otherTimeFilter = value
+			this.saveOptions({
+				filter_other_time: this.otherTimeFilter,
 			})
 		},
 		onFavoriteFilterChange(option) {
@@ -761,6 +820,7 @@ export default {
 			this.medalFilter = []
 			this.favoriteFilter = ''
 			this.timeFilter = ''
+			this.otherTimeFilter = ''
 			this.mapNameFilter = ''
 			this.dateMinFilter = ''
 			this.dateMaxFilter = ''

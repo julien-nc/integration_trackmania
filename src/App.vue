@@ -158,21 +158,19 @@ export default {
 					console.error(error)
 				})
 		},
-		reloadData() {
+		reloadData(otherAccountId) {
 			this.pbs = []
-			this.getPbs()
+			this.getPbs(otherAccountId)
 		},
-		/**
-		 * first get records and then map info by chunks
-		 */
-		getPbs() {
+		// first get records and then map info by chunks
+		getPbs(otherAccountId = null) {
 			this.infoLoadingPercent = 0
 			this.loadingData = true
 			const url = generateUrl('/apps/integration_trackmania/pbs/raw')
 			axios.get(url).then((response) => {
 				this.$options.rawPbs = response.data
 				this.$options.pbsWithInfo = []
-				this.getPbsInfo()
+				this.getPbsInfo(otherAccountId)
 			}).catch((error) => {
 				const data = error.response?.data
 				if (data?.error === 'trackmania_request_failed' && data?.status_code === 401) {
@@ -190,7 +188,7 @@ export default {
 			}).then(() => {
 			})
 		},
-		getPbsInfo() {
+		getPbsInfo(otherAccountId = null) {
 			const rawPbs = this.$options.rawPbs
 			const chunks = []
 			let i = 0
@@ -204,7 +202,7 @@ export default {
 				}
 				chunks.push(currentChunk)
 			}
-			Promise.all(chunks.map(c => this.getPbsChunkInfo(c)))
+			Promise.all(chunks.map(c => this.getPbsChunkInfo(c, otherAccountId)))
 				.then(result => {
 					console.debug('----- all done', this.$options.pbsWithInfo)
 					this.zoneNames = this.getZoneNames(this.$options.pbsWithInfo[0])
@@ -219,7 +217,7 @@ export default {
 					this.loadingData = false
 				})
 		},
-		getPbsChunkInfo(chunk) {
+		getPbsChunkInfo(chunk, otherAccountId = null) {
 			const pbTimesByMapId = {}
 			for (let i = 0; i < chunk.length; i++) {
 				const mapId = chunk[i].mapInfo.mapId
@@ -229,6 +227,9 @@ export default {
 			const url = generateUrl('/apps/integration_trackmania/pbs/info')
 			const req = {
 				pbTimesByMapId,
+			}
+			if (otherAccountId) {
+				req.otherAccountId = otherAccountId
 			}
 			return axios.post(url, req).then((response) => {
 				const infoByMapId = response.data
@@ -242,6 +243,7 @@ export default {
 							},
 							record: c.record,
 							recordPosition: info.recordPosition,
+							otherRecordPosition: info.otherRecordPosition,
 						}
 					}
 					return c

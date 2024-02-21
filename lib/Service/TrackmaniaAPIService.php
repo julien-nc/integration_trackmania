@@ -149,7 +149,7 @@ class TrackmaniaAPIService {
 		}, $pbs);
 	}
 
-	public function getMapsInfoAndRecordPositions(string $userId, array $pbTimesByMapId): array {
+	public function getMapsInfoAndRecordPositions(string $userId, array $pbTimesByMapId, ?string $otherAccountId): array {
 		$coreMapInfos = $this->getCoreMapInfo($userId, array_keys($pbTimesByMapId));
 		$coreMapInfoByMapId = [];
 		$allMyPbTimesByMapUid = [];
@@ -166,6 +166,42 @@ class TrackmaniaAPIService {
 			if (isset($coreMapInfoByMapId[$mapId])) {
 				$mapUid = $coreMapInfoByMapId[$mapId]['mapUid'];
 				$results[$mapId] = $this->formatMapInfoAndRecordPosition($coreMapInfoByMapId[$mapId], $positionsByMapUid[$mapUid]);
+			}
+		}
+
+		if ($otherAccountId !== null) {
+			// get all other records by map ID
+			$otherAccountRecords = $this->getMapRecords($userId, [$otherAccountId], array_keys($pbTimesByMapId));
+			$otherRecordsByMapId = [];
+			foreach ($otherAccountRecords as $record) {
+				$otherRecordsByMapId[$record['mapId']] = $record;
+			}
+
+			// get all other times by map UID
+			$allOtherPbTimesByMapUid = [];
+			foreach ($coreMapInfos as $mapInfo) {
+				$time = $otherRecordsByMapId[$mapInfo['mapId']]['recordScore']['time'] ?? null;
+				if ($time !== null) {
+					$allOtherPbTimesByMapUid[$mapInfo['mapUid']] = $time;
+				}
+			}
+
+			$otherPositionsByMapUid = $this->getScorePositions($userId, $allOtherPbTimesByMapUid);
+			foreach ($pbTimesByMapId as $mapId => $time) {
+				if (isset($coreMapInfoByMapId[$mapId])) {
+					$mapUid = $coreMapInfoByMapId[$mapId]['mapUid'];
+					if (isset($allOtherPbTimesByMapUid[$mapUid], $otherPositionsByMapUid[$mapUid])) {
+						$position = $otherPositionsByMapUid[$mapUid];
+						$zones = [];
+						foreach ($position['zones'] as $zone) {
+							$zones[$zone['zoneName']] = $zone['ranking']['position'];
+						}
+						$results[$mapId]['otherRecordPosition'] = [
+							'score' => $allOtherPbTimesByMapUid[$mapUid],
+							'zones' => $zones,
+						];
+					}
+				}
 			}
 		}
 

@@ -96,13 +96,14 @@ class TrackmaniaAPIController extends Controller {
 
 	/**
 	 * @param array $pbTimesByMapId
+	 * @param string|null $otherAccountId
 	 * @return DataResponse
 	 */
 	#[NoAdminRequired]
 	#[NoCSRFRequired]
-	public function getMoreRecordInfo(array $pbTimesByMapId):DataResponse {
+	public function getMoreRecordInfo(array $pbTimesByMapId, ?string $otherAccountId = null):DataResponse {
 		try {
-			$result = $this->trackmaniaAPIService->getMapsInfoAndRecordPositions($this->userId, $pbTimesByMapId);
+			$result = $this->trackmaniaAPIService->getMapsInfoAndRecordPositions($this->userId, $pbTimesByMapId, $otherAccountId);
 		} catch (ClientException $e) {
 			$response = $e->getResponse();
 			$statusCode = $response->getStatusCode();
