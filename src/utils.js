@@ -46,7 +46,11 @@ export function formatPbs(pbs) {
 		if (pb.otherRecordPosition?.score) {
 			const delta = pb.record.recordScore.time - pb.otherRecordPosition.score
 			const prefix = delta > 0 ? '+' : ''
-			pb.otherRecordPosition.formattedTime = formatTime(pb.otherRecordPosition.score) + ' (' + prefix + formatTime(delta) + ')'
+			pb.otherRecordPosition.formattedTime = formatTime(pb.otherRecordPosition.score)
+			pb.otherRecordPosition.delta = delta
+			pb.otherRecordPosition.formattedDelta = prefix + formatTime(delta)
+			pb.otherRecordPosition.medal = getTimeMedal(pb, pb.otherRecordPosition.score)
+			pb.otherRecordPosition.formattedMedal = formatMedals(pb.otherRecordPosition.medal)
 		}
 		pb.record.formattedDate = formatTimestamp(pb.record.unix_timestamp)
 		pb.record.formattedMedal = formatMedals(pb.record.medal)
@@ -58,6 +62,18 @@ export function formatPbs(pbs) {
 	}
 	return pbs
 }
+function getTimeMedal(pb, time) {
+	if (time < pb.mapInfo.authorTime) {
+		return MEDAL.AUTHOR
+	} else if (time < pb.mapInfo.goldTime) {
+		return MEDAL.GOLD
+	} else if (time < pb.mapInfo.silverTime) {
+		return MEDAL.SILVER
+	} else if (time < pb.mapInfo.bronzeTime) {
+		return MEDAL.BRONZE
+	}
+	return MEDAL.NOTHING
+}
 function formatMedals(value) {
 	return MEDAL_STRING[value]
 }
@@ -68,19 +84,19 @@ function formatTime(value) {
 	return Time.fromMilliseconds(value).toTmString()
 }
 function formatMedalTime(pb, medal) {
-	if (medal === 4) {
+	if (medal === MEDAL.AUTHOR) {
 		const delta = pb.record.recordScore.time - pb.mapInfo.authorTime
 		const prefix = delta > 0 ? '+' : ''
 		return t('integration_trackmania', 'Author time: {t} ({delta})', { t: formatTime(pb.mapInfo.authorTime), delta: prefix + formatTime(delta) })
-	} else if (medal === 3) {
+	} else if (medal === MEDAL.GOLD) {
 		const delta = pb.record.recordScore.time - pb.mapInfo.goldTime
 		const prefix = delta > 0 ? '+' : ''
 		return t('integration_trackmania', 'Gold time: {t} ({delta})', { t: formatTime(pb.mapInfo.goldTime), delta: prefix + formatTime(delta) })
-	} else if (medal === 2) {
+	} else if (medal === MEDAL.SILVER) {
 		const delta = pb.record.recordScore.time - pb.mapInfo.silverTime
 		const prefix = delta > 0 ? '+' : ''
 		return t('integration_trackmania', 'Silver time: {t} ({delta})', { t: formatTime(pb.mapInfo.silverTime), delta: prefix + formatTime(delta) })
-	} else if (medal === 1) {
+	} else if (medal === MEDAL.BRONZE) {
 		const delta = pb.record.recordScore.time - pb.mapInfo.bronzeTime
 		const prefix = delta > 0 ? '+' : ''
 		return t('integration_trackmania', 'Bronze time: {t} ({delta})', { t: formatTime(pb.mapInfo.bronzeTime), delta: prefix + formatTime(delta) })
@@ -93,14 +109,22 @@ export const goldMedalImageUrl = imagePath('integration_trackmania', 'medal.gold
 export const silverMedalImageUrl = imagePath('integration_trackmania', 'medal.silver.png')
 export const bronzeMedalImageUrl = imagePath('integration_trackmania', 'medal.bronze.custom.png')
 
+export const MEDAL = {
+	AUTHOR: 4,
+	GOLD: 3,
+	SILVER: 2,
+	BRONZE: 1,
+	NOTHING: 0,
+}
+
 export function getMedalImageUrl(medal) {
-	if (medal === 4) {
+	if (medal === MEDAL.AUTHOR) {
 		return authorMedalImageUrl
-	} else if (medal === 3) {
+	} else if (medal === MEDAL.GOLD) {
 		return goldMedalImageUrl
-	} else if (medal === 2) {
+	} else if (medal === MEDAL.SILVER) {
 		return silverMedalImageUrl
-	} else if (medal === 1) {
+	} else if (medal === MEDAL.BRONZE) {
 		return bronzeMedalImageUrl
 	}
 	return ''

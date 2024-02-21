@@ -17,16 +17,8 @@
 				</template>
 				{{ t('integration_trackmania', 'Disconnect') }}
 			</NcButton>
-			<NcTextField
-				:value.sync="otherAccountId"
-				type="text"
-				:label="t('integration_trackmania', 'Compare with other account')"
-				:show-trailing-button="!!otherAccountId"
-				class="text-input"
-				:placeholder="t('integration_trackmania', 'account ID')"
-				@keyup.enter="$emit('reload', otherAccountId)"
-				@trailing-button-click="otherAccountId = ''" />
 		</div>
+		<slot name="extra" />
 		<div class="summary">
 			<div class="summary__medals">
 				<h3>{{ t('integration_trackmania', 'Medals') }}</h3>
@@ -63,12 +55,6 @@
 				{{ t('integration_trackmania', 'Favorite') }}
 			</NcCheckboxRadioSwitch>
 			<NcCheckboxRadioSwitch
-				:checked="configState.show_column_other_time !== '0'"
-				class="checkColumn"
-				@update:checked="onColumnCheck('show_column_other_time', $event)">
-				{{ t('integration_trackmania', 'Other PB') }}
-			</NcCheckboxRadioSwitch>
-			<NcCheckboxRadioSwitch
 				:checked="configState.show_column_date !== '0'"
 				class="checkColumn"
 				@update:checked="onColumnCheck('show_column_date', $event)">
@@ -87,6 +73,12 @@
 				class="checkColumn"
 				@update:checked="onZoneCheck(zn, $event)">
 				{{ t('integration_trackmania', 'Position in {zone}', { zone: zn }) }}
+			</NcCheckboxRadioSwitch>
+			<NcCheckboxRadioSwitch
+				:checked="configState.show_column_other_time !== '0'"
+				class="checkColumn"
+				@update:checked="onColumnCheck('show_column_other_time', $event)">
+				{{ t('integration_trackmania', 'Other account information') }}
 			</NcCheckboxRadioSwitch>
 		</div>
 		<br>
@@ -130,11 +122,20 @@
 					<span>{{ row.record.formattedMedal }}</span>
 					<img :src="getMedalImageUrl(row.record.medal)">
 				</span>
+				<span v-else-if="column.field === 'otherRecordPosition.medal'"
+					class="medal-cell">
+					<span>{{ row.otherRecordPosition.formattedMedal }}</span>
+					<img :src="getMedalImageUrl(row.otherRecordPosition.medal)">
+				</span>
 				<span v-else-if="column.field === 'record.recordScore.time'">
 					{{ row.record.recordScore.formattedTime }}
 				</span>
 				<span v-else-if="column.field === 'otherRecordPosition.score'">
 					{{ row.otherRecordPosition?.formattedTime ?? '' }}
+				</span>
+				<span v-else-if="column.field === 'otherRecordPosition.delta'"
+					:style="row.otherRecordPosition?.delta < 0 ? 'color: green;' : 'color: red;'">
+					{{ row.otherRecordPosition?.formattedDelta ?? '' }}
 				</span>
 				<span v-else-if="column.field === 'record.unix_timestamp'">
 					{{ row.record.formattedDate }}
@@ -380,7 +381,6 @@ export default {
 			zonePositionFilters: {},
 			sortOptions: this.initSortOptions(),
 			detailPb: null,
-			otherAccountId: '',
 		}
 	},
 
@@ -546,14 +546,6 @@ export default {
 					sortName: 'time',
 				},
 			])
-			if (this.configState.show_column_other_time !== '0') {
-				columns.push({
-					label: t('integration_trackmania', 'other PB'),
-					type: 'number',
-					field: 'otherRecordPosition.score',
-					sortName: 'otherTime',
-				})
-			}
 			if (this.configState.show_column_date !== '0') {
 				columns.push({
 					label: t('integration_trackmania', 'Date'),
@@ -581,6 +573,27 @@ export default {
 					}
 				}),
 			)
+			if (this.configState.show_column_other_time !== '0') {
+				columns.push({
+					label: t('integration_trackmania', 'Other PB'),
+					type: 'number',
+					field: 'otherRecordPosition.score',
+					sortName: 'otherTime',
+				})
+				columns.push({
+					label: t('integration_trackmania', 'Delta with other'),
+					type: 'number',
+					field: 'otherRecordPosition.delta',
+					sortName: 'otherDelta',
+				})
+				columns.push({
+					label: t('integration_trackmania', 'Other medal'),
+					type: 'number',
+					field: 'otherRecordPosition.medal',
+					tdClass: 'mapMedalColumn',
+					sortName: 'otherMedal',
+				})
+			}
 			return columns
 		},
 		dateMinTimestamp() {

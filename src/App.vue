@@ -38,7 +38,20 @@
 				:zone-names="zoneNames"
 				:config-state="tableState"
 				@disconnect="disconnect"
-				@reload="reloadData" />
+				@reload="reloadData">
+				<template #extra>
+					<NcTextField
+						:value.sync="otherAccountId"
+						type="text"
+						:label="t('integration_trackmania', 'Account ID to compare with')"
+						:show-trailing-button="!!otherAccountId"
+						class="other-account-input"
+						:placeholder="t('integration_trackmania', 'account ID')"
+						@keyup.enter="reloadData"
+						@update:value="saveOptions({ other_account: $event })"
+						@trailing-button-click="otherAccountId = ''; saveOptions({ other_account: '' })" />
+				</template>
+			</MainContent>
 			<NcEmptyContent v-else
 				class="main-empty-content"
 				:name="t('integration_trackmania', 'Failed to get the data')">
@@ -60,6 +73,7 @@ import NcAppContent from '@nextcloud/vue/dist/Components/NcAppContent.js'
 import NcContent from '@nextcloud/vue/dist/Components/NcContent.js'
 import NcEmptyContent from '@nextcloud/vue/dist/Components/NcEmptyContent.js'
 import NcProgressBar from '@nextcloud/vue/dist/Components/NcProgressBar.js'
+import NcTextField from '@nextcloud/vue/dist/Components/NcTextField.js'
 
 import PersonalSettings from './components/PersonalSettings.vue'
 import MainContent from './components/MainContent.vue'
@@ -85,6 +99,7 @@ export default {
 		NcEmptyContent,
 		NcLoadingIcon,
 		NcProgressBar,
+		NcTextField,
 	},
 
 	props: {
@@ -98,6 +113,7 @@ export default {
 			zoneNames: null,
 			pbs: [],
 			infoLoadingPercent: 0,
+			otherAccountId: loadState('integration_trackmania', 'table-config').other_account ?? '',
 		}
 	},
 
@@ -158,19 +174,19 @@ export default {
 					console.error(error)
 				})
 		},
-		reloadData(otherAccountId) {
+		reloadData() {
 			this.pbs = []
-			this.getPbs(otherAccountId)
+			this.getPbs()
 		},
 		// first get records and then map info by chunks
-		getPbs(otherAccountId = null) {
+		getPbs() {
 			this.infoLoadingPercent = 0
 			this.loadingData = true
 			const url = generateUrl('/apps/integration_trackmania/pbs/raw')
 			axios.get(url).then((response) => {
 				this.$options.rawPbs = response.data
 				this.$options.pbsWithInfo = []
-				this.getPbsInfo(otherAccountId)
+				this.getPbsInfo()
 			}).catch((error) => {
 				const data = error.response?.data
 				if (data?.error === 'trackmania_request_failed' && data?.status_code === 401) {
@@ -188,7 +204,7 @@ export default {
 			}).then(() => {
 			})
 		},
-		getPbsInfo(otherAccountId = null) {
+		getPbsInfo() {
 			const rawPbs = this.$options.rawPbs
 			const chunks = []
 			let i = 0
@@ -202,7 +218,7 @@ export default {
 				}
 				chunks.push(currentChunk)
 			}
-			Promise.all(chunks.map(c => this.getPbsChunkInfo(c, otherAccountId)))
+			Promise.all(chunks.map(c => this.getPbsChunkInfo(c)))
 				.then(result => {
 					console.debug('----- all done', this.$options.pbsWithInfo)
 					this.zoneNames = this.getZoneNames(this.$options.pbsWithInfo[0])
@@ -217,7 +233,7 @@ export default {
 					this.loadingData = false
 				})
 		},
-		getPbsChunkInfo(chunk, otherAccountId = null) {
+		getPbsChunkInfo(chunk) {
 			const pbTimesByMapId = {}
 			for (let i = 0; i < chunk.length; i++) {
 				const mapId = chunk[i].mapInfo.mapId
@@ -228,8 +244,8 @@ export default {
 			const req = {
 				pbTimesByMapId,
 			}
-			if (otherAccountId) {
-				req.otherAccountId = otherAccountId
+			if (this.otherAccountId) {
+				req.otherAccountId = this.otherAccountId
 			}
 			return axios.post(url, req).then((response) => {
 				const infoByMapId = response.data
@@ -358,5 +374,9 @@ body {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
+}
+
+.other-account-input {
+	width: 350px;
 }
 </style>

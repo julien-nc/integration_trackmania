@@ -67,6 +67,7 @@ class PageController extends Controller {
 				$tableConfig[$key] = $this->config->getUserValue($this->userId, Application::APP_ID, $key);
 			}
 		}
+		$tableConfig['other_account'] = $this->config->getUserValue($this->userId, Application::APP_ID, 'other_account');
 		$this->initialStateService->provideInitialState('table-config', $tableConfig);
 
 		return new TemplateResponse(Application::APP_ID, 'main', []);
