@@ -259,7 +259,7 @@ export default {
 							},
 							record: c.record,
 							recordPosition: info.recordPosition,
-							otherRecordPosition: info.otherRecordPosition,
+							otherRecord: info.otherRecord,
 						}
 					}
 					return c

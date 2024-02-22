@@ -43,14 +43,14 @@ export function formatPbs(pbs) {
 		pb.mapInfo.htmlName = htmlify(name)
 
 		pb.record.recordScore.formattedTime = formatTime(pb.record.recordScore.time)
-		if (pb.otherRecordPosition?.score) {
-			const delta = pb.record.recordScore.time - pb.otherRecordPosition.score
+		if (pb.otherRecord?.time) {
+			const delta = pb.record.recordScore.time - pb.otherRecord.time
 			const prefix = delta > 0 ? '+' : ''
-			pb.otherRecordPosition.formattedTime = formatTime(pb.otherRecordPosition.score)
-			pb.otherRecordPosition.delta = delta
-			pb.otherRecordPosition.formattedDelta = prefix + formatTime(delta)
-			pb.otherRecordPosition.medal = getTimeMedal(pb, pb.otherRecordPosition.score)
-			pb.otherRecordPosition.formattedMedal = formatMedals(pb.otherRecordPosition.medal)
+			pb.otherRecord.formattedTime = formatTime(pb.otherRecord.time)
+			pb.otherRecord.delta = delta
+			pb.otherRecord.formattedDelta = prefix + formatTime(delta)
+			pb.otherRecord.medal = pb.otherRecord.record.medal
+			pb.otherRecord.formattedMedal = formatMedals(pb.otherRecord.medal)
 		}
 		pb.record.formattedDate = formatTimestamp(pb.record.unix_timestamp)
 		pb.record.formattedMedal = formatMedals(pb.record.medal)
@@ -61,18 +61,6 @@ export function formatPbs(pbs) {
 		pb.mapInfo.formattedBronzeTime = formatMedalTime(pb, 1)
 	}
 	return pbs
-}
-function getTimeMedal(pb, time) {
-	if (time < pb.mapInfo.authorTime) {
-		return MEDAL.AUTHOR
-	} else if (time < pb.mapInfo.goldTime) {
-		return MEDAL.GOLD
-	} else if (time < pb.mapInfo.silverTime) {
-		return MEDAL.SILVER
-	} else if (time < pb.mapInfo.bronzeTime) {
-		return MEDAL.BRONZE
-	}
-	return MEDAL.NOTHING
 }
 function formatMedals(value) {
 	return MEDAL_STRING[value]

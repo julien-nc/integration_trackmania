@@ -122,20 +122,20 @@
 					<span>{{ row.record.formattedMedal }}</span>
 					<img :src="getMedalImageUrl(row.record.medal)">
 				</span>
-				<span v-else-if="column.field === 'otherRecordPosition.medal'"
+				<span v-else-if="column.field === 'otherRecord.medal' && row.otherRecord"
 					class="medal-cell">
-					<span>{{ row.otherRecordPosition.formattedMedal }}</span>
-					<img :src="getMedalImageUrl(row.otherRecordPosition.medal)">
+					<span>{{ row.otherRecord.formattedMedal }}</span>
+					<img :src="getMedalImageUrl(row.otherRecord.medal)">
 				</span>
 				<span v-else-if="column.field === 'record.recordScore.time'">
 					{{ row.record.recordScore.formattedTime }}
 				</span>
-				<span v-else-if="column.field === 'otherRecordPosition.score'">
-					{{ row.otherRecordPosition?.formattedTime ?? '' }}
+				<span v-else-if="column.field === 'otherRecord.time'">
+					{{ row.otherRecord?.formattedTime ?? '' }}
 				</span>
-				<span v-else-if="column.field === 'otherRecordPosition.delta'"
-					:style="row.otherRecordPosition?.delta < 0 ? 'color: green;' : 'color: red;'">
-					{{ row.otherRecordPosition?.formattedDelta ?? '' }}
+				<span v-else-if="column.field === 'otherRecord.delta'"
+					:style="row.otherRecord?.delta < 0 ? 'color: green;' : 'color: red;'">
+					{{ row.otherRecord?.formattedDelta ?? '' }}
 				</span>
 				<span v-else-if="column.field === 'record.unix_timestamp'">
 					{{ row.record.formattedDate }}
@@ -166,7 +166,7 @@
 					@keyup.enter="onTimeFilterChange"
 					@trailing-button-click="setTimeFilter('')" />
 				<NcTextField
-					v-else-if="column.field === 'otherRecordPosition.score'"
+					v-else-if="column.field === 'otherRecord.time'"
 					:value="otherTimeFilter"
 					type="text"
 					:label="t('integration_trackmania', 'Other time filter')"
@@ -175,6 +175,16 @@
 					:placeholder="t('integration_trackmania', '\'{example}\' for less than 10 seconds', { example: '< 10000' }, null, { escape: false, sanitize: false })"
 					@keyup.enter="onOtherTimeFilterChange"
 					@trailing-button-click="setOtherTimeFilter('')" />
+				<NcTextField
+					v-else-if="column.field === 'otherRecord.delta'"
+					:value="otherDeltaFilter"
+					type="text"
+					:label="t('integration_trackmania', 'Other delta filter')"
+					:show-trailing-button="!!otherDeltaFilter"
+					class="text-input-filter"
+					:placeholder="t('integration_trackmania', '\'{example}\' for less than 10 seconds', { example: '< 10000' }, null, { escape: false, sanitize: false })"
+					@keyup.enter="onOtherDeltaFilterChange"
+					@trailing-button-click="setOtherDeltaFilter('')" />
 				<NcSelect
 					v-else-if="column.field === 'mapInfo.favorite'"
 					:value="selectedFavoriteFilter"
@@ -376,6 +386,7 @@ export default {
 			mapNameFilter: this.configState.filter_mapName ?? '',
 			timeFilter: this.configState.filter_time ?? '',
 			otherTimeFilter: this.configState.filter_other_time ?? '',
+			otherDeltaFilter: this.configState.filter_other_delta ?? '',
 			favoriteFilter: this.configState.filter_favorite ?? '',
 			medalFilter: this.configState.filter_medal ? this.configState.filter_medal.split(',').map(v => parseInt(v)) : [],
 			zonePositionFilters: {},
@@ -390,6 +401,7 @@ export default {
 				|| this.favoriteFilter
 				|| this.timeFilter
 				|| this.otherTimeFilter
+				|| this.otherDeltaFilter
 				|| this.mapNameFilter
 				|| this.dateMinFilter
 				|| this.dateMaxFilter
@@ -418,7 +430,10 @@ export default {
 				myFiltered = myFiltered.filter(pb => this.filterNumber(pb.record.recordScore.time, this.timeFilter))
 			}
 			if (this.otherTimeFilter) {
-				myFiltered = myFiltered.filter(pb => this.filterNumber(pb.otherRecordPosition?.score, this.otherTimeFilter))
+				myFiltered = myFiltered.filter(pb => this.filterNumber(pb.otherRecord?.time, this.otherTimeFilter))
+			}
+			if (this.otherDeltaFilter) {
+				myFiltered = myFiltered.filter(pb => this.filterNumber(pb.otherRecord?.delta, this.otherDeltaFilter))
 			}
 			if (this.favoriteFilter) {
 				myFiltered = myFiltered.filter(pb => this.filterFavorite(pb.mapInfo.favorite, this.favoriteFilter))
@@ -577,19 +592,19 @@ export default {
 				columns.push({
 					label: t('integration_trackmania', 'Other PB'),
 					type: 'number',
-					field: 'otherRecordPosition.score',
+					field: 'otherRecord.time',
 					sortName: 'otherTime',
 				})
 				columns.push({
 					label: t('integration_trackmania', 'Delta with other'),
 					type: 'number',
-					field: 'otherRecordPosition.delta',
+					field: 'otherRecord.delta',
 					sortName: 'otherDelta',
 				})
 				columns.push({
 					label: t('integration_trackmania', 'Other medal'),
 					type: 'number',
-					field: 'otherRecordPosition.medal',
+					field: 'otherRecord.medal',
 					tdClass: 'mapMedalColumn',
 					sortName: 'otherMedal',
 				})
@@ -789,6 +804,15 @@ export default {
 				filter_other_time: this.otherTimeFilter,
 			})
 		},
+		onOtherDeltaFilterChange(e) {
+			this.setOtherDeltaFilter(e.target.value)
+		},
+		setOtherDeltaFilter(value) {
+			this.otherDeltaFilter = value
+			this.saveOptions({
+				filter_other_delta: this.otherDeltaFilter,
+			})
+		},
 		onFavoriteFilterChange(option) {
 			if (option === null) {
 				this.favoriteFilter = ''
@@ -834,6 +858,7 @@ export default {
 			this.favoriteFilter = ''
 			this.timeFilter = ''
 			this.otherTimeFilter = ''
+			this.otherDeltaFilter = ''
 			this.mapNameFilter = ''
 			this.dateMinFilter = ''
 			this.dateMaxFilter = ''

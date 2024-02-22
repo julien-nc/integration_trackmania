@@ -49,7 +49,9 @@ class TrackmaniaAPIService {
 		$prefix = Application::AUDIENCES[Application::AUDIENCE_CORE]['token_config_key_prefix'];
 		$accountId = $this->config->getUserValue($userId, Application::APP_ID, $prefix . 'account_id');
 //		$accountId = $this->config->getUserValue($userId, Application::APP_ID, 'user_id');
-		return $this->request($userId, Application::AUDIENCE_CORE, 'accounts/' . $accountId);
+//		return $this->request($userId, Application::AUDIENCE_CORE, 'accounts/' . $accountId);
+//		$accountId = 'e3504dbb-df3c-42c5-95a7-eb64a5a302f1';
+		return $this->request($userId, Application::AUDIENCE_CORE, 'accounts/'.$accountId.'/mapRecords');
 //		return $this->request($userId, Application::AUDIENCE_CORE, 'mapRecords/');
 	}
 
@@ -186,19 +188,14 @@ class TrackmaniaAPIService {
 				}
 			}
 
-			$otherPositionsByMapUid = $this->getScorePositions($userId, $allOtherPbTimesByMapUid);
 			foreach ($pbTimesByMapId as $mapId => $time) {
 				if (isset($coreMapInfoByMapId[$mapId])) {
 					$mapUid = $coreMapInfoByMapId[$mapId]['mapUid'];
-					if (isset($allOtherPbTimesByMapUid[$mapUid], $otherPositionsByMapUid[$mapUid])) {
-						$position = $otherPositionsByMapUid[$mapUid];
-						$zones = [];
-						foreach ($position['zones'] as $zone) {
-							$zones[$zone['zoneName']] = $zone['ranking']['position'];
-						}
-						$results[$mapId]['otherRecordPosition'] = [
-							'score' => $allOtherPbTimesByMapUid[$mapUid],
-							'zones' => $zones,
+					if (isset($allOtherPbTimesByMapUid[$mapUid])) {
+						$results[$mapId]['otherRecord'] = [
+							'time' => $allOtherPbTimesByMapUid[$mapUid],
+							'record' => $otherRecordsByMapId[$mapId],
+//							'position' => $this->getAccountPositionFromTop($userId, $mapUid, $otherAccountId),
 						];
 					}
 				}
@@ -648,12 +645,16 @@ class TrackmaniaAPIService {
 	 *
 	 * @param string $userId
 	 * @param string $mapUid
+	 * @param string|null $accountId
 	 * @return array|null
+	 * @throws PreConditionNotMetException
 	 */
-	public function getMyPositionFromTop(string $userId, string $mapUid): ?array {
+	public function getAccountPositionFromTop(string $userId, string $mapUid, ?string $accountId = null): ?array {
 		$chunkSize = 100;
 		$prefix = Application::AUDIENCES[Application::AUDIENCE_LIVE]['token_config_key_prefix'];
-		$accountId = $this->config->getUserValue($userId, Application::APP_ID, $prefix . 'account_id');
+		$accountId = $accountId === null
+			? $this->config->getUserValue($userId, Application::APP_ID, $prefix . 'account_id')
+			: $accountId;
 		$pos = null;
 		$offset = 0;
 		while ($pos === null && $offset < 10000) {
@@ -661,13 +662,13 @@ class TrackmaniaAPIService {
 			if (isset($top['error'])) {
 				return null;
 			}
-			$pos = $this->findMyPosition($accountId, $top);
+			$pos = $this->findPositionByAccountId($accountId, $top);
 			$offset = $offset + $chunkSize;
 		}
 		return $pos;
 	}
 
-	public function findMyPosition(string $accountId, array $top): ?array {
+	public function findPositionByAccountId(string $accountId, array $top): ?array {
 		if (isset($top['tops']) && is_array($top['tops']) && count($top['tops']) === 1) {
 			$positions = $top['tops'][0]['top'];
 			foreach ($positions as $position) {
