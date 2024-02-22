@@ -88,6 +88,7 @@
 		<br>
 		<MapDetailModal v-if="detailPb"
 			:pb="detailPb"
+			:config-state="configState"
 			@close="detailPb = null" />
 		<div class="table-header">
 			<span>

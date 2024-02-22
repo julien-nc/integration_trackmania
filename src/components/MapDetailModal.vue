@@ -39,6 +39,12 @@
 			<span :class="{ medalTime: true, success: pb.record.recordScore.time - pb.mapInfo.bronzeTime < 0 }">
 				{{ pb.mapInfo.formattedBronzeTime }}
 			</span>
+			<div v-if="otherGhostUrl" class="ghost-url">
+				<label>{{ t('integration_trackmania', 'Ghost URL of {accountId}', { accountId: configState.other_account }) }}</label>
+				<a :href="otherGhostUrl">
+					{{ otherGhostUrl }}
+				</a>
+			</div>
 			<NcTextField
 				:value.sync="accountIdForGhostUrl"
 				type="text"
@@ -80,6 +86,10 @@ export default {
 			type: Object,
 			required: true,
 		},
+		configState: {
+			type: Object,
+			required: true,
+		},
 	},
 
 	emit: [
@@ -88,6 +98,7 @@ export default {
 
 	data() {
 		return {
+			otherGhostUrl: '',
 			accountIdForGhostUrl: '',
 			ghostUrl: '',
 		}
@@ -121,11 +132,26 @@ export default {
 	},
 
 	mounted() {
+		this.getOtherGhostUrl()
 	},
 
 	methods: {
 		getMedalImageUrl(medal) {
 			return getMedalImageUrl(medal)
+		},
+		getOtherGhostUrl() {
+			if (this.configState.other_account) {
+				const url = generateUrl('/apps/integration_trackmania/map/{mapId}/record/{accountId}', { mapId: this.pb.mapInfo.mapId, accountId: this.configState.other_account })
+				axios.get(url).then((response) => {
+					this.otherGhostUrl = response.data[0]?.url
+				}).catch((error) => {
+					showError(
+						t('integration_trackmania', 'Failed to get ghost URL for other account')
+						+ ': ' + (error.response?.request?.responseText ?? ''),
+					)
+					console.error(error)
+				})
+			}
 		},
 		onGetGhostUrl() {
 			const url = generateUrl('/apps/integration_trackmania/map/{mapId}/record/{accountId}', { mapId: this.pb.mapInfo.mapId, accountId: this.accountIdForGhostUrl })
@@ -133,7 +159,7 @@ export default {
 				this.ghostUrl = response.data[0]?.url
 			}).catch((error) => {
 				showError(
-					t('integration_trackmania', 'Failed to get player count')
+					t('integration_trackmania', 'Failed to get ghost URL')
 					+ ': ' + (error.response?.request?.responseText ?? ''),
 				)
 				console.error(error)
@@ -151,6 +177,17 @@ export default {
 	gap: 8px;
 	padding: 16px;
 
+	.ghost-url {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		> label {
+			font-weight: bold;
+		}
+		> a {
+			text-align: center;
+		}
+	}
 	.thumbnail {
 		max-height: 350px;
 		max-width: 80%;
