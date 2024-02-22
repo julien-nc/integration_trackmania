@@ -41,15 +41,18 @@
 				@reload="reloadData">
 				<template #extra>
 					<NcTextField
-						:value.sync="otherAccountId"
+						:value.sync="tableState.other_account"
 						type="text"
 						:label="t('integration_trackmania', 'Account ID to compare with')"
-						:show-trailing-button="!!otherAccountId"
+						:show-trailing-button="!!tableState.other_account"
 						class="other-account-input"
 						:placeholder="t('integration_trackmania', 'account ID')"
 						@keyup.enter="reloadData"
-						@update:value="saveOptions({ other_account: $event })"
-						@trailing-button-click="otherAccountId = ''; saveOptions({ other_account: '' })" />
+						@input="saveOptions({ other_account: tableState.other_account })"
+						@trailing-button-click="tableState.other_account = ''; saveOptions({ other_account: '' })" />
+					<span v-if="otherAccountDisplayName">
+						{{ otherAccountDisplayName }}
+					</span>
 				</template>
 			</MainContent>
 			<NcEmptyContent v-else
@@ -113,7 +116,7 @@ export default {
 			zoneNames: null,
 			pbs: [],
 			infoLoadingPercent: 0,
-			otherAccountId: loadState('integration_trackmania', 'table-config').other_account ?? '',
+			otherAccountDisplayName: '',
 		}
 	},
 
@@ -174,6 +177,12 @@ export default {
 					console.error(error)
 				})
 		},
+		getOtherAccountDisplayName() {
+			const url = generateUrl('/apps/integration_trackmania/account/{accountId}', { accountId: this.tableState.other_account })
+			axios.get(url).then((response) => {
+				this.otherAccountDisplayName = response.displayName
+			})
+		},
 		reloadData() {
 			this.pbs = []
 			this.getPbs()
@@ -182,6 +191,8 @@ export default {
 		getPbs() {
 			this.infoLoadingPercent = 0
 			this.loadingData = true
+			// does not work for the moment
+			// this.getOtherAccountDisplayName()
 			const url = generateUrl('/apps/integration_trackmania/pbs/raw')
 			axios.get(url).then((response) => {
 				this.$options.rawPbs = response.data
@@ -244,8 +255,8 @@ export default {
 			const req = {
 				pbTimesByMapId,
 			}
-			if (this.otherAccountId) {
-				req.otherAccountId = this.otherAccountId
+			if (this.tableState.other_account) {
+				req.otherAccountId = this.tableState.other_account
 			}
 			return axios.post(url, req).then((response) => {
 				const infoByMapId = response.data

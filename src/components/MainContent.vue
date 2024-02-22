@@ -38,6 +38,10 @@
 				<p>{{ t('integration_trackmania', '{nb} records in top 1000', { nb: topCount[zn][1000] }) }}</p>
 			</div>
 		</div>
+		<div>
+			<p>👍 {{ t('integration_trackmania', '{nb} records better than other account', { nb: betterThanOtherCount }) }}</p>
+			<p>👎 {{ t('integration_trackmania', '{nb} records worse than other account', { nb: worseThanOtherCount }) }}</p>
+		</div>
 		<!--div class="charts">
 			<NbRecordsPerPosition :pbs="filteredPbs" />
 		</div-->
@@ -527,6 +531,16 @@ export default {
 				}
 			})
 			return medals
+		},
+		betterThanOtherCount() {
+			return this.filteredPbs.filter(pb => {
+				return pb.otherRecord?.time && pb.record.recordScore.time < pb.otherRecord?.time
+			}).length
+		},
+		worseThanOtherCount() {
+			return this.filteredPbs.filter(pb => {
+				return pb.otherRecord?.time && pb.record.recordScore.time > pb.otherRecord?.time
+			}).length
 		},
 		columns() {
 			const columns = []

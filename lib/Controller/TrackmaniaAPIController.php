@@ -50,6 +50,22 @@ class TrackmaniaAPIController extends Controller {
 	}
 
 	/**
+	 * Does not work for the moment
+	 * @param string $accountId
+	 * @return DataResponse
+	 * @throws PreConditionNotMetException
+	 */
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
+	public function getAccountInfo(string $accountId): DataResponse {
+		$params = [
+			'accountIdList' => $accountId,
+		];
+		$result = $this->trackmaniaAPIService->request($this->userId, Application::AUDIENCE_CORE, 'accounts/displayNames/', $params);
+		return new DataResponse($result);
+	}
+
+	/**
 	 * @return DataResponse
 	 * @throws Exception
 	 */

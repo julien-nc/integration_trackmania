@@ -174,6 +174,9 @@ class TrackmaniaAPIService {
 		if ($otherAccountId !== null) {
 			// get all other records by map ID
 			$otherAccountRecords = $this->getMapRecords($userId, [$otherAccountId], array_keys($pbTimesByMapId));
+			if (isset($otherAccountRecords['error'])) {
+				return $results;
+			}
 			$otherRecordsByMapId = [];
 			foreach ($otherAccountRecords as $record) {
 				$otherRecordsByMapId[$record['mapId']] = $record;
