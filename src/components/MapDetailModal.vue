@@ -40,7 +40,7 @@
 				{{ pb.mapInfo.formattedBronzeTime }}
 			</span>
 			<div v-if="otherGhostUrl" class="ghost-url">
-				<label>{{ t('integration_trackmania', 'Ghost URL of {accountId}', { accountId: configState.other_account }) }}</label>
+				<label>{{ t('integration_trackmania', 'Ghost URL of {accountId}', { accountId: configState.other_account_name || configState.other_account_id }) }}</label>
 				<a :href="otherGhostUrl">
 					{{ otherGhostUrl }}
 				</a>
@@ -140,8 +140,8 @@ export default {
 			return getMedalImageUrl(medal)
 		},
 		getOtherGhostUrl() {
-			if (this.configState.other_account) {
-				const url = generateUrl('/apps/integration_trackmania/map/{mapId}/record/{accountId}', { mapId: this.pb.mapInfo.mapId, accountId: this.configState.other_account })
+			if (this.configState.other_account_id) {
+				const url = generateUrl('/apps/integration_trackmania/map/{mapId}/record/{accountId}', { mapId: this.pb.mapInfo.mapId, accountId: this.configState.other_account_id })
 				axios.get(url).then((response) => {
 					this.otherGhostUrl = response.data[0]?.url
 				}).catch((error) => {

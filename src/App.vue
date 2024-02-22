@@ -40,19 +40,42 @@
 				@disconnect="disconnect"
 				@reload="reloadData">
 				<template #extra>
+					<h3>
+						<strong>{{ t('integration_trackmania', 'Compare yourself with another player') }}</strong>
+					</h3>
+					<NcSelect
+						:value="selectedOtherAccount"
+						:options="otherAccountOptions"
+						class="other-account-select"
+						:multiple="false"
+						:label-outside="true"
+						label="name"
+						:filter-by="() => true"
+						:loading="searchingOtherAccount"
+						:aria-label-combobox="t('integration_trackmania', 'Search account')"
+						:placeholder="t('integration_trackmania', 'Search on trackmania.io by player name')"
+						@input="onOtherAccountSelectChange"
+						@search="onOtherAccountSearch">
+						<!--template #option="option">
+							<div>
+								{{ option.name }}
+							</div>
+						</template>
+						<template #selected-option="option">
+							<div>
+								{{ option.name }}
+							</div>
+						</template-->
+					</NcSelect>
 					<NcTextField
-						:value.sync="tableState.other_account"
+						:value.sync="tableState.other_account_id"
 						type="text"
-						:label="t('integration_trackmania', 'Account ID to compare with')"
-						:show-trailing-button="!!tableState.other_account"
+						:label="t('integration_trackmania', 'Account ID')"
+						:show-trailing-button="!!tableState.other_account_id"
 						class="other-account-input"
 						:placeholder="t('integration_trackmania', 'account ID')"
-						@keyup.enter="reloadData"
-						@input="saveOptions({ other_account: tableState.other_account })"
-						@trailing-button-click="tableState.other_account = ''; saveOptions({ other_account: '' })" />
-					<span v-if="otherAccountDisplayName">
-						{{ otherAccountDisplayName }}
-					</span>
+						@keyup.enter="onAccountIdSubmit"
+						@trailing-button-click="clearOtherAccount" />
 				</template>
 			</MainContent>
 			<NcEmptyContent v-else
@@ -77,6 +100,7 @@ import NcContent from '@nextcloud/vue/dist/Components/NcContent.js'
 import NcEmptyContent from '@nextcloud/vue/dist/Components/NcEmptyContent.js'
 import NcProgressBar from '@nextcloud/vue/dist/Components/NcProgressBar.js'
 import NcTextField from '@nextcloud/vue/dist/Components/NcTextField.js'
+import NcSelect from '@nextcloud/vue/dist/Components/NcSelect.js'
 
 import PersonalSettings from './components/PersonalSettings.vue'
 import MainContent from './components/MainContent.vue'
@@ -86,6 +110,7 @@ import { loadState } from '@nextcloud/initial-state'
 import axios from '@nextcloud/axios'
 import { showError } from '@nextcloud/dialogs'
 import { subscribe, unsubscribe } from '@nextcloud/event-bus'
+import debounce from 'debounce'
 
 import { formatPbs } from './utils.js'
 
@@ -103,6 +128,7 @@ export default {
 		NcLoadingIcon,
 		NcProgressBar,
 		NcTextField,
+		NcSelect,
 	},
 
 	props: {
@@ -116,7 +142,10 @@ export default {
 			zoneNames: null,
 			pbs: [],
 			infoLoadingPercent: 0,
-			otherAccountDisplayName: '',
+			otherAccountOptions: [],
+			selectedOtherAccount: null,
+			otherAccountSearchQuery: '',
+			searchingOtherAccount: false,
 		}
 	},
 
@@ -143,6 +172,12 @@ export default {
 		subscribe('get-nb-players', this.getNbPlayers)
 		subscribe('toggle-favorite', this.toggleFavorite)
 		subscribe('save-options', this.saveOptions)
+		if (this.tableState.other_account_id && this.tableState.other_account_name) {
+			this.selectedOtherAccount = {
+				name: this.tableState.other_account_name,
+				id: this.tableState.other_account_id,
+			}
+		}
 	},
 
 	beforeDestroy() {
@@ -177,10 +212,80 @@ export default {
 					console.error(error)
 				})
 		},
-		getOtherAccountDisplayName() {
-			const url = generateUrl('/apps/integration_trackmania/account/{accountId}', { accountId: this.tableState.other_account })
+		clearOtherAccount() {
+			this.tableState.other_account_id = ''
+			this.tableState.other_account_name = ''
+			this.saveOptions({
+				other_account_id: '',
+				other_account_name: '',
+			})
+			this.reloadData()
+		},
+		onAccountIdSubmit() {
+			this.selectedOtherAccount = null
+			this.reloadData()
+			this.tableState.other_account_name = ''
+			this.saveOptions({
+				other_account_name: '',
+				other_account_id: this.tableState.other_account_id,
+			}).then(() => {
+				// look for account name
+				const url = generateUrl('/apps/integration_trackmania/account/search/{name}', { name: this.tableState.other_account_id })
+				axios.get(url).then((response) => {
+					if (response.data.length === 1) {
+						this.selectedOtherAccount = {
+							name: response.data[0].player.name,
+							id: response.data[0].player.id,
+						}
+						this.tableState.other_account_name = response.data[0].player.name
+					} else {
+						this.tableState.other_account_name = t('integration_trackmania', 'Unknown player name')
+					}
+					this.saveOptions({
+						other_account_name: this.tableState.other_account_name,
+					})
+				}).catch(error => {
+					console.error(error)
+				})
+			})
+		},
+		onOtherAccountSelectChange(value) {
+			this.selectedOtherAccount = value
+			if (value === null) {
+				this.clearOtherAccount()
+				return
+			}
+			this.tableState.other_account_id = value.id
+			this.tableState.other_account_name = value.name
+			this.saveOptions({
+				other_account_id: this.tableState.other_account_id,
+				other_account_name: this.tableState.other_account_name,
+			})
+			this.reloadData()
+		},
+		onOtherAccountSearch: debounce(function(query) {
+			this.otherAccountSearchQuery = query
+			if (query !== '') {
+				this.otherAccountSearch()
+			}
+		}, 500),
+		otherAccountSearch() {
+			this.searchingOtherAccount = true
+			const url = generateUrl('/apps/integration_trackmania/account/search/{name}', { name: this.otherAccountSearchQuery })
 			axios.get(url).then((response) => {
-				this.otherAccountDisplayName = response.displayName
+				this.otherAccountOptions = response.data.map(item => item.player)
+				// this.$set(this, 'otherAccountOptions', response.data.map(item => item.player))
+				console.debug('OPTIONs are now', this.otherAccountOptions)
+			}).catch(error => {
+				console.error(error)
+			}).then(() => {
+				this.searchingOtherAccount = false
+			})
+		},
+		getOtherAccountDisplayName() {
+			const url = generateUrl('/apps/integration_trackmania/account/{accountId}', { accountId: this.tableState.other_account_id })
+			axios.get(url).then((response) => {
+				this.otherAccountDisplayName = response.data.displayName
 			})
 		},
 		reloadData() {
@@ -255,8 +360,8 @@ export default {
 			const req = {
 				pbTimesByMapId,
 			}
-			if (this.tableState.other_account) {
-				req.otherAccountId = this.tableState.other_account
+			if (this.tableState.other_account_id) {
+				req.otherAccountId = this.tableState.other_account_id
 			}
 			return axios.post(url, req).then((response) => {
 				const infoByMapId = response.data
@@ -351,7 +456,7 @@ export default {
 				values,
 			}
 			const url = generateUrl('/apps/integration_trackmania/config')
-			axios.put(url, req).then((response) => {
+			return axios.put(url, req).then((response) => {
 			}).catch((error) => {
 				showError(
 					t('integration_trackmania', 'Failed to save options')
@@ -387,7 +492,9 @@ body {
 	align-items: center;
 }
 
+.other-account-select,
 .other-account-input {
 	width: 350px;
+	margin-bottom: 8px !important;
 }
 </style>

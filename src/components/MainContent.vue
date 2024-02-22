@@ -19,6 +19,14 @@
 			</NcButton>
 		</div>
 		<slot name="extra" />
+		<div v-if="configState.other_account_id">
+			<p style="color: var(--color-success);">
+				👍 {{ t('integration_trackmania', '{nb} records better than other account', { nb: betterThanOtherCount }) }}
+			</p>
+			<p style="color: var(--color-error);">
+				👎 {{ t('integration_trackmania', '{nb} records worse than other account', { nb: worseThanOtherCount }) }}
+			</p>
+		</div>
 		<div class="summary">
 			<div class="summary__medals">
 				<h3>{{ t('integration_trackmania', 'Medals') }}</h3>
@@ -37,10 +45,6 @@
 				<p>{{ t('integration_trackmania', '{nb} records in top 100', { nb: topCount[zn][100] }) }}</p>
 				<p>{{ t('integration_trackmania', '{nb} records in top 1000', { nb: topCount[zn][1000] }) }}</p>
 			</div>
-		</div>
-		<div>
-			<p>👍 {{ t('integration_trackmania', '{nb} records better than other account', { nb: betterThanOtherCount }) }}</p>
-			<p>👎 {{ t('integration_trackmania', '{nb} records worse than other account', { nb: worseThanOtherCount }) }}</p>
 		</div>
 		<!--div class="charts">
 			<NbRecordsPerPosition :pbs="filteredPbs" />
@@ -78,7 +82,7 @@
 				@update:checked="onZoneCheck(zn, $event)">
 				{{ t('integration_trackmania', 'Position in {zone}', { zone: zn }) }}
 			</NcCheckboxRadioSwitch>
-			<NcCheckboxRadioSwitch
+			<NcCheckboxRadioSwitch v-if="configState.other_account_id"
 				:checked="configState.show_column_other_time !== '0'"
 				class="checkColumn"
 				@update:checked="onColumnCheck('show_column_other_time', $event)">
@@ -92,7 +96,7 @@
 			@close="detailPb = null" />
 		<div class="table-header">
 			<span>
-				{{ t('integration_trackmania', '{nb} rows', { nb: rowCount }) }}
+				{{ t('integration_trackmania', '{nb} track records', { nb: rowCount }) }}
 			</span>
 			<NcButton v-if="hasFilters" @click="clearFilters">
 				<template #icon>
@@ -139,7 +143,7 @@
 					{{ row.otherRecord?.formattedTime ?? '' }}
 				</span>
 				<span v-else-if="column.field === 'otherRecord.delta'"
-					:style="row.otherRecord?.delta < 0 ? 'color: green;' : 'color: red;'">
+					:style="row.otherRecord?.delta < 0 ? 'color: var(--color-success);' : 'color: var(--color-error);'">
 					{{ row.otherRecord?.formattedDelta ?? '' }}
 				</span>
 				<span v-else-if="column.field === 'record.unix_timestamp'">
@@ -603,7 +607,7 @@ export default {
 					}
 				}),
 			)
-			if (this.configState.show_column_other_time !== '0') {
+			if (this.configState.other_account_id && this.configState.show_column_other_time !== '0') {
 				columns.push({
 					label: t('integration_trackmania', 'Other PB'),
 					type: 'number',

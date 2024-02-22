@@ -684,6 +684,87 @@ class TrackmaniaAPIService {
 	}
 
 	/**
+	 * @param string $name
+	 * @return array
+	 */
+	public function searchAccount(string $name): array {
+		$params = [
+			'search' => $name,
+		];
+		return $this->requestTrackmaniaIo('players/find', $params);
+	}
+
+	/**
+	 * @param string $endPoint
+	 * @param array $params
+	 * @param string $method
+	 * @param bool $jsonResponse
+	 * @return array|mixed|resource|string
+	 */
+	public function requestTrackmaniaIo(string $endPoint, array $params = [], string $method = 'GET', bool $jsonResponse = true) {
+		try {
+			$url = Application::TRACKMANIA_IO_API_URL . $endPoint;
+			$options = [
+				'headers' => [
+					'Content-Type' => 'application/json',
+					'User-Agent'  => Application::INTEGRATION_USER_AGENT,
+				],
+			];
+
+			if (count($params) > 0) {
+				if ($method === 'GET') {
+					// manage array parameters
+					$paramsContent = '';
+					foreach ($params as $key => $value) {
+						if (is_array($value)) {
+							foreach ($value as $oneArrayValue) {
+								$paramsContent .= $key . '[]=' . urlencode($oneArrayValue) . '&';
+							}
+							unset($params[$key]);
+						}
+					}
+					$paramsContent .= http_build_query($params);
+
+					$url .= '?' . $paramsContent;
+				} else {
+					$options['json'] = $params;
+				}
+			}
+
+			if ($method === 'GET') {
+				$response = $this->client->get($url, $options);
+			} else if ($method === 'POST') {
+				$response = $this->client->post($url, $options);
+			} else if ($method === 'PUT') {
+				$response = $this->client->put($url, $options);
+			} else if ($method === 'DELETE') {
+				$response = $this->client->delete($url, $options);
+			} else {
+				return ['error' => $this->l10n->t('Bad HTTP method')];
+			}
+			$body = $response->getBody();
+			$respCode = $response->getStatusCode();
+
+			if ($respCode >= 400) {
+				return ['error' => $this->l10n->t('Bad credentials')];
+			} else {
+				if ($jsonResponse) {
+					return json_decode($body, true);
+				} else {
+					return $body;
+				}
+			}
+		} catch (ServerException | ClientException $e) {
+			$body = $e->getResponse()->getBody();
+			$this->logger->warning('Trackmania.io API error : ' . $body, ['app' => Application::APP_ID]);
+			return ['error' => $e->getMessage()];
+		} catch (Exception | Throwable $e) {
+			$this->logger->warning('Trackmania.io API error', ['exception' => $e, 'app' => Application::APP_ID]);
+			return ['error' => $e->getMessage()];
+		}
+	}
+
+	/**
 	 * @param string $userId
 	 * @param string $endPoint
 	 * @param array $params

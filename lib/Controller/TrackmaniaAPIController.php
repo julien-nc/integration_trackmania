@@ -65,6 +65,17 @@ class TrackmaniaAPIController extends Controller {
 		return new DataResponse($result);
 	}
 
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
+	public function searchAccount(string $name): DataResponse {
+		$result = $this->trackmaniaAPIService->searchAccount($name);
+		if (isset($result['error'])) {
+			return new DataResponse($result, Http::STATUS_BAD_REQUEST);
+		} else {
+			return new DataResponse($result);
+		}
+	}
+
 	/**
 	 * @return DataResponse
 	 * @throws Exception
