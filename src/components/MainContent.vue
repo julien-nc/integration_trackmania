@@ -26,6 +26,9 @@
 			<p style="color: var(--color-error);">
 				👎 {{ t('integration_trackmania', '{nb} records worse than other account', { nb: worseThanOtherCount }) }}
 			</p>
+			<p v-if="equalThanOtherCount > 0" style="color: var(--color-warning);">
+				👌 {{ t('integration_trackmania', '{nb} records equal than other account', { nb: equalThanOtherCount }) }}
+			</p>
 		</div>
 		<div class="summary">
 			<div class="summary__medals">
@@ -545,6 +548,11 @@ export default {
 		worseThanOtherCount() {
 			return this.filteredPbs.filter(pb => {
 				return pb.otherRecord?.time && pb.record.recordScore.time > pb.otherRecord?.time
+			}).length
+		},
+		equalThanOtherCount() {
+			return this.filteredPbs.filter(pb => {
+				return pb.otherRecord?.time && pb.record.recordScore.time === pb.otherRecord?.time
 			}).length
 		},
 		columns() {

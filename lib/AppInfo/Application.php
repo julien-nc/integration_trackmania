@@ -40,7 +40,6 @@ class Application extends App implements IBootstrap {
 	];
 	public const TRACKMANIA_IO_API_URL = 'https://trackmania.io/api/';
 
-	// TODO add columns: delta with other, position of other :grin:, medal of other
 	public function __construct(array $urlParams = []) {
 		parent::__construct(self::APP_ID, $urlParams);
 	}

@@ -65,6 +65,10 @@ class TrackmaniaAPIController extends Controller {
 		return new DataResponse($result);
 	}
 
+	/**
+	 * @param string $name
+	 * @return DataResponse
+	 */
 	#[NoAdminRequired]
 	#[NoCSRFRequired]
 	public function searchAccount(string $name): DataResponse {

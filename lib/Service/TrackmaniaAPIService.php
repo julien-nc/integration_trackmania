@@ -688,10 +688,17 @@ class TrackmaniaAPIService {
 	 * @return array
 	 */
 	public function searchAccount(string $name): array {
+		$cacheKey = 'tmio-player-find-' . $name;
+		$cachedSearchResult = $this->cache->get($cacheKey);
+		if ($cachedSearchResult !== null) {
+			return $cachedSearchResult;
+		}
 		$params = [
 			'search' => $name,
 		];
-		return $this->requestTrackmaniaIo('players/find', $params);
+		$searchResult = $this->requestTrackmaniaIo('players/find', $params);
+		$this->cache->set($cacheKey, $searchResult, Application::CACHE_DURATION);
+		return $searchResult;
 	}
 
 	/**
