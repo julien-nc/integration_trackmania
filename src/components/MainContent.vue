@@ -11,6 +11,12 @@
 				</template>
 				{{ t('integration_trackmania', 'Reload data') }}
 			</NcButton>
+			<NcButton @click="$emit('reload', filteredPbs.map(pb => pb.mapInfo.mapId))">
+				<template #icon>
+					<ReloadIcon />
+				</template>
+				{{ t('integration_trackmania', 'Reload data for current filtered record list') }}
+			</NcButton>
 			<NcButton @click="$emit('disconnect')">
 				<template #icon>
 					<CloseIcon />

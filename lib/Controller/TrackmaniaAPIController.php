@@ -96,14 +96,14 @@ class TrackmaniaAPIController extends Controller {
 	}
 
 	/**
+	 * @param array|null $mapIdList List of map IDs to avoid getting all maps played by current account
 	 * @return DataResponse
-	 * @throws Exception
 	 */
 	#[NoAdminRequired]
 	#[NoCSRFRequired]
-	public function getMyRawRecords():DataResponse {
+	public function getMyRawRecords(?array $mapIdList = null):DataResponse {
 		try {
-			$result = $this->trackmaniaAPIService->getMapRecordsAndFavorites($this->userId);
+			$result = $this->trackmaniaAPIService->getMapRecordsAndFavorites($this->userId, $mapIdList);
 		} catch (ClientException $e) {
 			$response = $e->getResponse();
 			$statusCode = $response->getStatusCode();

@@ -23,7 +23,7 @@ return [
 		['name' => 'trackmaniaAPI#getAccountInfo', 'url' => '/account/{accountId}', 'verb' => 'GET'],
 		['name' => 'trackmaniaAPI#searchAccount', 'url' => '/account/search/{name}', 'verb' => 'GET'],
 		// partial load
-		['name' => 'trackmaniaAPI#getMyRawRecords', 'url' => '/pbs/raw', 'verb' => 'GET'],
+		['name' => 'trackmaniaAPI#getMyRawRecords', 'url' => '/pbs/raw', 'verb' => 'POST'],
 		['name' => 'trackmaniaAPI#getMoreRecordInfo', 'url' => '/pbs/info', 'verb' => 'POST'],
 		// end partial load
 		['name' => 'trackmaniaAPI#getMapThumbnail', 'url' => '/thumbnail/{thumbnailId}', 'verb' => 'GET'],

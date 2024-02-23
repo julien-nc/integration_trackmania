@@ -288,21 +288,25 @@ export default {
 				this.otherAccountDisplayName = response.data.displayName
 			})
 		},
-		reloadData() {
-			this.pbs = []
-			this.getPbs()
+		reloadData(mapIdList = null) {
+			if (mapIdList === null) {
+				this.pbs = []
+			}
+			this.getPbs(mapIdList)
 		},
 		// first get records and then map info by chunks
-		getPbs() {
+		getPbs(mapIdList = null) {
 			this.infoLoadingPercent = 0
 			this.loadingData = true
-			// does not work for the moment
-			// this.getOtherAccountDisplayName()
+			const req = {}
+			if (mapIdList !== null) {
+				req.mapIdList = mapIdList
+			}
 			const url = generateUrl('/apps/integration_trackmania/pbs/raw')
-			axios.get(url).then((response) => {
-				this.$options.rawPbs = response.data
+			axios.post(url, req).then((response) => {
+				this.$options.rawPbsToGetInfoOn = response.data
 				this.$options.pbsWithInfo = []
-				this.getPbsInfo()
+				this.getPbsInfo(mapIdList)
 			}).catch((error) => {
 				const data = error.response?.data
 				if (data?.error === 'trackmania_request_failed' && data?.status_code === 401) {
@@ -320,15 +324,15 @@ export default {
 			}).then(() => {
 			})
 		},
-		getPbsInfo() {
-			const rawPbs = this.$options.rawPbs
+		getPbsInfo(mapIdList = null) {
+			const rawPbsToGetInfoOn = this.$options.rawPbsToGetInfoOn
 			const chunks = []
 			let i = 0
-			while (i < rawPbs.length) {
+			while (i < rawPbsToGetInfoOn.length) {
 				let j = 0
 				const currentChunk = []
-				while (j < 100 && i < rawPbs.length) {
-					currentChunk.push(rawPbs[i])
+				while (j < 100 && i < rawPbsToGetInfoOn.length) {
+					currentChunk.push(rawPbsToGetInfoOn[i])
 					i++
 					j++
 				}
@@ -338,8 +342,13 @@ export default {
 				.then(result => {
 					console.debug('----- all done', this.$options.pbsWithInfo)
 					this.zoneNames = this.getZoneNames(this.$options.pbsWithInfo[0])
-					this.pbs = formatPbs(this.$options.pbsWithInfo)
-					this.$options.rawPbs = null
+					// TODO extend instead of replace
+					if (mapIdList !== null) {
+						this.mergePbs(mapIdList)
+					} else {
+						this.pbs = formatPbs(this.$options.pbsWithInfo)
+					}
+					this.$options.rawPbsToGetInfoOn = null
 					this.$options.pbsWithInfo = null
 				})
 				.catch(error => {
@@ -381,7 +390,7 @@ export default {
 					return c
 				})
 				this.$options.pbsWithInfo.push(...chunkWithInfo)
-				this.infoLoadingPercent = parseInt(this.$options.pbsWithInfo.length / this.$options.rawPbs.length * 100)
+				this.infoLoadingPercent = parseInt(this.$options.pbsWithInfo.length / this.$options.rawPbsToGetInfoOn.length * 100)
 				console.debug('----- ONE done', this.infoLoadingPercent)
 			}).catch((error) => {
 				console.error(error)
@@ -413,6 +422,10 @@ export default {
 			}).then(() => {
 				this.loadingData = false
 			})
+		},
+		mergePbs(mapIdList) {
+			this.pbs = this.pbs.filter(pb => !mapIdList.include(pb.mapInfo.mapId))
+			this.pbs.push(...formatPbs(this.$options.pbsWithInfo))
 		},
 		getZoneNames(onePb) {
 			return Object.keys(onePb.recordPosition.zones)

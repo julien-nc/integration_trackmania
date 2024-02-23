@@ -120,7 +120,7 @@ class TrackmaniaAPIService {
 	}
 
 	// Partial loading flow
-	public function getMapRecordsAndFavorites(string $userId): array {
+	public function getMapRecordsAndFavorites(string $userId, ?array $mapIdList = null): array {
 		// get favorites because liveMapInfo always says favorite: false
 		$allFavs = $this->getAllFavorites($userId);
 		$allFavsByMapId = [];
@@ -128,7 +128,7 @@ class TrackmaniaAPIService {
 			$allFavsByMapId[$fav['mapId']] = 1;
 		}
 
-		$pbs = $this->getMapRecords($userId);
+		$pbs = $this->getMapRecords($userId, null, $mapIdList);
 //		$pbs = array_slice($pbs, 0, 100);
 		return $this->formatRecordsAndFavorites($pbs, $allFavsByMapId);
 	}
