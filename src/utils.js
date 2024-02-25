@@ -50,9 +50,12 @@ export function formatPbs(pbs) {
 			pb.otherRecord.delta = delta
 			pb.otherRecord.formattedDelta = prefix + formatTime(delta)
 			pb.otherRecord.medal = pb.otherRecord.record.medal
-			pb.otherRecord.formattedMedal = formatMedals(pb.otherRecord.medal)
+			pb.otherRecord.formattedMedal = formatMedals(pb.otherRecord.record.medal)
+			pb.otherRecord.formattedDate = formatTimestamp(pb.otherRecord.unix_timestamp)
+			pb.otherRecord.formattedDateWithZone = formatTimestampWithZone(pb.otherRecord.unix_timestamp)
 		}
 		pb.record.formattedDate = formatTimestamp(pb.record.unix_timestamp)
+		pb.record.formattedDateWithZone = formatTimestampWithZone(pb.record.unix_timestamp)
 		pb.record.formattedMedal = formatMedals(pb.record.medal)
 
 		pb.mapInfo.formattedAuthorTime = formatMedalTime(pb, 4)
@@ -67,6 +70,9 @@ function formatMedals(value) {
 }
 function formatTimestamp(value) {
 	return moment.unix(value).format('LLL')
+}
+function formatTimestampWithZone(value) {
+	return moment.unix(value).format('LLL (Z)')
 }
 function formatTime(value) {
 	return Time.fromMilliseconds(value).toTmString()

@@ -155,8 +155,13 @@
 					:style="row.otherRecord?.delta < 0 ? 'color: var(--color-success);' : 'color: var(--color-error);'">
 					{{ row.otherRecord?.formattedDelta ?? '' }}
 				</span>
-				<span v-else-if="column.field === 'record.unix_timestamp'">
+				<span v-else-if="column.field === 'record.unix_timestamp'"
+					:title="row.record.formattedDateWithZone">
 					{{ row.record.formattedDate }}
+				</span>
+				<span v-else-if="column.field === 'otherRecord.unix_timestamp'"
+					:title="row.otherRecord?.formattedDateWithZone ?? undefined">
+					{{ row.otherRecord?.formattedDate ?? '' }}
 				</span>
 				<span v-else>
 					{{ getRawCellValue(row, column.field) }}
@@ -629,6 +634,12 @@ export default {
 					sortName: 'otherTime',
 				})
 				columns.push({
+					label: t('integration_trackmania', 'Other PB date'),
+					type: 'number',
+					field: 'otherRecord.unix_timestamp',
+					sortName: 'otherDate',
+				})
+				columns.push({
 					label: t('integration_trackmania', 'Delta with other'),
 					type: 'number',
 					field: 'otherRecord.delta',
@@ -1003,6 +1014,9 @@ export default {
 		background: #B0B0B0;
 		font-weight: bold;
 		cursor: pointer;
+		max-width: 250px;
+		overflow: hidden;
+		text-overflow: ellipsis;
 		&:hover {
 			background: #909090;
 		}

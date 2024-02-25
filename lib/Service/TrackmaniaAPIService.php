@@ -198,6 +198,7 @@ class TrackmaniaAPIService {
 						$results[$mapId]['otherRecord'] = [
 							'time' => $allOtherPbTimesByMapUid[$mapUid],
 							'record' => $otherRecordsByMapId[$mapId],
+							'unix_timestamp' => (new DateTime($otherRecordsByMapId[$mapId]['timestamp']))->getTimestamp(),
 //							'position' => $this->getAccountPositionFromTop($userId, $mapUid, $otherAccountId),
 						];
 					}
