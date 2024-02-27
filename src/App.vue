@@ -292,7 +292,9 @@ export default {
 			if (mapIdList === null) {
 				this.pbs = []
 			}
-			this.getPbs(mapIdList)
+			if (mapIdList.length > 0) {
+				this.getPbs(mapIdList)
+			}
 		},
 		// first get records and then map info by chunks
 		getPbs(mapIdList = null) {
@@ -424,7 +426,7 @@ export default {
 			})
 		},
 		mergePbs(mapIdList) {
-			this.pbs = this.pbs.filter(pb => !mapIdList.include(pb.mapInfo.mapId))
+			this.pbs = this.pbs.filter(pb => !mapIdList.includes(pb.mapInfo.mapId))
 			this.pbs.push(...formatPbs(this.$options.pbsWithInfo))
 		},
 		getZoneNames(onePb) {
