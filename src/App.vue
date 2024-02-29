@@ -292,7 +292,7 @@ export default {
 			if (mapIdList === null) {
 				this.pbs = []
 			}
-			if (mapIdList.length > 0) {
+			if (mapIdList === null || mapIdList.length > 0) {
 				this.getPbs(mapIdList)
 			}
 		},
