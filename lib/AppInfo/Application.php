@@ -40,6 +40,11 @@ class Application extends App implements IBootstrap {
 	];
 	public const TRACKMANIA_IO_API_URL = 'https://trackmania.io/api/';
 
+	// TODO to get position of other account in a map:
+	// - first know if account has a record on map (already know maybe, if not, can use getAccountRecordOnMap)
+	// - if time is better than current account, can get it with service->getScorePosition
+	// - else get map top with service->getMapTop (max 10.000 records, very slow)
+
 	public function __construct(array $urlParams = []) {
 		parent::__construct(self::APP_ID, $urlParams);
 	}

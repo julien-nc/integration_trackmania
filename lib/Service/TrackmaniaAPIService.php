@@ -195,11 +195,18 @@ class TrackmaniaAPIService {
 				if (isset($coreMapInfoByMapId[$mapId])) {
 					$mapUid = $coreMapInfoByMapId[$mapId]['mapUid'];
 					if (isset($allOtherPbTimesByMapUid[$mapUid])) {
+						/*
+						if ($allOtherPbTimesByMapUid[$mapUid] < $allMyPbTimesByMapUid[$mapUid]) {
+							$position = $this->getScorePosition($userId, $mapUid, $allOtherPbTimesByMapUid[$mapUid]);
+						} else {
+							$position = $this->getAccountPositionFromTop($userId, $mapUid, $otherAccountId);
+						}
+						*/
 						$results[$mapId]['otherRecord'] = [
 							'time' => $allOtherPbTimesByMapUid[$mapUid],
 							'record' => $otherRecordsByMapId[$mapId],
 							'unix_timestamp' => (new DateTime($otherRecordsByMapId[$mapId]['timestamp']))->getTimestamp(),
-							//							'position' => $this->getAccountPositionFromTop($userId, $mapUid, $otherAccountId),
+							// 'position' => $position,
 						];
 					}
 				}
