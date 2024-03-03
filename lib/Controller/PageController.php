@@ -11,15 +11,15 @@
 
 namespace OCA\Trackmania\Controller;
 
+use OCA\Trackmania\AppInfo\Application;
+use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
+use OCP\AppFramework\Http\TemplateResponse;
 use OCP\AppFramework\Services\IInitialState;
 use OCP\IConfig;
-use OCP\AppFramework\Controller;
-use OCP\AppFramework\Http\TemplateResponse;
-use OCP\IRequest;
 
-use OCA\Trackmania\AppInfo\Application;
+use OCP\IRequest;
 
 class PageController extends Controller {
 

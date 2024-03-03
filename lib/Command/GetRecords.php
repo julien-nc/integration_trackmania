@@ -12,13 +12,13 @@
 
 namespace OCA\Trackmania\Command;
 
+use OC\Core\Command\Base;
 use OCA\Trackmania\Service\TrackmaniaAPIService;
-use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
-class GetRecords extends Command {
+class GetRecords extends Base {
 
 	public function __construct(private TrackmaniaAPIService $trackmaniaAPIService) {
 		parent::__construct();

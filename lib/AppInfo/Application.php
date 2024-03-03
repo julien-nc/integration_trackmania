@@ -10,9 +10,9 @@
 namespace OCA\Trackmania\AppInfo;
 
 use OCP\AppFramework\App;
-use OCP\AppFramework\Bootstrap\IRegistrationContext;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
+use OCP\AppFramework\Bootstrap\IRegistrationContext;
 
 class Application extends App implements IBootstrap {
 	public const APP_ID = 'integration_trackmania';
@@ -50,4 +50,3 @@ class Application extends App implements IBootstrap {
 	public function boot(IBootContext $context): void {
 	}
 }
-

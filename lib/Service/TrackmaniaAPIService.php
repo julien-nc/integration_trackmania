@@ -11,7 +11,7 @@
 
 namespace OCA\Trackmania\Service;
 
-use Datetime;
+use DateTime;
 use Exception;
 use GuzzleHttp\Exception\ClientException;
 use GuzzleHttp\Exception\ServerException;
@@ -19,13 +19,13 @@ use OCA\Trackmania\AppInfo\Application;
 use OCA\Trackmania\Controller\ConfigController;
 use OCP\AppFramework\Http;
 use OCP\Http\Client\IClient;
+use OCP\Http\Client\IClientService;
 use OCP\ICache;
 use OCP\ICacheFactory;
 use OCP\IConfig;
 use OCP\IL10N;
 use OCP\PreConditionNotMetException;
 use Psr\Log\LoggerInterface;
-use OCP\Http\Client\IClientService;
 use Throwable;
 
 class TrackmaniaAPIService {
@@ -48,11 +48,11 @@ class TrackmaniaAPIService {
 	public function test(string $userId): array {
 		$prefix = Application::AUDIENCES[Application::AUDIENCE_CORE]['token_config_key_prefix'];
 		$accountId = $this->config->getUserValue($userId, Application::APP_ID, $prefix . 'account_id');
-//		$accountId = $this->config->getUserValue($userId, Application::APP_ID, 'user_id');
-//		return $this->request($userId, Application::AUDIENCE_CORE, 'accounts/' . $accountId);
-//		$accountId = 'e3504dbb-df3c-42c5-95a7-eb64a5a302f1';
+		//		$accountId = $this->config->getUserValue($userId, Application::APP_ID, 'user_id');
+		//		return $this->request($userId, Application::AUDIENCE_CORE, 'accounts/' . $accountId);
+		//		$accountId = 'e3504dbb-df3c-42c5-95a7-eb64a5a302f1';
 		return $this->request($userId, Application::AUDIENCE_CORE, 'accounts/'.$accountId.'/mapRecords');
-//		return $this->request($userId, Application::AUDIENCE_CORE, 'mapRecords/');
+		//		return $this->request($userId, Application::AUDIENCE_CORE, 'mapRecords/');
 	}
 
 	public function getImage(string $url): array {
@@ -129,12 +129,12 @@ class TrackmaniaAPIService {
 		}
 
 		$pbs = $this->getMapRecords($userId, null, $mapIdList);
-//		$pbs = array_slice($pbs, 0, 100);
+		//		$pbs = array_slice($pbs, 0, 100);
 		return $this->formatRecordsAndFavorites($pbs, $allFavsByMapId);
 	}
 
 	public function formatRecordsAndFavorites(array $pbs, array $allFavsByMapId): array {
-		return array_map(static function(array $pb) use ($allFavsByMapId) {
+		return array_map(static function (array $pb) use ($allFavsByMapId) {
 			$mapId = $pb['mapId'];
 			return [
 				'record' => [
@@ -199,7 +199,7 @@ class TrackmaniaAPIService {
 							'time' => $allOtherPbTimesByMapUid[$mapUid],
 							'record' => $otherRecordsByMapId[$mapId],
 							'unix_timestamp' => (new DateTime($otherRecordsByMapId[$mapId]['timestamp']))->getTimestamp(),
-//							'position' => $this->getAccountPositionFromTop($userId, $mapUid, $otherAccountId),
+							//							'position' => $this->getAccountPositionFromTop($userId, $mapUid, $otherAccountId),
 						];
 					}
 				}
@@ -242,7 +242,7 @@ class TrackmaniaAPIService {
 		}
 
 		$pbs = $this->getMapRecords($userId);
-//		$pbs = array_slice($pbs, 0, 100);
+		//		$pbs = array_slice($pbs, 0, 100);
 		$pbTimesByMapId = [];
 		foreach ($pbs as $pb) {
 			$pbTimesByMapId[$pb['mapId']] = $pb['recordScore']['time'];
@@ -289,7 +289,7 @@ class TrackmaniaAPIService {
 	}
 
 	public function formatMapResults(array $data): array {
-		return array_map(static function(array $item) {
+		return array_map(static function (array $item) {
 			$formatted = [
 				'record' => [
 					'accountId' => $item['record']['accountId'],
@@ -426,7 +426,7 @@ class TrackmaniaAPIService {
 		if (isset($favs['itemCount']) && is_numeric($favs['itemCount'])) {
 			$nbMaps = $favs['itemCount'];
 			$maps = array_merge($maps, $favs['mapList']);
-			While (count($maps) < $nbMaps || isset($favs['error'])) {
+			while (count($maps) < $nbMaps || isset($favs['error'])) {
 				$favs = $this->getFavoriteMaps($userId, count($maps), $chunkSize);
 				$maps = array_merge($maps, $favs['mapList']);
 			}
@@ -456,7 +456,7 @@ class TrackmaniaAPIService {
 			: implode(',', $accountIds);
 		$params = [
 			'accountIdList' => $accountIdList,
-//			'seasonId' => '???',
+			//			'seasonId' => '???',
 		];
 		if ($mapIds !== null) {
 			$params['mapIdList'] = implode(',', $mapIds);
@@ -482,7 +482,7 @@ class TrackmaniaAPIService {
 					'groupUid' => 'Personal_Best',
 				];
 			}
-			$getParams = array_map(function($uid) use ($scoresByMapUid) {
+			$getParams = array_map(function ($uid) use ($scoresByMapUid) {
 				return 'scores[' . $uid . ']=' . $scoresByMapUid[$uid];
 			}, $uidsToLook);
 			$positions = $this->request($userId, Application::AUDIENCE_LIVE, 'leaderboard/group/map?' . implode('&', $getParams), $params, 'POST');
@@ -541,7 +541,7 @@ class TrackmaniaAPIService {
 	 * @return array|string[]
 	 * @throws PreConditionNotMetException
 	 */
-	public function getMapTop(string $userId, string $mapUid, int $offset = 0, int $length = 20, bool $onlyWorld = true): array	{
+	public function getMapTop(string $userId, string $mapUid, int $offset = 0, int $length = 20, bool $onlyWorld = true): array {
 		$params = [
 			'onlyWorld' => $onlyWorld ? 'true' : 'false',
 			'offset' => $offset,
@@ -573,7 +573,7 @@ class TrackmaniaAPIService {
 			$body = $response->getBody();
 			$parsedBody = json_decode($body, true);
 			if (is_array($parsedBody) && isset($parsedBody['player_count']) && is_numeric($parsedBody['player_count'])) {
-				return $parsedBody['player_count'];
+				return (int) $parsedBody['player_count'];
 			}
 		} catch (Exception | Throwable $e) {
 			$this->logger->warning('Failed to get nb players from tm.waalrus.xyz', ['app' => Application::APP_ID, 'exception' => $e]);
@@ -585,7 +585,7 @@ class TrackmaniaAPIService {
 			$body = $response->getBody();
 			$parsedBody = json_decode($body, true);
 			if (is_array($parsedBody) && isset($parsedBody['nb_players']) && is_numeric($parsedBody['nb_players'])) {
-				return $parsedBody['nb_players'];
+				return (int) $parsedBody['nb_players'];
 			}
 		} catch (Exception | Throwable $e) {
 			$this->logger->warning('Failed to get nb players from map-monitor.xk.io', ['app' => Application::APP_ID, 'exception' => $e]);
@@ -715,7 +715,7 @@ class TrackmaniaAPIService {
 			$options = [
 				'headers' => [
 					'Content-Type' => 'application/json',
-					'User-Agent'  => Application::INTEGRATION_USER_AGENT,
+					'User-Agent' => Application::INTEGRATION_USER_AGENT,
 				],
 			];
 
@@ -741,11 +741,11 @@ class TrackmaniaAPIService {
 
 			if ($method === 'GET') {
 				$response = $this->client->get($url, $options);
-			} else if ($method === 'POST') {
+			} elseif ($method === 'POST') {
 				$response = $this->client->post($url, $options);
-			} else if ($method === 'PUT') {
+			} elseif ($method === 'PUT') {
 				$response = $this->client->put($url, $options);
-			} else if ($method === 'DELETE') {
+			} elseif ($method === 'DELETE') {
 				$response = $this->client->delete($url, $options);
 			} else {
 				return ['error' => $this->l10n->t('Bad HTTP method')];
@@ -790,9 +790,9 @@ class TrackmaniaAPIService {
 			$url = Application::AUDIENCES[$audience]['base_url'] . $endPoint;
 			$options = [
 				'headers' => [
-					'Authorization'  => 'nadeo_v1 t=' . $accessToken,
+					'Authorization' => 'nadeo_v1 t=' . $accessToken,
 					'Content-Type' => 'application/json',
-					'User-Agent'  => Application::INTEGRATION_USER_AGENT,
+					'User-Agent' => Application::INTEGRATION_USER_AGENT,
 				],
 			];
 
@@ -818,11 +818,11 @@ class TrackmaniaAPIService {
 
 			if ($method === 'GET') {
 				$response = $this->client->get($url, $options);
-			} else if ($method === 'POST') {
+			} elseif ($method === 'POST') {
 				$response = $this->client->post($url, $options);
-			} else if ($method === 'PUT') {
+			} elseif ($method === 'PUT') {
 				$response = $this->client->put($url, $options);
-			} else if ($method === 'DELETE') {
+			} elseif ($method === 'DELETE') {
 				$response = $this->client->delete($url, $options);
 			} else {
 				return ['error' => $this->l10n->t('Bad HTTP method')];
@@ -858,7 +858,7 @@ class TrackmaniaAPIService {
 		$refreshToken = $this->config->getUserValue($userId, Application::APP_ID, Application::AUDIENCES[$audience]['token_config_key_prefix'] . 'refresh_token');
 		$expireAt = $this->config->getUserValue($userId, Application::APP_ID, Application::AUDIENCES[$audience]['token_config_key_prefix'] . 'token_expires_at');
 		if ($refreshToken !== '' && $expireAt !== '') {
-			$nowTs = (new Datetime())->getTimestamp();
+			$nowTs = (new DateTime())->getTimestamp();
 			$expireAt = (int) $expireAt;
 			// if token expires in less than a minute or is already expired
 			if ($nowTs > $expireAt - 60) {
@@ -882,7 +882,7 @@ class TrackmaniaAPIService {
 			$url = Application::TOKEN_REFRESH_URL;
 			$options = [
 				'headers' => [
-					'User-Agent'  => Application::INTEGRATION_USER_AGENT,
+					'User-Agent' => Application::INTEGRATION_USER_AGENT,
 					'Authorization' => 'nadeo_v1 t=' . $refreshToken,
 				],
 			];
@@ -935,7 +935,7 @@ class TrackmaniaAPIService {
 			$url = 'https://public-ubiservices.ubi.com/v3/profiles/sessions';
 			$options = [
 				'headers' => [
-					'User-Agent'  => Application::INTEGRATION_USER_AGENT,
+					'User-Agent' => Application::INTEGRATION_USER_AGENT,
 					'Content-Type' => 'application/json',
 					'Ubi-AppId' => '86263886-327a-4328-ac69-527f0d20a237',
 					'Authorization' => 'Basic ' . base64_encode($login . ':' . $password),
@@ -976,7 +976,7 @@ class TrackmaniaAPIService {
 			$url = 'https://prod.trackmania.core.nadeo.online/v2/authentication/token/ubiservices';
 			$options = [
 				'headers' => [
-					'User-Agent'  => Application::INTEGRATION_USER_AGENT,
+					'User-Agent' => Application::INTEGRATION_USER_AGENT,
 					'Content-Type' => 'application/json',
 					'Authorization' => 'ubi_v1 t=' . $ticket,
 				],

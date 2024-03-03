@@ -6,3 +6,6 @@
 .vscode-upload.json
 .*.sw*
 node_modules
+/.php*.cache
+/composer.lock
+/vendor

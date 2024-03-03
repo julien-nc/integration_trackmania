@@ -15,15 +15,15 @@ use Exception;
 use GuzzleHttp\Exception\ClientException;
 use OCA\Trackmania\AppInfo\Application;
 use OCA\Trackmania\Service\TrackmaniaAPIService;
+use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\DataDisplayResponse;
+use OCP\AppFramework\Http\DataResponse;
 use OCP\AppFramework\Http\RedirectResponse;
 use OCP\AppFramework\Http\Response;
 use OCP\IRequest;
-use OCP\AppFramework\Http\DataResponse;
-use OCP\AppFramework\Controller;
 
 use OCP\IURLGenerator;
 use OCP\PreConditionNotMetException;
@@ -187,8 +187,9 @@ class TrackmaniaAPIController extends Controller {
 	}
 
 	/**
-	 * @return DataResponse
-	 * @throws Exception
+	 * @param string $thumbnailId
+	 * @param string $fallbackName
+	 * @return Response
 	 */
 	#[NoAdminRequired]
 	#[NoCSRFRequired]
@@ -196,7 +197,7 @@ class TrackmaniaAPIController extends Controller {
 		$thumbnailId = preg_replace('/\//', '', $thumbnailId);
 		$url = Application::AUDIENCES[Application::AUDIENCE_CORE]['base_url'] . 'storageObjects/' . $thumbnailId;
 		$image = $this->trackmaniaAPIService->getImage($url);
-		if ($image !== null && isset($image['body'], $image['headers'])) {
+		if (isset($image['body'], $image['headers'])) {
 			$response = new DataDisplayResponse(
 				$image['body'],
 				Http::STATUS_OK,

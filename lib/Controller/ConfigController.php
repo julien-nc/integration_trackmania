@@ -11,13 +11,13 @@
 
 namespace OCA\Trackmania\Controller;
 
-use OCA\Trackmania\Service\TrackmaniaAPIService;
-use OCP\IConfig;
-use OCP\IRequest;
-use OCP\AppFramework\Http\DataResponse;
-use OCP\AppFramework\Controller;
-
 use OCA\Trackmania\AppInfo\Application;
+use OCA\Trackmania\Service\TrackmaniaAPIService;
+use OCP\AppFramework\Controller;
+use OCP\AppFramework\Http\DataResponse;
+use OCP\IConfig;
+
+use OCP\IRequest;
 use OCP\PreConditionNotMetException;
 
 class ConfigController extends Controller {
