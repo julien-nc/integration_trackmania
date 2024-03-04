@@ -40,6 +40,9 @@
 				@disconnect="disconnect"
 				@reload="reloadData">
 				<template #extra>
+					<div class="connected-as">
+						{{ t('integration_trackmania', 'Connected as {name} ({accountId})', { name: userState.user_name, accountId: userState.account_id }) }}
+					</div>
 					<h3>
 						<strong>{{ t('integration_trackmania', 'Compare yourself with another player') }}</strong>
 					</h3>
