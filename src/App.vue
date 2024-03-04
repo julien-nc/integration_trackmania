@@ -56,16 +56,22 @@
 						:placeholder="t('integration_trackmania', 'Search on trackmania.io by player name')"
 						@input="onOtherAccountSelectChange"
 						@search="onOtherAccountSearch">
-						<!--template #option="option">
-							<div>
-								{{ option.name }}
+						<template #option="option">
+							<div class="account-option">
+								<img v-if="option.flagUrl"
+									:src="option.flagUrl"
+									:title="option.zoneDisplayName">
+								<span>{{ option.name }}</span>
 							</div>
 						</template>
 						<template #selected-option="option">
-							<div>
-								{{ option.name }}
+							<div class="account-option">
+								<img v-if="option.flagUrl"
+									:src="option.flagUrl"
+									:title="option.zoneDisplayName">
+								<span>{{ option.name }}</span>
 							</div>
-						</template-->
+						</template>
 					</NcSelect>
 					<NcTextField
 						:value.sync="tableState.other_account_id"
@@ -112,7 +118,7 @@ import { showError } from '@nextcloud/dialogs'
 import { subscribe, unsubscribe } from '@nextcloud/event-bus'
 import debounce from 'debounce'
 
-import { formatPbs } from './utils.js'
+import { formatPbs, getFlagUrl, getFlagCode, getZoneDisplayName } from './utils.js'
 
 export default {
 	name: 'App',
@@ -176,6 +182,9 @@ export default {
 			this.selectedOtherAccount = {
 				name: this.tableState.other_account_name,
 				id: this.tableState.other_account_id,
+				flagCode: this.tableState.other_account_flag_code,
+				flagUrl: generateUrl('/apps/integration_trackmania/flag/{code}', { code: this.tableState.other_account_flag_code }),
+				zoneDisplayName: this.tableState.other_account_zone_name,
 			}
 		}
 	},
@@ -215,9 +224,13 @@ export default {
 		clearOtherAccount() {
 			this.tableState.other_account_id = ''
 			this.tableState.other_account_name = ''
+			this.tableState.other_account_flag_code = ''
+			this.tableState.other_account_zone_name = ''
 			this.saveOptions({
 				other_account_id: '',
 				other_account_name: '',
+				other_account_flag_code: '',
+				other_account_zone_name: '',
 			})
 			this.reloadData()
 		},
@@ -226,23 +239,35 @@ export default {
 			this.reloadData()
 			this.tableState.other_account_name = ''
 			this.saveOptions({
-				other_account_name: '',
 				other_account_id: this.tableState.other_account_id,
+				other_account_name: '',
+				other_account_flag_code: '',
+				other_account_zone_name: '',
 			}).then(() => {
 				// look for account name
 				const url = generateUrl('/apps/integration_trackmania/account/search/{name}', { name: this.tableState.other_account_id })
 				axios.get(url).then((response) => {
 					if (response.data.length === 1) {
+						console.debug('aaaaa onAccountIdSubmit', response.data[0])
 						this.selectedOtherAccount = {
 							name: response.data[0].player.name,
 							id: response.data[0].player.id,
+							flagCode: getFlagCode(response.data[0].player.zone),
+							flagUrl: getFlagUrl(response.data[0].player.zone),
+							zoneDisplayName: getZoneDisplayName(response.data[0].player.zone),
 						}
-						this.tableState.other_account_name = response.data[0].player.name
+						this.tableState.other_account_name = this.selectedOtherAccount.name
+						this.tableState.other_account_flag_code = this.selectedOtherAccount.flagCode
+						this.tableState.other_account_zone_name = this.selectedOtherAccount.zoneDisplayName
 					} else {
 						this.tableState.other_account_name = t('integration_trackmania', 'Unknown player name')
+						this.tableState.other_account_flag_code = 'WOR'
+						this.tableState.other_account_zone_name = 'World'
 					}
 					this.saveOptions({
 						other_account_name: this.tableState.other_account_name,
+						other_account_flag_code: this.tableState.other_account_flag_code,
+						other_account_zone_name: this.tableState.other_account_zone_name,
 					})
 				}).catch(error => {
 					console.error(error)
@@ -257,9 +282,13 @@ export default {
 			}
 			this.tableState.other_account_id = value.id
 			this.tableState.other_account_name = value.name
+			this.tableState.other_account_flag_code = value.flagCode
+			this.tableState.other_account_zone_name = value.zoneDisplayName
 			this.saveOptions({
 				other_account_id: this.tableState.other_account_id,
 				other_account_name: this.tableState.other_account_name,
+				other_account_flag_code: this.tableState.other_account_flag_code,
+				other_account_zone_name: this.tableState.other_account_zone_name,
 			})
 			this.reloadData()
 		},
@@ -273,7 +302,14 @@ export default {
 			this.searchingOtherAccount = true
 			const url = generateUrl('/apps/integration_trackmania/account/search/{name}', { name: this.otherAccountSearchQuery })
 			axios.get(url).then((response) => {
-				this.otherAccountOptions = response.data.map(item => item.player)
+				this.otherAccountOptions = response.data.map(item => {
+					return {
+						...item.player,
+						flagCode: getFlagCode(item.player.zone),
+						flagUrl: getFlagUrl(item.player.zone),
+						zoneDisplayName: getZoneDisplayName(item.player.zone),
+					}
+				})
 				// this.$set(this, 'otherAccountOptions', response.data.map(item => item.player))
 				console.debug('OPTIONs are now', this.otherAccountOptions)
 			}).catch(error => {
@@ -511,5 +547,15 @@ body {
 .other-account-input {
 	width: 350px;
 	margin-bottom: 8px !important;
+}
+
+.account-option {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	img {
+		height: 16px;
+		width: auto;
+	}
 }
 </style>

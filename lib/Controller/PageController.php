@@ -66,9 +66,10 @@ class PageController extends Controller {
 			if (str_starts_with($key, 'sort_')) {
 				$tableConfig[$key] = $this->config->getUserValue($this->userId, Application::APP_ID, $key);
 			}
+			if (str_starts_with($key, 'other_account_')) {
+				$tableConfig[$key] = $this->config->getUserValue($this->userId, Application::APP_ID, $key);
+			}
 		}
-		$tableConfig['other_account_id'] = $this->config->getUserValue($this->userId, Application::APP_ID, 'other_account_id');
-		$tableConfig['other_account_name'] = $this->config->getUserValue($this->userId, Application::APP_ID, 'other_account_name');
 		$this->initialStateService->provideInitialState('table-config', $tableConfig);
 
 		return new TemplateResponse(Application::APP_ID, 'main', []);

@@ -1046,6 +1046,8 @@ export default {
 	.date-filters {
 		display: flex;
 		align-items: center;
+		justify-content: center;
+		flex-wrap: wrap;
 		gap: 4px;
 		input {
 			flex-grow: 1;

@@ -80,6 +80,23 @@ class TrackmaniaAPIController extends Controller {
 		}
 	}
 
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
+	public function getFlag(string $code): DataDisplayResponse {
+		$url = 'https://trackmania.io/img/flags/' . $code . '.jpg';
+		$image = $this->trackmaniaAPIService->getImage($url);
+		if (isset($image['body'], $image['headers'])) {
+			$response = new DataDisplayResponse(
+				$image['body'],
+				Http::STATUS_OK,
+				['Content-Type' => $image['headers']['Content-Type'][0] ?? 'image/jpeg']
+			);
+			$response->cacheFor(60 * 60 * 24, false, true);
+			return $response;
+		}
+		return new DataDisplayResponse('', Http::STATUS_NOT_FOUND);
+	}
+
 	/**
 	 * @return DataResponse
 	 * @throws Exception

@@ -1,7 +1,7 @@
 import { TextFormatter, Time } from 'tm-essentials'
 import { htmlify } from 'tm-text'
 import moment from '@nextcloud/moment'
-import { imagePath } from '@nextcloud/router'
+import { imagePath, generateUrl } from '@nextcloud/router'
 
 const MEDAL_STRING = {
 	0: t('integration_trackmania', 'None'),
@@ -34,6 +34,32 @@ export function dig(obj, selector) {
 		result = result[splitter[i]]
 	}
 	return result
+}
+export function getFlagCode(zone) {
+	let z = zone
+	const flags = [z.flag]
+	while (z.parent) {
+		z = z.parent
+		flags.push(z.flag)
+	}
+	if (flags.length > 2) {
+		return flags[flags.length - 3]
+	} else if (flags.length > 1) {
+		return flags[flags.length - 2]
+	}
+	return null
+}
+export function getFlagUrl(zone) {
+	return generateUrl('/apps/integration_trackmania/flag/{code}', { code: getFlagCode(zone) })
+}
+export function getZoneDisplayName(zone) {
+	let z = zone
+	const names = [z.name]
+	while (z.parent) {
+		z = z.parent
+		names.push(z.name)
+	}
+	return names.join(', ')
 }
 export function formatPbs(pbs) {
 	for (let i = 0; i < pbs.length; i++) {
