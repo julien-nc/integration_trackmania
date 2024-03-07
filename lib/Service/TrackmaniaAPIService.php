@@ -129,7 +129,7 @@ class TrackmaniaAPIService {
 		}
 
 		$pbs = $this->getMapRecords($userId, null, $mapIdList);
-		$pbs = array_slice($pbs, 0, 100);
+		// $pbs = array_slice($pbs, 0, 100);
 		return $this->formatRecordsAndFavorites($pbs, $allFavsByMapId);
 	}
 

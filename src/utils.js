@@ -36,6 +36,9 @@ export function dig(obj, selector) {
 	return result
 }
 export function getFlagCode(zone) {
+	if (zone === undefined) {
+		return 'WOR'
+	}
 	let z = zone
 	const flags = [z.flag]
 	while (z.parent) {
@@ -47,12 +50,15 @@ export function getFlagCode(zone) {
 	} else if (flags.length > 1) {
 		return flags[flags.length - 2]
 	}
-	return null
+	return 'WOR'
 }
 export function getFlagUrl(zone) {
 	return generateUrl('/apps/integration_trackmania/flag/{code}', { code: getFlagCode(zone) })
 }
 export function getZoneDisplayName(zone) {
+	if (zone === undefined) {
+		return t('integration_trackmania', 'No location found')
+	}
 	let z = zone
 	const names = [z.name]
 	while (z.parent) {
