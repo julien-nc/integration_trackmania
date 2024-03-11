@@ -67,7 +67,7 @@ jobs:
           echo "###### make build_release"
           tag=${{ steps.tag.outputs.currenttag }}
           version=${tag/v/}
-          webserveruser=runner occ_dir=~/html/nextcloud version=$version make build_release
+          webserveruser=runner occ_dir=~/html/nextcloud version=$version make appstore
           echo "##[set-output name=version;]$version"
         env:
           APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}

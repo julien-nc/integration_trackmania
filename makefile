@@ -101,8 +101,11 @@ appstore: clean
 	--exclude=screenshots \
 	--exclude=phpunit*xml \
 	--exclude=tests \
-	--exclude=ci \
-	--exclude=vendor/bin \
+	--exclude=/.nextcloudignore \
+	--exclude=/.php* \
+	--exclude=/krankerl.toml \
+	--exclude=/psalm.xml \
+	--exclude=/vendor \
 	$(project_dir) $(sign_dir)/$(app_name)
 	@if [ -f $(cert_dir)/$(app_name).key ]; then \
 		sudo chown $(webserveruser) $(sign_dir)/$(app_name)/appinfo ;\
