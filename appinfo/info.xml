@@ -3,7 +3,7 @@
 	<id>integration_trackmania</id>
 	<name>Trackmania integration</name>
 	<summary>Integration of Trackmania</summary>
-	<description><![CDATA[Get more information than the game is able to.]]></description>
+	<description><![CDATA[Get more information than the game is able to give.]]></description>
 	<version>1.0.0</version>
 	<licence>agpl</licence>
 	<author>Julien Veyssier</author>
@@ -12,12 +12,11 @@
 		<developer>https://github.com/julien-nc/integration_trackmania</developer>
 	</documentation>
 	<category>integration</category>
-	<category>dashboard</category>
 	<website>https://github.com/julien-nc/integration_trackmania</website>
 	<bugs>https://github.com/julien-nc/integration_trackmania/issues</bugs>
-	<screenshot>https://raw.githubusercontent.com/julien-nc/integration_trackmania/main/img/screenshot1.jpg</screenshot>
-	<screenshot>https://raw.githubusercontent.com/julien-nc/integration_trackmania/main/img/screenshot2.jpg</screenshot>
-	<screenshot>https://raw.githubusercontent.com/julien-nc/integration_trackmania/main/img/screenshot3.jpg</screenshot>
+	<screenshot>https://raw.githubusercontent.com/julien-nc/integration_trackmania/main/img/screenshots/screenshot1.jpg</screenshot>
+	<screenshot>https://raw.githubusercontent.com/julien-nc/integration_trackmania/main/img/screenshots/screenshot2.jpg</screenshot>
+	<screenshot>https://raw.githubusercontent.com/julien-nc/integration_trackmania/main/img/screenshots/screenshot3.jpg</screenshot>
 	<dependencies>
 		<nextcloud min-version="28" max-version="29"/>
 	</dependencies>

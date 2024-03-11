@@ -1,10 +1,8 @@
 # Trackmania integration into Nextcloud
 
-Get data about your account...
+Display statistics of your Trackmania (TM2020) account.
 
-## 🔧 Configuration
+It is also possible to search for other accounts and compare yourself with them.
+This search uses the trackmania.io API so it will only find accounts that connected once to https://trackmania.io .
 
-### User settings
-
-The account configuration happens in the "Connected accounts" user settings section.
-Just enter your Ubisoft connect login and password to let your Nextcloud account access your Trackmania account.
+:warn: This is just a prototype. Contributions are very welcome.
