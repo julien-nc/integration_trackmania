@@ -152,7 +152,12 @@ export default {
 							this.state.user_id = response.data.user_id
 							this.state.user_name = response.data.user_name
 							this.state.core_token = 'dumdum'
-							this.$emit('connected', this.state.user_name, this.state.user_id)
+							this.$emit('connected', {
+								user_name: this.state.user_name,
+								user_id: this.state.user_id,
+								user_flag_code: response.data.user_flag_code,
+								user_zone_name: response.data.user_zone_name,
+							})
 						}
 					} else {
 						showSuccess(t('integration_trackmania', 'Trackmania options saved'))

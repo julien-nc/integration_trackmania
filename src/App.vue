@@ -40,51 +40,62 @@
 				@disconnect="disconnect"
 				@reload="reloadData">
 				<template #extra>
-					<div class="connected-as">
-						{{ t('integration_trackmania', 'Connected as {name} ({accountId})', { name: userState.user_name, accountId: userState.account_id }) }}
+					<div class="accounts">
+						<div class="connected-as">
+							{{ t('integration_trackmania', 'Connected as {name}', { name: userState.user_name }) }}
+							<img v-if="userState.user_flag_code"
+								class="account-flag"
+								:src="getFlagUrl(userState.user_flag_code)"
+								:title="userState.user_zone_name">
+							<span>({{ userState.account_id }})</span>
+						</div>
+						<div class="other-account">
+							<h3>
+								<strong>{{ t('integration_trackmania', 'Compare yourself with another player') }}</strong>
+							</h3>
+							<NcSelect
+								:value="selectedOtherAccount"
+								:options="otherAccountOptions"
+								class="other-account-select"
+								:multiple="false"
+								:label-outside="true"
+								label="name"
+								:filter-by="() => true"
+								:loading="searchingOtherAccount"
+								:aria-label-combobox="t('integration_trackmania', 'Search account')"
+								:placeholder="t('integration_trackmania', 'Search on trackmania.io by player name')"
+								@input="onOtherAccountSelectChange"
+								@search="onOtherAccountSearch">
+								<template #option="option">
+									<div class="account-option">
+										<img v-if="option.flagUrl"
+											class="account-flag"
+											:src="option.flagUrl"
+											:title="option.zoneDisplayName">
+										<span>{{ option.name }}</span>
+									</div>
+								</template>
+								<template #selected-option="option">
+									<div class="account-option">
+										<img v-if="option.flagUrl"
+											class="account-flag"
+											:src="option.flagUrl"
+											:title="option.zoneDisplayName">
+										<span>{{ option.name }}</span>
+									</div>
+								</template>
+							</NcSelect>
+							<NcTextField
+								:value.sync="tableState.other_account_id"
+								type="text"
+								:label="t('integration_trackmania', 'Account ID')"
+								:show-trailing-button="!!tableState.other_account_id"
+								class="other-account-input"
+								:placeholder="t('integration_trackmania', 'account ID')"
+								@keyup.enter="onAccountIdSubmit"
+								@trailing-button-click="clearOtherAccount" />
+						</div>
 					</div>
-					<h3>
-						<strong>{{ t('integration_trackmania', 'Compare yourself with another player') }}</strong>
-					</h3>
-					<NcSelect
-						:value="selectedOtherAccount"
-						:options="otherAccountOptions"
-						class="other-account-select"
-						:multiple="false"
-						:label-outside="true"
-						label="name"
-						:filter-by="() => true"
-						:loading="searchingOtherAccount"
-						:aria-label-combobox="t('integration_trackmania', 'Search account')"
-						:placeholder="t('integration_trackmania', 'Search on trackmania.io by player name')"
-						@input="onOtherAccountSelectChange"
-						@search="onOtherAccountSearch">
-						<template #option="option">
-							<div class="account-option">
-								<img v-if="option.flagUrl"
-									:src="option.flagUrl"
-									:title="option.zoneDisplayName">
-								<span>{{ option.name }}</span>
-							</div>
-						</template>
-						<template #selected-option="option">
-							<div class="account-option">
-								<img v-if="option.flagUrl"
-									:src="option.flagUrl"
-									:title="option.zoneDisplayName">
-								<span>{{ option.name }}</span>
-							</div>
-						</template>
-					</NcSelect>
-					<NcTextField
-						:value.sync="tableState.other_account_id"
-						type="text"
-						:label="t('integration_trackmania', 'Account ID')"
-						:show-trailing-button="!!tableState.other_account_id"
-						class="other-account-input"
-						:placeholder="t('integration_trackmania', 'account ID')"
-						@keyup.enter="onAccountIdSubmit"
-						@trailing-button-click="clearOtherAccount" />
 				</template>
 			</MainContent>
 			<NcEmptyContent v-else
@@ -199,9 +210,14 @@ export default {
 	},
 
 	methods: {
-		onConnected(userName, accountId) {
-			this.userState.user_name = userName
-			this.userState.account_id = accountId
+		getFlagUrl(code) {
+			return generateUrl('/apps/integration_trackmania/flag/{code}', { code })
+		},
+		onConnected(data) {
+			this.userState.user_name = data.user_name
+			this.userState.account_id = data.user_id
+			this.userState.user_flag_code = data.user_flag_code
+			this.userState.user_zone_name = data.user_zone_name
 			this.userState.core_token = 'plop'
 			this.getPbs()
 		},
@@ -546,19 +562,32 @@ body {
 	align-items: center;
 }
 
-.other-account-select,
-.other-account-input {
-	width: 350px;
-	margin-bottom: 8px !important;
-}
-
-.account-option {
+.accounts {
 	display: flex;
 	align-items: center;
-	gap: 4px;
-	img {
+	gap: 12px;
+
+	.other-account-select,
+	.other-account-input {
+		width: 350px;
+		margin-bottom: 8px !important;
+	}
+
+	.account-option {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+	}
+
+	.account-flag {
 		height: 16px;
 		width: auto;
+	}
+
+	.connected-as {
+		display: flex;
+		align-items: center;
+		gap: 4px;
 	}
 }
 </style>

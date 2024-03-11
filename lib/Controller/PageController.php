@@ -45,11 +45,15 @@ class PageController extends Controller {
 		$userName = $this->config->getUserValue($this->userId, Application::APP_ID, 'user_name');
 		$ubisoftUserId = $this->config->getUserValue($this->userId, Application::APP_ID, 'user_id');
 		$accountId = $this->config->getUserValue($this->userId, Application::APP_ID, $prefix . 'account_id');
+		$userFlagCode = $this->config->getUserValue($this->userId, Application::APP_ID, 'user_flag_code');
+		$userZoneName = $this->config->getUserValue($this->userId, Application::APP_ID, 'user_zone_name');
 
 		$pageInitialState = [
 			'core_token' => ($coreToken && $refreshToken) ? 'dummyTokenContent' : '',
 			'account_id' => $accountId,
 			'user_name' => $userName,
+			'user_flag_code' => $userFlagCode,
+			'user_zone_name' => $userZoneName,
 			'ubisofts_user_id' => $ubisoftUserId,
 		];
 		$this->initialStateService->provideInitialState('user-config', $pageInitialState);

@@ -66,7 +66,8 @@ class ConfigController extends Controller {
 			$this->config->deleteUserValue($this->userId, Application::APP_ID, 'user_id');
 			$this->config->deleteUserValue($this->userId, Application::APP_ID, 'account_id');
 			$this->config->deleteUserValue($this->userId, Application::APP_ID, 'user_name');
-			$this->config->deleteUserValue($this->userId, Application::APP_ID, 'user_displayname');
+			$this->config->deleteUserValue($this->userId, Application::APP_ID, 'user_flag_code');
+			$this->config->deleteUserValue($this->userId, Application::APP_ID, 'user_zone_name');
 			foreach (Application::AUDIENCES as $audienceKey => $v) {
 				$prefix = $v['token_config_key_prefix'];
 				$this->config->deleteUserValue($this->userId, Application::APP_ID, $prefix . 'token');
@@ -76,13 +77,11 @@ class ConfigController extends Controller {
 			}
 			$result['user_id'] = '';
 			$result['user_name'] = '';
-			$result['user_displayname'] = '';
 		}
 		return new DataResponse($result);
 	}
 
 	/**
-	 * @param string $url
 	 * @param string $login
 	 * @param string $password
 	 * @return DataResponse
@@ -107,18 +106,63 @@ class ConfigController extends Controller {
 				$this->config->setUserValue($this->userId, Application::APP_ID, $prefix . 'token_expires_at', $expiresAt);
 				$accountId = $decodedToken['sub'];
 				$this->config->setUserValue($this->userId, Application::APP_ID, $prefix . 'account_id', $accountId);
+
+				if ($audienceKey === Application::AUDIENCE_CORE) {
+					$zoneInfo = $this->getAccountZoneInfo($decodedToken['sub']);
+				}
 			}
 
 			return new DataResponse([
-				'user_id' => $result['userId'] ?? '',
-				'user_name' => $result['nameOnPlatform'] ?? '',
+				'user_id' => $result['userId'],
+				'user_name' => $result['nameOnPlatform'],
+				'user_flag_code' => $zoneInfo['user_flag_code'] ?? '',
+				'user_zone_name' => $zoneInfo['user_zone_name'] ?? '',
 			]);
 		}
 		return new DataResponse([
 			'user_id' => '',
 			'user_name' => '',
-			'user_displayname' => '',
 		]);
+	}
+
+	private function getAccountZoneInfo(string $accountId): array {
+		$searchResult = $this->trackmaniaAPIService->searchAccount($accountId);
+		if (isset($searchResult['error']) || count($searchResult) !== 1) {
+			error_log('1111 ::: '.$accountId. '!!!! '.json_encode($searchResult));
+			return [];
+		}
+		$account = $searchResult[0];
+		if (!isset($account['player'])) {
+			error_log('22222');
+			return [];
+		}
+		$player = $account['player'];
+		if (!isset($player['zone'])) {
+			error_log('33333');
+			return [];
+		}
+		$zone = $player['zone'];
+		$zoneNames = [$zone['name']];
+		$flags = [$zone['flag']];
+		while (isset($zone['parent'])) {
+			$zone = $zone['parent'];
+			$zoneNames[] = $zone['name'];
+			$flags[] = $zone['flag'];
+		}
+
+		// flag
+		$flag = 'WOR';
+		if (count($flags) > 2) {
+			 $flag = $flags[count($flags) - 3];
+		} elseif (count($flags) > 2) {
+			$flag = $flags[count($flags) - 2];
+		}
+		$this->config->setUserValue($this->userId, Application::APP_ID, 'user_flag_code', $flag);
+		$this->config->setUserValue($this->userId, Application::APP_ID, 'user_zone_name', implode(', ', $zoneNames));
+		return [
+			'user_flag_code' => $flag,
+			'user_zone_name' => implode(', ', $zoneNames),
+		];
 	}
 
 	public static function decodeToken(string $token): array {
