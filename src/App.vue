@@ -64,6 +64,7 @@
 								:loading="searchingOtherAccount"
 								:aria-label-combobox="t('integration_trackmania', 'Search account')"
 								:placeholder="t('integration_trackmania', 'Search on trackmania.io by player name')"
+								:append-to-body="false"
 								@input="onOtherAccountSelectChange"
 								@search="onOtherAccountSearch">
 								<template #option="option">
