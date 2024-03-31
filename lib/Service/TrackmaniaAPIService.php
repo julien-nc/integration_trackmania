@@ -467,6 +467,22 @@ class TrackmaniaAPIService {
 		];
 		if ($mapIds !== null) {
 			$params['mapIdList'] = implode(',', $mapIds);
+			if (strlen($params['mapIdList']) > 7000) {
+				$mapRecords = [];
+				while (count($mapIds) > 0) {
+					$mapIdsChunk = [];
+					$lenTmp = 0;
+					while (count($mapIds) > 0 && $lenTmp < 7000) {
+						$mapId = array_pop($mapIds);
+						$lenTmp += strlen($mapId);
+						$mapIdsChunk[] = $mapId;
+					}
+					$params['mapIdList'] = implode(',', $mapIdsChunk);
+					$mapRecordsChunk = $this->request($userId, Application::AUDIENCE_CORE, 'mapRecords/', $params);
+					$mapRecords = array_merge($mapRecords, $mapRecordsChunk);
+				}
+				return $mapRecords;
+			}
 		}
 
 		// max URI length: 8220 chars

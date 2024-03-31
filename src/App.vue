@@ -30,10 +30,16 @@
 						<NcProgressBar :value="infoLoadingPercent"
 							type="linear"
 							size="medium" />
+						<NcButton @click="cancelDataLoad">
+							<template #icon>
+								<CloseIcon />
+							</template>
+							{{ t('integration_trackmania', 'Cancel') }}
+						</NcButton>
 					</div>
 				</template>
 			</NcEmptyContent>
-			<MainContent v-else-if="hasData"
+			<MainContent v-else
 				:pbs="pbs"
 				:zone-names="zoneNames"
 				:config-state="tableState"
@@ -99,19 +105,13 @@
 					</div>
 				</template>
 			</MainContent>
-			<NcEmptyContent v-else
-				class="main-empty-content"
-				:name="t('integration_trackmania', 'Failed to get the data')">
-				<template #icon>
-					<TrackmaniaIcon />
-				</template>
-			</NcEmptyContent>
 		</NcAppContent>
 	</NcContent>
 </template>
 
 <script>
 import CogIcon from 'vue-material-design-icons/Cog.vue'
+import CloseIcon from 'vue-material-design-icons/Close.vue'
 
 import TrackmaniaIcon from './components/icons/TrackmaniaIcon.vue'
 
@@ -122,6 +122,7 @@ import NcEmptyContent from '@nextcloud/vue/dist/Components/NcEmptyContent.js'
 import NcProgressBar from '@nextcloud/vue/dist/Components/NcProgressBar.js'
 import NcTextField from '@nextcloud/vue/dist/Components/NcTextField.js'
 import NcSelect from '@nextcloud/vue/dist/Components/NcSelect.js'
+import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
 
 import PersonalSettings from './components/PersonalSettings.vue'
 import MainContent from './components/MainContent.vue'
@@ -143,6 +144,7 @@ export default {
 		TrackmaniaIcon,
 		PersonalSettings,
 		CogIcon,
+		CloseIcon,
 		NcAppContent,
 		NcContent,
 		NcEmptyContent,
@@ -150,6 +152,7 @@ export default {
 		NcProgressBar,
 		NcTextField,
 		NcSelect,
+		NcButton,
 	},
 
 	props: {
@@ -160,7 +163,8 @@ export default {
 			userState: loadState('integration_trackmania', 'user-config'),
 			tableState: loadState('integration_trackmania', 'table-config'),
 			loadingData: false,
-			zoneNames: null,
+			abortController: null,
+			zoneNames: [],
 			pbs: [],
 			infoLoadingPercent: 0,
 			otherAccountOptions: [],
@@ -344,6 +348,12 @@ export default {
 				this.otherAccountDisplayName = response.data.displayName
 			})
 		},
+		cancelDataLoad() {
+			this.loadingData = false
+			if (this.abortController) {
+				this.abortController.abort()
+			}
+		},
 		reloadData(mapIdList = null) {
 			if (mapIdList === null) {
 				this.pbs = []
@@ -354,14 +364,18 @@ export default {
 		},
 		// first get records and then map info by chunks
 		getPbs(mapIdList = null) {
+			this.abortController = new AbortController()
 			this.infoLoadingPercent = 0
 			this.loadingData = true
-			const req = {}
+			const reqData = {}
+			const reqConfig = {
+				signal: this.abortController.signal,
+			}
 			if (mapIdList !== null) {
-				req.mapIdList = mapIdList
+				reqData.mapIdList = mapIdList
 			}
 			const url = generateUrl('/apps/integration_trackmania/pbs/raw')
-			axios.post(url, req).then((response) => {
+			axios.post(url, reqData, reqConfig).then((response) => {
 				this.$options.rawPbsToGetInfoOn = response.data
 				this.$options.pbsWithInfo = []
 				this.getPbsInfo(mapIdList)
@@ -397,7 +411,12 @@ export default {
 				chunks.push(currentChunk)
 			}
 			Promise.all(chunks.map(c => this.getPbsChunkInfo(c)))
-				.then(result => {
+				.then(results => {
+					if (results.some(result => result.code === 'ERR_CANCELED')) {
+						console.debug('At least one request has been canceled, do nothing')
+						return
+					}
+					console.debug('aaaaaa promise.all results', results)
 					console.debug('----- all done', this.$options.pbsWithInfo)
 					this.zoneNames = this.getZoneNames(this.$options.pbsWithInfo[0])
 					// TODO extend instead of replace
@@ -424,13 +443,16 @@ export default {
 				pbTimesByMapId[mapId] = time
 			}
 			const url = generateUrl('/apps/integration_trackmania/pbs/info')
-			const req = {
+			const reqConfig = {
+				signal: this.abortController.signal,
+			}
+			const reqData = {
 				pbTimesByMapId,
 			}
 			if (this.tableState.other_account_id) {
-				req.otherAccountId = this.tableState.other_account_id
+				reqData.otherAccountId = this.tableState.other_account_id
 			}
-			return axios.post(url, req).then((response) => {
+			return axios.post(url, reqData, reqConfig).then(response => {
 				const infoByMapId = response.data
 				const chunkWithInfo = chunk.map(c => {
 					if (c.mapInfo.mapId in infoByMapId) {
@@ -450,8 +472,10 @@ export default {
 				this.$options.pbsWithInfo.push(...chunkWithInfo)
 				this.infoLoadingPercent = parseInt(this.$options.pbsWithInfo.length / this.$options.rawPbsToGetInfoOn.length * 100)
 				console.debug('----- ONE done', this.infoLoadingPercent)
+				return response
 			}).catch((error) => {
 				console.error(error)
+				return error
 			})
 		},
 		/**
@@ -460,7 +484,10 @@ export default {
 		getPbsAndInfo() {
 			this.loadingData = true
 			const url = generateUrl('/apps/integration_trackmania/pbs')
-			axios.get(url).then((response) => {
+			const reqConfig = {
+				signal: this.abortController.signal,
+			}
+			axios.get(url, reqConfig).then((response) => {
 				this.zoneNames = this.getZoneNames(response.data[0])
 				this.pbs = formatPbs(response.data)
 			}).catch((error) => {
@@ -486,7 +513,7 @@ export default {
 			this.pbs.push(...formatPbs(this.$options.pbsWithInfo))
 		},
 		getZoneNames(onePb) {
-			return Object.keys(onePb.recordPosition.zones)
+			return Object.keys(onePb.recordPosition.zones) || []
 		},
 		getNbPlayers(pb) {
 			const url = generateUrl('/apps/integration_trackmania/map/{mapUid}/finish-count', { mapUid: pb.mapInfo.uid })
@@ -561,6 +588,7 @@ body {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
+	gap: 8px;
 }
 
 .accounts {
