@@ -3,7 +3,7 @@
 	<id>integration_trackmania</id>
 	<name>Trackmania integration</name>
 	<summary>Integration of Trackmania</summary>
-	<description><![CDATA[Get more information than the game is able to give.]]></description>
+	<description><![CDATA[Show all your PBs in a dynamic table and optionally compare yourself to another player.]]></description>
 	<version>1.0.0</version>
 	<licence>agpl</licence>
 	<author>Julien Veyssier</author>
