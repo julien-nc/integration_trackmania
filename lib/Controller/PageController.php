@@ -59,7 +59,12 @@ class PageController extends Controller {
 		$this->initialStateService->provideInitialState('user-config', $pageInitialState);
 
 		// table config
-		$tableConfig = [];
+		$tableConfig = [
+			'other_account_id' => '',
+			'other_account_name' => '',
+			'other_account_flag_code' => '',
+			'other_account_zone_name' => '',
+		];
 		foreach ($this->config->getUserKeys($this->userId, Application::APP_ID) as $key) {
 			if (str_starts_with($key, 'show_column_')) {
 				$tableConfig[$key] = $this->config->getUserValue($this->userId, Application::APP_ID, $key);

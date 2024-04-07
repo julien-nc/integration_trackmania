@@ -20,7 +20,18 @@
 				{{ t('integration_trackmania', 'Disconnect') }}
 			</NcButton>
 		</div>
-		<slot name="extra" />
+		<div class="accounts">
+			<div class="connected-as">
+				{{ t('integration_trackmania', 'Connected as {name}', { name: userState.user_name }) }}
+				<img v-if="userState.user_flag_code"
+					class="account-flag"
+					:src="getFlagUrlFromCode(userState.user_flag_code)"
+					:title="userState.user_zone_name">
+				<span>({{ userState.account_id }})</span>
+			</div>
+			<OtherAccountSelect :other-account="otherAccount"
+				@update:other-account="$emit('update:other-account', $event)" />
+		</div>
 	</div>
 </template>
 
@@ -30,16 +41,29 @@ import CloseIcon from 'vue-material-design-icons/Close.vue'
 
 import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
 
+import OtherAccountSelect from './OtherAccountSelect.vue'
+
+import { getFlagUrlFromCode } from '../utils.js'
+
 export default {
 	name: 'AccountHeader',
 
 	components: {
+		OtherAccountSelect,
 		NcButton,
 		ReloadIcon,
 		CloseIcon,
 	},
 
 	props: {
+		otherAccount: {
+			type: Object,
+			required: true,
+		},
+		userState: {
+			type: Object,
+			required: true,
+		},
 	},
 
 	data() {
@@ -57,6 +81,9 @@ export default {
 	},
 
 	methods: {
+		getFlagUrlFromCode(code) {
+			return getFlagUrlFromCode(code)
+		},
 	},
 }
 </script>
@@ -69,6 +96,23 @@ export default {
 		margin-bottom: 24px;
 		display: flex;
 		gap: 8px;
+	}
+
+	.accounts {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+
+		.account-flag {
+			height: 16px;
+			width: auto;
+		}
+
+		.connected-as {
+			display: flex;
+			align-items: center;
+			gap: 4px;
+		}
 	}
 }
 </style>

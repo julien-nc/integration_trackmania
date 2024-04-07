@@ -52,8 +52,11 @@ export function getFlagCode(zone) {
 	}
 	return 'WOR'
 }
-export function getFlagUrl(zone) {
+export function getFlagUrlFromZone(zone) {
 	return generateUrl('/apps/integration_trackmania/flag/{code}', { code: getFlagCode(zone) })
+}
+export function getFlagUrlFromCode(code) {
+	return generateUrl('/apps/integration_trackmania/flag/{code}', { code })
 }
 export function getZoneDisplayName(zone) {
 	if (zone === undefined) {
