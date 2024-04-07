@@ -153,8 +153,8 @@ class ConfigController extends Controller {
 		// flag
 		$flag = 'WOR';
 		if (count($flags) > 2) {
-			 $flag = $flags[count($flags) - 3];
-		} elseif (count($flags) > 2) {
+			$flag = $flags[count($flags) - 3];
+		} elseif (count($flags) > 1) {
 			$flag = $flags[count($flags) - 2];
 		}
 		$this->config->setUserValue($this->userId, Application::APP_ID, 'user_flag_code', $flag);
