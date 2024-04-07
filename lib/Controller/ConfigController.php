@@ -112,8 +112,9 @@ class ConfigController extends Controller {
 				}
 			}
 
+			$corePrefix = Application::AUDIENCES[Application::AUDIENCE_CORE]['token_config_key_prefix'];
 			return new DataResponse([
-				'user_id' => $result['userId'],
+				'user_id' => $this->config->getUserValue($this->userId, Application::APP_ID, $corePrefix . 'account_id'),
 				'user_name' => $result['nameOnPlatform'],
 				'user_flag_code' => $zoneInfo['user_flag_code'] ?? '',
 				'user_zone_name' => $zoneInfo['user_zone_name'] ?? '',
