@@ -5,6 +5,10 @@
 			@update:showDetails="a = 2">
 			<!--template #list>
 			</template-->
+			<h2 class="page-title">
+				<TrackmaniaIcon class="icon" />
+				<span>{{ t('integration_trackmania', 'Trackmania integration') }}</span>
+			</h2>
 			<div v-if="!connected">
 				<NcEmptyContent
 					:name="t('integration_trackmania', 'You are not connected to Trackmania')">
@@ -39,72 +43,77 @@
 					</div>
 				</template>
 			</NcEmptyContent>
-			<MainContent v-else
-				:pbs="pbs"
-				:zone-names="zoneNames"
-				:config-state="tableState"
-				@disconnect="disconnect"
-				@reload="reloadData">
-				<template #extra>
-					<div class="accounts">
-						<div class="connected-as">
-							{{ t('integration_trackmania', 'Connected as {name}', { name: userState.user_name }) }}
-							<img v-if="userState.user_flag_code"
-								class="account-flag"
-								:src="getFlagUrl(userState.user_flag_code)"
-								:title="userState.user_zone_name">
-							<span>({{ userState.account_id }})</span>
+			<div v-else>
+				<AccountHeader
+					@disconnect="disconnect"
+					@reload="reloadData"
+					@reload-filtered="reloadFilteredData">
+					<template #extra>
+						<div class="accounts">
+							<div class="connected-as">
+								{{ t('integration_trackmania', 'Connected as {name}', { name: userState.user_name }) }}
+								<img v-if="userState.user_flag_code"
+									class="account-flag"
+									:src="getFlagUrl(userState.user_flag_code)"
+									:title="userState.user_zone_name">
+								<span>({{ userState.account_id }})</span>
+							</div>
+							<div class="other-account">
+								<h3>
+									<strong>{{ t('integration_trackmania', 'Compare yourself with another player') }}</strong>
+								</h3>
+								<NcSelect
+									:value="selectedOtherAccount"
+									:options="otherAccountOptions"
+									class="other-account-select"
+									:multiple="false"
+									:label-outside="true"
+									label="name"
+									:filter-by="() => true"
+									:loading="searchingOtherAccount"
+									:aria-label-combobox="t('integration_trackmania', 'Search account')"
+									:placeholder="t('integration_trackmania', 'Search on trackmania.io by player name')"
+									:append-to-body="false"
+									@input="onOtherAccountSelectChange"
+									@search="onOtherAccountSearch">
+									<template #option="option">
+										<div class="account-option">
+											<img v-if="option.flagUrl"
+												class="account-flag"
+												:src="option.flagUrl"
+												:title="option.zoneDisplayName">
+											<span>{{ option.name }}</span>
+										</div>
+									</template>
+									<template #selected-option="option">
+										<div class="account-option">
+											<img v-if="option.flagUrl"
+												class="account-flag"
+												:src="option.flagUrl"
+												:title="option.zoneDisplayName">
+											<span>{{ option.name }}</span>
+										</div>
+									</template>
+								</NcSelect>
+								<NcTextField
+									:value.sync="tableState.other_account_id"
+									type="text"
+									:label="t('integration_trackmania', 'Account ID')"
+									:show-trailing-button="!!tableState.other_account_id"
+									class="other-account-input"
+									:placeholder="t('integration_trackmania', 'account ID')"
+									@keyup.enter="onAccountIdSubmit"
+									@trailing-button-click="clearOtherAccount" />
+							</div>
 						</div>
-						<div class="other-account">
-							<h3>
-								<strong>{{ t('integration_trackmania', 'Compare yourself with another player') }}</strong>
-							</h3>
-							<NcSelect
-								:value="selectedOtherAccount"
-								:options="otherAccountOptions"
-								class="other-account-select"
-								:multiple="false"
-								:label-outside="true"
-								label="name"
-								:filter-by="() => true"
-								:loading="searchingOtherAccount"
-								:aria-label-combobox="t('integration_trackmania', 'Search account')"
-								:placeholder="t('integration_trackmania', 'Search on trackmania.io by player name')"
-								:append-to-body="false"
-								@input="onOtherAccountSelectChange"
-								@search="onOtherAccountSearch">
-								<template #option="option">
-									<div class="account-option">
-										<img v-if="option.flagUrl"
-											class="account-flag"
-											:src="option.flagUrl"
-											:title="option.zoneDisplayName">
-										<span>{{ option.name }}</span>
-									</div>
-								</template>
-								<template #selected-option="option">
-									<div class="account-option">
-										<img v-if="option.flagUrl"
-											class="account-flag"
-											:src="option.flagUrl"
-											:title="option.zoneDisplayName">
-										<span>{{ option.name }}</span>
-									</div>
-								</template>
-							</NcSelect>
-							<NcTextField
-								:value.sync="tableState.other_account_id"
-								type="text"
-								:label="t('integration_trackmania', 'Account ID')"
-								:show-trailing-button="!!tableState.other_account_id"
-								class="other-account-input"
-								:placeholder="t('integration_trackmania', 'account ID')"
-								@keyup.enter="onAccountIdSubmit"
-								@trailing-button-click="clearOtherAccount" />
-						</div>
-					</div>
-				</template>
-			</MainContent>
+					</template>
+				</AccountHeader>
+				<UserData
+					ref="userData"
+					:pbs="pbs"
+					:zone-names="zoneNames"
+					:config-state="tableState" />
+			</div>
 		</NcAppContent>
 	</NcContent>
 </template>
@@ -125,7 +134,8 @@ import NcSelect from '@nextcloud/vue/dist/Components/NcSelect.js'
 import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
 
 import PersonalSettings from './components/PersonalSettings.vue'
-import MainContent from './components/MainContent.vue'
+import UserData from './components/UserData.vue'
+import AccountHeader from './components/AccountHeader.vue'
 
 import { generateUrl } from '@nextcloud/router'
 import { loadState } from '@nextcloud/initial-state'
@@ -140,7 +150,8 @@ export default {
 	name: 'App',
 
 	components: {
-		MainContent,
+		UserData,
+		AccountHeader,
 		TrackmaniaIcon,
 		PersonalSettings,
 		CogIcon,
@@ -353,6 +364,10 @@ export default {
 			if (this.abortController) {
 				this.abortController.abort()
 			}
+		},
+		reloadFilteredData() {
+			const filteredPbs = this.$refs.userData.filteredPbs
+			this.reloadData(filteredPbs.map(pb => pb.mapInfo.mapId))
 		},
 		reloadData(mapIdList = null) {
 			if (mapIdList === null) {
@@ -572,6 +587,14 @@ export default {
 body {
 	min-height: 100%;
 	height: auto;
+}
+
+h2.page-title {
+	padding: 20px 0 0 30px;
+	display: flex;
+	.icon {
+		margin-right: 8px;
+	}
 }
 
 .settings {

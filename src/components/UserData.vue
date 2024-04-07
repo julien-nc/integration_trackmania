@@ -1,30 +1,5 @@
 <template>
 	<div id="trackmania_main">
-		<h2>
-			<TrackmaniaIcon class="icon" />
-			<span>{{ t('integration_trackmania', 'Trackmania integration') }}</span>
-		</h2>
-		<div class="header">
-			<NcButton @click="$emit('reload')">
-				<template #icon>
-					<ReloadIcon />
-				</template>
-				{{ t('integration_trackmania', 'Reload data') }}
-			</NcButton>
-			<NcButton @click="$emit('reload', filteredPbs.map(pb => pb.mapInfo.mapId))">
-				<template #icon>
-					<ReloadIcon />
-				</template>
-				{{ t('integration_trackmania', 'Reload data for current filtered record list') }}
-			</NcButton>
-			<NcButton @click="$emit('disconnect')">
-				<template #icon>
-					<CloseIcon />
-				</template>
-				{{ t('integration_trackmania', 'Disconnect') }}
-			</NcButton>
-		</div>
-		<slot name="extra" />
 		<div v-if="configState.other_account_id">
 			<p style="color: var(--color-success);">
 				👍 {{ t('integration_trackmania', '{nb} records better than other account', { nb: betterThanOtherCount }) }}
@@ -297,11 +272,7 @@
 <script>
 import StarIcon from 'vue-material-design-icons/Star.vue'
 import StarOutlineIcon from 'vue-material-design-icons/StarOutline.vue'
-import ReloadIcon from 'vue-material-design-icons/Reload.vue'
-import CloseIcon from 'vue-material-design-icons/Close.vue'
 import FilterRemoveIcon from 'vue-material-design-icons/FilterRemove.vue'
-
-import TrackmaniaIcon from './icons/TrackmaniaIcon.vue'
 
 import NcLoadingIcon from '@nextcloud/vue/dist/Components/NcLoadingIcon.js'
 import NcDateTimePicker from '@nextcloud/vue/dist/Components/NcDateTimePicker.js'
@@ -323,21 +294,18 @@ import {
 } from '../utils.js'
 
 export default {
-	name: 'MainContent',
+	name: 'UserData',
 
 	components: {
 		SimpleTable,
 		// NbRecordsPerPosition,
 		MapDetailModal,
-		TrackmaniaIcon,
 		NcSelect,
 		NcButton,
 		NcLoadingIcon,
 		NcTextField,
 		NcDateTimePicker,
 		NcCheckboxRadioSwitch,
-		ReloadIcon,
-		CloseIcon,
 		FilterRemoveIcon,
 		StarIcon,
 		StarOutlineIcon,
@@ -969,19 +937,6 @@ export default {
 	overflow-x: scroll;
 	height: 100%;
 	padding: 30px;
-
-	>h2 {
-		display: flex;
-		.icon {
-			margin-right: 8px;
-		}
-	}
-
-	.header {
-		margin-bottom: 24px;
-		display: flex;
-		gap: 8px;
-	}
 
 	.table-header {
 		display: flex;
