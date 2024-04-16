@@ -164,7 +164,7 @@ export default {
 <style scoped lang="scss">
 .other-account-select,
 .other-account-input {
-	width: 350px;
+	width: 350px !important;
 	margin-bottom: 8px !important;
 }
 
