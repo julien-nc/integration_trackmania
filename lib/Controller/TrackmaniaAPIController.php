@@ -204,28 +204,35 @@ class TrackmaniaAPIController extends Controller {
 	}
 
 	/**
-	 * @param string $thumbnailId
+	 * @param string $mapId
 	 * @param string $fallbackName
 	 * @return Response
 	 */
 	#[NoAdminRequired]
 	#[NoCSRFRequired]
-	public function getMapThumbnail(string $thumbnailId, string $fallbackName = '?'): Response {
-		$thumbnailId = preg_replace('/\//', '', $thumbnailId);
-		$url = Application::AUDIENCES[Application::AUDIENCE_CORE]['base_url'] . 'storageObjects/' . $thumbnailId;
-		$image = $this->trackmaniaAPIService->getImage($url);
-		if (isset($image['body'], $image['headers'])) {
-			$response = new DataDisplayResponse(
-				$image['body'],
-				Http::STATUS_OK,
-				['Content-Type' => $image['headers']['Content-Type'][0] ?? 'image/jpeg']
-			);
-			$response->cacheFor(60 * 60 * 24, false, true);
-			return $response;
+	public function getMapThumbnail(string $mapId, string $fallbackName = '?'): Response {
+		$mapInfo = $this->trackmaniaAPIService->getCoreMapInfo($this->userId, [$mapId]);
+		if (count($mapInfo) === 0) {
+			return new DataResponse('Map info not found', Http::STATUS_NOT_FOUND);
 		}
+		$url = $mapInfo[0]['thumbnailUrl'];
+		try {
+			$image = $this->trackmaniaAPIService->getImage($url);
+			if (isset($image['body'], $image['headers'])) {
+				$response = new DataDisplayResponse(
+					$image['body'],
+					Http::STATUS_OK,
+					['Content-Type' => $image['headers']['Content-Type'][0] ?? 'image/jpeg']
+				);
+				$response->cacheFor(60 * 60 * 24, false, true);
+				return $response;
+			}
 
-		$fallbackAvatarUrl = $this->urlGenerator->linkToRouteAbsolute('core.GuestAvatar.getAvatar', ['guestName' => $fallbackName, 'size' => 200]);
-		return new RedirectResponse($fallbackAvatarUrl);
+			$fallbackAvatarUrl = $this->urlGenerator->linkToRouteAbsolute('core.GuestAvatar.getAvatar', ['guestName' => $fallbackName, 'size' => 200]);
+			return new RedirectResponse($fallbackAvatarUrl);
+		} catch (ClientException $e) {
+			return new DataResponse($e->getMessage(), $e->getResponse()->getStatusCode());
+		}
 	}
 
 	/**

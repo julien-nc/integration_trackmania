@@ -1,5 +1,6 @@
 <template>
 	<NcModal size="normal"
+		:name="t('integration_trackmania', 'Map details for map {mapName}', { mapName: pb.mapInfo.cleanName })"
 		@close="$emit('close')">
 		<div class="modal-content-wrapper">
 			<NcButton class="map-name-button">
@@ -106,9 +107,7 @@ export default {
 
 	computed: {
 		thumbnailUrl() {
-			const directUrl = this.pb.mapInfo.thumbnailUrl
-			const thumbnailId = directUrl.split('/').at(-1)
-			return generateUrl('/apps/integration_trackmania/thumbnail/{id}', { id: thumbnailId })
+			return generateUrl('/apps/integration_trackmania/map/{mapId}/thumbnail', { mapId: this.pb.mapInfo.mapId })
 		},
 		positionPercent() {
 			if (this.pb.mapInfo.nb_players) {
