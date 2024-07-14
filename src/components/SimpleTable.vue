@@ -143,6 +143,7 @@ export default {
 			background-color: var(--color-background-hover);
 		}
 		th {
+			background-color: var(--color-primary-element-light);
 			&.header {
 				position: sticky;
 				top: -30px;
@@ -153,7 +154,6 @@ export default {
 				top: 4px;
 				z-index: 999;
 			}
-			background-color: var(--color-primary-element-light);
 			.sort-suffix {
 				display: flex;
 				flex-direction: column;
