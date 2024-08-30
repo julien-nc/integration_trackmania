@@ -14,6 +14,8 @@ namespace OCA\Trackmania\Controller;
 use Exception;
 use GuzzleHttp\Exception\ClientException;
 use OCA\Trackmania\AppInfo\Application;
+use OCA\Trackmania\Exception\TmApiRequestException;
+use OCA\Trackmania\Exception\TokenRefreshException;
 use OCA\Trackmania\Service\TrackmaniaAPIService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
@@ -46,14 +48,21 @@ class TrackmaniaAPIController extends Controller {
 	#[NoAdminRequired]
 	#[NoCSRFRequired]
 	public function test(): DataResponse {
-		return new DataResponse($this->trackmaniaAPIService->test($this->userId));
+		try {
+			$result = $this->trackmaniaAPIService->test($this->userId);
+		} catch (TokenRefreshException | TmApiRequestException $e) {
+			return $this->getExceptionResponse($e);
+		} catch (\Throwable $e) {
+			return new DataResponse($e->getMessage(), Http::STATUS_BAD_REQUEST);
+		}
+		return new DataResponse($result);
 	}
 
 	/**
 	 * Does not work for the moment
+	 *
 	 * @param string $accountId
 	 * @return DataResponse
-	 * @throws PreConditionNotMetException
 	 */
 	#[NoAdminRequired]
 	#[NoCSRFRequired]
@@ -61,7 +70,13 @@ class TrackmaniaAPIController extends Controller {
 		$params = [
 			'accountIdList' => $accountId,
 		];
-		$result = $this->trackmaniaAPIService->request($this->userId, Application::AUDIENCE_CORE, 'accounts/displayNames/', $params);
+		try {
+			$result = $this->trackmaniaAPIService->request($this->userId, Application::AUDIENCE_CORE, 'accounts/displayNames/', $params);
+		} catch (TokenRefreshException | TmApiRequestException $e) {
+			return $this->getExceptionResponse($e);
+		} catch (\Throwable $e) {
+			return new DataResponse($e->getMessage(), Http::STATUS_BAD_REQUEST);
+		}
 		return new DataResponse($result);
 	}
 
@@ -72,12 +87,12 @@ class TrackmaniaAPIController extends Controller {
 	#[NoAdminRequired]
 	#[NoCSRFRequired]
 	public function searchAccount(string $name): DataResponse {
-		$result = $this->trackmaniaAPIService->searchAccount($name);
-		if (isset($result['error'])) {
-			return new DataResponse($result, Http::STATUS_BAD_REQUEST);
-		} else {
-			return new DataResponse($result);
+		try {
+			$result = $this->trackmaniaAPIService->searchAccount($name);
+		} catch (\Throwable $e) {
+			return new DataResponse($e->getMessage(), Http::STATUS_BAD_REQUEST);
 		}
+		return new DataResponse($result);
 	}
 
 	#[NoAdminRequired]
@@ -104,12 +119,37 @@ class TrackmaniaAPIController extends Controller {
 	#[NoAdminRequired]
 	#[NoCSRFRequired]
 	public function getMyFavorites(): DataResponse {
-		$result = $this->trackmaniaAPIService->getFavoritesWithPosition($this->userId);
-		if (isset($result['error'])) {
-			return new DataResponse($result, Http::STATUS_BAD_REQUEST);
-		} else {
-			return new DataResponse($result);
+		try {
+			$result = $this->trackmaniaAPIService->getFavoritesWithPosition($this->userId);
+		} catch (TokenRefreshException | TmApiRequestException $e) {
+			return $this->getExceptionResponse($e);
+		} catch (\Throwable $e) {
+			return new DataResponse($e->getMessage(), Http::STATUS_BAD_REQUEST);
 		}
+		return new DataResponse($result);
+	}
+
+	private function getExceptionResponse(TokenRefreshException | TmApiRequestException $e): DataResponse {
+		$requestException = $e->requestException;
+		$tmResponse = $requestException->getResponse();
+		$statusCode = $tmResponse->getStatusCode();
+		$body = $tmResponse->getBody();
+		$parsedResponse = json_decode($body, true);
+		$result = [
+			'status_code' => $statusCode,
+			'response' => $parsedResponse,
+		];
+		if ($e instanceof TokenRefreshException) {
+			$result['error'] = 'token_refresh_failed';
+		} else {
+			$result['exception_class'] = get_class($requestException);
+			$result['error'] = 'tm_api_request_failed';
+			$result['audience'] = $e->audience;
+			$result['endpoint'] = $e->endpoint;
+			$result['method'] = $e->method;
+			$result['params'] = $e->params;
+		}
+		return new DataResponse($result, $statusCode);
 	}
 
 	/**
@@ -118,28 +158,15 @@ class TrackmaniaAPIController extends Controller {
 	 */
 	#[NoAdminRequired]
 	#[NoCSRFRequired]
-	public function getMyRawRecords(?array $mapIdList = null):DataResponse {
+	public function getMyRawRecords(?array $mapIdList = null): DataResponse {
 		try {
 			$result = $this->trackmaniaAPIService->getMapRecordsAndFavorites($this->userId, $mapIdList);
-		} catch (ClientException $e) {
-			$response = $e->getResponse();
-			$statusCode = $response->getStatusCode();
-			if ($statusCode === Http::STATUS_UNAUTHORIZED) {
-				$body = $response->getBody();
-				$parsedResponse = json_decode($body, true);
-				$result = [
-					'error' => 'trackmania_request_failed',
-					'status_code' => $statusCode,
-					'response' => $parsedResponse,
-				];
-				return new DataResponse($result, Http::STATUS_BAD_REQUEST);
-			}
+		} catch (TokenRefreshException | TmApiRequestException $e) {
+			return $this->getExceptionResponse($e);
+		} catch (\Throwable $e) {
+			return new DataResponse($e->getMessage(), Http::STATUS_BAD_REQUEST);
 		}
-		if (isset($result['error'])) {
-			return new DataResponse($result, Http::STATUS_BAD_REQUEST);
-		} else {
-			return new DataResponse($result);
-		}
+		return new DataResponse($result);
 	}
 
 	/**
@@ -152,25 +179,12 @@ class TrackmaniaAPIController extends Controller {
 	public function getMoreRecordInfo(array $pbTimesByMapId, ?string $otherAccountId = null):DataResponse {
 		try {
 			$result = $this->trackmaniaAPIService->getMapsInfoAndRecordPositions($this->userId, $pbTimesByMapId, $otherAccountId);
-		} catch (ClientException $e) {
-			$response = $e->getResponse();
-			$statusCode = $response->getStatusCode();
-			if ($statusCode === Http::STATUS_UNAUTHORIZED) {
-				$body = $response->getBody();
-				$parsedResponse = json_decode($body, true);
-				$result = [
-					'error' => 'trackmania_request_failed',
-					'status_code' => $statusCode,
-					'response' => $parsedResponse,
-				];
-				return new DataResponse($result, Http::STATUS_BAD_REQUEST);
-			}
+		} catch (TokenRefreshException | TmApiRequestException $e) {
+			return $this->getExceptionResponse($e);
+		} catch (\Throwable $e) {
+			return new DataResponse($e->getMessage(), Http::STATUS_BAD_REQUEST);
 		}
-		if (isset($result['error'])) {
-			return new DataResponse($result, Http::STATUS_BAD_REQUEST);
-		} else {
-			return new DataResponse($result);
-		}
+		return new DataResponse($result);
 	}
 
 	/**
@@ -182,25 +196,12 @@ class TrackmaniaAPIController extends Controller {
 	public function getMyRecords():DataResponse {
 		try {
 			$result = $this->trackmaniaAPIService->getAllMapsWithPosition($this->userId);
-		} catch (ClientException $e) {
-			$response = $e->getResponse();
-			$statusCode = $response->getStatusCode();
-			if ($statusCode === Http::STATUS_UNAUTHORIZED) {
-				$body = $response->getBody();
-				$parsedResponse = json_decode($body, true);
-				$result = [
-					'error' => 'trackmania_request_failed',
-					'status_code' => $statusCode,
-					'response' => $parsedResponse,
-				];
-				return new DataResponse($result, Http::STATUS_BAD_REQUEST);
-			}
+		} catch (TokenRefreshException | TmApiRequestException $e) {
+			return $this->getExceptionResponse($e);
+		} catch (\Throwable $e) {
+			return new DataResponse($e->getMessage(), Http::STATUS_BAD_REQUEST);
 		}
-		if (isset($result['error'])) {
-			return new DataResponse($result, Http::STATUS_BAD_REQUEST);
-		} else {
-			return new DataResponse($result);
-		}
+		return new DataResponse($result);
 	}
 
 	/**
@@ -211,7 +212,13 @@ class TrackmaniaAPIController extends Controller {
 	#[NoAdminRequired]
 	#[NoCSRFRequired]
 	public function getMapThumbnail(string $mapId, string $fallbackName = '?'): Response {
-		$mapInfo = $this->trackmaniaAPIService->getCoreMapInfo($this->userId, [$mapId]);
+		try {
+			$mapInfo = $this->trackmaniaAPIService->getCoreMapInfo($this->userId, [$mapId]);
+		} catch (TokenRefreshException | TmApiRequestException $e) {
+			return $this->getExceptionResponse($e);
+		} catch (\Throwable $e) {
+			return new DataResponse($e->getMessage(), Http::STATUS_BAD_REQUEST);
+		}
 		if (count($mapInfo) === 0) {
 			return new DataResponse('Map info not found', Http::STATUS_NOT_FOUND);
 		}
@@ -242,12 +249,14 @@ class TrackmaniaAPIController extends Controller {
 	#[NoAdminRequired]
 	#[NoCSRFRequired]
 	public function getLiveMapInfo(string $mapUid): DataResponse {
-		$result = $this->trackmaniaAPIService->getLiveMapInfo($this->userId, [$mapUid]);
-		if (isset($result['error'])) {
-			return new DataResponse($result, Http::STATUS_BAD_REQUEST);
-		} else {
-			return new DataResponse($result);
+		try {
+			$result = $this->trackmaniaAPIService->getLiveMapInfo($this->userId, [$mapUid]);
+		} catch (TokenRefreshException | TmApiRequestException $e) {
+			return $this->getExceptionResponse($e);
+		} catch (\Throwable $e) {
+			return new DataResponse($e->getMessage(), Http::STATUS_BAD_REQUEST);
 		}
+		return new DataResponse($result);
 	}
 
 	/**
@@ -257,12 +266,14 @@ class TrackmaniaAPIController extends Controller {
 	#[NoAdminRequired]
 	#[NoCSRFRequired]
 	public function getCoreMapInfoById(string $mapId): DataResponse {
-		$result = $this->trackmaniaAPIService->getCoreMapInfo($this->userId, [$mapId]);
-		if (isset($result['error'])) {
-			return new DataResponse($result, Http::STATUS_BAD_REQUEST);
-		} else {
-			return new DataResponse($result);
+		try {
+			$result = $this->trackmaniaAPIService->getCoreMapInfo($this->userId, [$mapId]);
+		} catch (TokenRefreshException | TmApiRequestException $e) {
+			return $this->getExceptionResponse($e);
+		} catch (\Throwable $e) {
+			return new DataResponse($e->getMessage(), Http::STATUS_BAD_REQUEST);
 		}
+		return new DataResponse($result);
 	}
 
 	/**
@@ -272,12 +283,14 @@ class TrackmaniaAPIController extends Controller {
 	#[NoAdminRequired]
 	#[NoCSRFRequired]
 	public function getCoreMapInfoByUid(string $mapUid): DataResponse {
-		$result = $this->trackmaniaAPIService->getCoreMapInfo($this->userId, null, [$mapUid]);
-		if (isset($result['error'])) {
-			return new DataResponse($result, Http::STATUS_BAD_REQUEST);
-		} else {
-			return new DataResponse($result);
+		try {
+			$result = $this->trackmaniaAPIService->getCoreMapInfo($this->userId, null, [$mapUid]);
+		} catch (TokenRefreshException | TmApiRequestException $e) {
+			return $this->getExceptionResponse($e);
+		} catch (\Throwable $e) {
+			return new DataResponse($e->getMessage(), Http::STATUS_BAD_REQUEST);
 		}
+		return new DataResponse($result);
 	}
 
 	/**
@@ -290,12 +303,14 @@ class TrackmaniaAPIController extends Controller {
 	#[NoAdminRequired]
 	#[NoCSRFRequired]
 	public function getMapTop(string $mapUid, int $offset = 0, int $length = 100, bool $onlyWorld = true): DataResponse {
-		$result = $this->trackmaniaAPIService->getMapTop($this->userId, $mapUid, $offset, $length, $onlyWorld);
-		if (isset($result['error'])) {
-			return new DataResponse($result, Http::STATUS_BAD_REQUEST);
-		} else {
-			return new DataResponse($result);
+		try {
+			$result = $this->trackmaniaAPIService->getMapTop($this->userId, $mapUid, $offset, $length, $onlyWorld);
+		} catch (TokenRefreshException | TmApiRequestException $e) {
+			return $this->getExceptionResponse($e);
+		} catch (\Throwable $e) {
+			return new DataResponse($e->getMessage(), Http::STATUS_BAD_REQUEST);
 		}
+		return new DataResponse($result);
 	}
 
 	/**
@@ -305,7 +320,14 @@ class TrackmaniaAPIController extends Controller {
 	#[NoAdminRequired]
 	#[NoCSRFRequired]
 	public function getMapFinishCount(string $mapUid): DataResponse {
-		return new DataResponse($this->trackmaniaAPIService->getMapFinishCount($this->userId, $mapUid));
+		try {
+			$finishCount = $this->trackmaniaAPIService->getMapFinishCount($this->userId, $mapUid);
+		} catch (TokenRefreshException | TmApiRequestException $e) {
+			return $this->getExceptionResponse($e);
+		} catch (\Throwable $e) {
+			return new DataResponse($e->getMessage(), Http::STATUS_BAD_REQUEST);
+		}
+		return new DataResponse($finishCount);
 	}
 
 	/**
@@ -316,7 +338,14 @@ class TrackmaniaAPIController extends Controller {
 	#[NoAdminRequired]
 	#[NoCSRFRequired]
 	public function getMapTimePosition(string $mapUid, int $time): DataResponse {
-		return new DataResponse($this->trackmaniaAPIService->getScorePosition($this->userId, $mapUid, $time));
+		try {
+			$scorePosition = $this->trackmaniaAPIService->getScorePosition($this->userId, $mapUid, $time);
+		} catch (TokenRefreshException | TmApiRequestException $e) {
+			return $this->getExceptionResponse($e);
+		} catch (\Throwable $e) {
+			return new DataResponse($e->getMessage(), Http::STATUS_BAD_REQUEST);
+		}
+		return new DataResponse($scorePosition);
 	}
 
 	/**
@@ -327,7 +356,14 @@ class TrackmaniaAPIController extends Controller {
 	#[NoAdminRequired]
 	#[NoCSRFRequired]
 	public function getMapTimeImprovements(string $mapUid, int $time): DataResponse {
-		return new DataResponse($this->trackmaniaAPIService->getScoreImprovements($this->userId, $mapUid, $time));
+		try {
+			$scoreImprovements = $this->trackmaniaAPIService->getScoreImprovements($this->userId, $mapUid, $time);
+		} catch (TokenRefreshException | TmApiRequestException $e) {
+			return $this->getExceptionResponse($e);
+		} catch (\Throwable $e) {
+			return new DataResponse($e->getMessage(), Http::STATUS_BAD_REQUEST);
+		}
+		return new DataResponse($scoreImprovements);
 	}
 
 	/**
@@ -338,24 +374,31 @@ class TrackmaniaAPIController extends Controller {
 	#[NoAdminRequired]
 	#[NoCSRFRequired]
 	public function toggleFavorite(string $mapUid, string $maction): DataResponse {
-		$result = $this->trackmaniaAPIService->toggleFavorite($this->userId, $mapUid, $maction);
-		if (isset($result['error'])) {
-			return new DataResponse($result, Http::STATUS_BAD_REQUEST);
-		} else {
-			return new DataResponse($result);
+		try {
+			$result = $this->trackmaniaAPIService->toggleFavorite($this->userId, $mapUid, $maction);
+		} catch (TokenRefreshException | TmApiRequestException $e) {
+			return $this->getExceptionResponse($e);
+		} catch (\Throwable $e) {
+			return new DataResponse($e->getMessage(), Http::STATUS_BAD_REQUEST);
 		}
+		return new DataResponse($result);
 	}
 
 	/**
 	 * @param string $mapId
 	 * @param string $accountId
 	 * @return DataResponse
-	 * @throws PreConditionNotMetException
 	 */
 	#[NoAdminRequired]
 	#[NoCSRFRequired]
 	public function getAccountRecordOnMap(string $mapId, string $accountId): DataResponse {
-		$result = $this->trackmaniaAPIService->getMapRecords($this->userId, [$accountId], [$mapId]);
+		try {
+			$result = $this->trackmaniaAPIService->getMapRecords($this->userId, [$accountId], [$mapId]);
+		} catch (TokenRefreshException | TmApiRequestException $e) {
+			return $this->getExceptionResponse($e);
+		} catch (\Throwable $e) {
+			return new DataResponse($e->getMessage(), Http::STATUS_BAD_REQUEST);
+		}
 		return new DataResponse($result);
 	}
 }

@@ -17,6 +17,8 @@ use GuzzleHttp\Exception\ClientException;
 use GuzzleHttp\Exception\ServerException;
 use OCA\Trackmania\AppInfo\Application;
 use OCA\Trackmania\Controller\ConfigController;
+use OCA\Trackmania\Exception\TmApiRequestException;
+use OCA\Trackmania\Exception\TokenRefreshException;
 use OCP\AppFramework\Http;
 use OCP\Http\Client\IClient;
 use OCP\Http\Client\IClientService;
@@ -45,13 +47,20 @@ class TrackmaniaAPIService {
 		$this->cache = $cacheFactory->createDistributed(Application::APP_ID);
 	}
 
+	/**
+	 * @param string $userId
+	 * @return array
+	 * @throws PreConditionNotMetException
+	 * @throws TmApiRequestException
+	 * @throws TokenRefreshException
+	 */
 	public function test(string $userId): array {
 		$prefix = Application::AUDIENCES[Application::AUDIENCE_CORE]['token_config_key_prefix'];
 		$accountId = $this->config->getUserValue($userId, Application::APP_ID, $prefix . 'account_id');
 		//		$accountId = $this->config->getUserValue($userId, Application::APP_ID, 'user_id');
 		//		return $this->request($userId, Application::AUDIENCE_CORE, 'accounts/' . $accountId);
-		//		$accountId = 'e3504dbb-df3c-42c5-95a7-eb64a5a302f1';
-		return $this->request($userId, Application::AUDIENCE_CORE, 'accounts/'.$accountId.'/mapRecords');
+//				$accountId = 'e3504dbb-df3c-42c5-95a7-eb64a5a302f1';
+		return $this->request($userId, Application::AUDIENCE_CORE, 'v2/accounts/' . $accountId . '/mapRecords');
 		//		return $this->request($userId, Application::AUDIENCE_CORE, 'mapRecords/');
 	}
 
@@ -63,6 +72,13 @@ class TrackmaniaAPIService {
 		];
 	}
 
+	/**
+	 * @param string $userId
+	 * @return array
+	 * @throws PreConditionNotMetException
+	 * @throws TmApiRequestException
+	 * @throws TokenRefreshException
+	 */
 	public function getFavoritesWithPosition(string $userId): array {
 		$allFavs = $this->getAllFavorites($userId);
 
@@ -119,7 +135,16 @@ class TrackmaniaAPIService {
 		return $this->formatMapResults($results);
 	}
 
-	// Partial loading flow
+	/**
+	 * Partial loading flow
+	 *
+	 * @param string $userId
+	 * @param array|null $mapIdList
+	 * @return array
+	 * @throws PreConditionNotMetException
+	 * @throws TmApiRequestException
+	 * @throws TokenRefreshException
+	 */
 	public function getMapRecordsAndFavorites(string $userId, ?array $mapIdList = null): array {
 		// get favorites because liveMapInfo always says favorite: false
 		$allFavs = $this->getAllFavorites($userId);
@@ -151,6 +176,16 @@ class TrackmaniaAPIService {
 		}, $pbs);
 	}
 
+	/**
+	 * @param string $userId
+	 * @param array $pbTimesByMapId
+	 * @param string|null $otherAccountId
+	 * @return array
+	 * @throws PreConditionNotMetException
+	 * @throws TmApiRequestException
+	 * @throws TokenRefreshException
+	 * @throws \DateMalformedStringException
+	 */
 	public function getMapsInfoAndRecordPositions(string $userId, array $pbTimesByMapId, ?string $otherAccountId): array {
 		$coreMapInfos = $this->getCoreMapInfo($userId, array_keys($pbTimesByMapId));
 		$coreMapInfoByMapId = [];
@@ -240,6 +275,13 @@ class TrackmaniaAPIService {
 	}
 	// END Partial loading flow
 
+	/**
+	 * @param string $userId
+	 * @return array
+	 * @throws PreConditionNotMetException
+	 * @throws TmApiRequestException
+	 * @throws TokenRefreshException
+	 */
 	public function getAllMapsWithPosition(string $userId): array {
 		// get favorites because liveMapInfo always says favorite: false
 		$allFavs = $this->getAllFavorites($userId);
@@ -327,6 +369,15 @@ class TrackmaniaAPIService {
 		}, $data);
 	}
 
+	/**
+	 * @param string $userId
+	 * @param array|null $mapIds
+	 * @param array|null $mapUids
+	 * @return array
+	 * @throws PreConditionNotMetException
+	 * @throws TmApiRequestException
+	 * @throws TokenRefreshException
+	 */
 	public function getCoreMapInfo(string $userId, ?array $mapIds = null, ?array $mapUids = null): array {
 		if ($mapIds !== null) {
 			$paramName = 'mapIdList';
@@ -382,6 +433,14 @@ class TrackmaniaAPIService {
 		return $mapInfos;
 	}
 
+	/**
+	 * @param string $userId
+	 * @param array $mapUids
+	 * @return array
+	 * @throws PreConditionNotMetException
+	 * @throws TmApiRequestException
+	 * @throws TokenRefreshException
+	 */
 	public function getLiveMapInfo(string $userId, array $mapUids): array {
 		$results = [];
 		// get cached
@@ -418,6 +477,15 @@ class TrackmaniaAPIService {
 		return $results;
 	}
 
+	/**
+	 * @param string $userId
+	 * @param string $mapUid
+	 * @param string $action
+	 * @return array|array[]|resource[]|string[]
+	 * @throws PreConditionNotMetException
+	 * @throws TmApiRequestException
+	 * @throws TokenRefreshException
+	 */
 	public function toggleFavorite(string $userId, string $mapUid, string $action): array {
 		if ($action === 'add' || $action === 'remove') {
 			$response = $this->request($userId, Application::AUDIENCE_LIVE, 'map/favorite/' . $mapUid . '/' . $action, [], 'POST', false);
@@ -451,42 +519,45 @@ class TrackmaniaAPIService {
 
 	/**
 	 * @param string $userId
-	 * @param array|null $accountIds connected account is used if null
+	 * @param array|null $accountIds connected account is used if null (or if $mapIds is null)
 	 * @param array|null $mapIds all records are retrieved if null (only works with the connected account)
 	 * @return array|string[]
 	 * @throws PreConditionNotMetException
+	 * @throws TmApiRequestException
+	 * @throws TokenRefreshException
 	 */
 	public function getMapRecords(string $userId, ?array $accountIds = null, ?array $mapIds = null): array {
 		$prefix = Application::AUDIENCES[Application::AUDIENCE_CORE]['token_config_key_prefix'];
-		$accountIdList = $accountIds === null
-			? $this->config->getUserValue($userId, Application::APP_ID, $prefix . 'account_id')
-			: implode(',', $accountIds);
-		$params = [
-			'accountIdList' => $accountIdList,
-			//			'seasonId' => '???',
-		];
-		if ($mapIds !== null) {
-			$params['mapIdList'] = implode(',', $mapIds);
-			if (strlen($params['mapIdList']) > 7000) {
-				$mapRecords = [];
-				while (count($mapIds) > 0) {
-					$mapIdsChunk = [];
-					$lenTmp = 0;
-					while (count($mapIds) > 0 && $lenTmp < 7000) {
-						$mapId = array_pop($mapIds);
-						$lenTmp += strlen($mapId);
-						$mapIdsChunk[] = $mapId;
-					}
-					$params['mapIdList'] = implode(',', $mapIdsChunk);
-					$mapRecordsChunk = $this->request($userId, Application::AUDIENCE_CORE, 'mapRecords/', $params);
-					$mapRecords = array_merge($mapRecords, $mapRecordsChunk);
-				}
-				return $mapRecords;
-			}
+
+		if ($mapIds === null) {
+			$accountId = $this->config->getUserValue($userId, Application::APP_ID, $prefix . 'account_id');
+			$params = [
+				'limit' => 1000,
+				'offset' => 0,
+			];
+			$records = [];
+			do {
+				$newRecords = $this->request($userId, Application::AUDIENCE_CORE, 'v2/accounts/' . $accountId . '/mapRecords/', $params);
+				$records = array_merge($records, $newRecords);
+				$lastSize = count($newRecords);
+				$params['offset'] = $params['offset'] + 1000;
+			} while ($lastSize === 1000);
+			return $records;
 		}
 
-		// max URI length: 8220 chars
-		return $this->request($userId, Application::AUDIENCE_CORE, 'mapRecords/', $params);
+		$params = [
+			'accountIdList' => implode(',', $accountIds),
+		];
+		return array_reduce(
+			$mapIds,
+			function ($carry, $mapId) use ($userId, $params) {
+				$params['mapId'] = $mapId;
+				// max URI length: 8220 chars
+				$records = $this->request($userId, Application::AUDIENCE_CORE, 'v2/mapRecords/', $params);
+				return array_merge($carry, $records);
+			},
+			[]
+		);
 	}
 
 	public function getScorePositions(string $userId, array $scoresByMapUid): array {
@@ -526,6 +597,8 @@ class TrackmaniaAPIService {
 	 * @param int $score
 	 * @return array|string[]
 	 * @throws PreConditionNotMetException
+	 * @throws TmApiRequestException
+	 * @throws TokenRefreshException
 	 */
 	public function getScorePosition(string $userId, string $mapUid, int $score): array {
 		$params = [
@@ -545,6 +618,8 @@ class TrackmaniaAPIService {
 	 * @param int $score
 	 * @return array|string[]
 	 * @throws PreConditionNotMetException
+	 * @throws TmApiRequestException
+	 * @throws TokenRefreshException
 	 */
 	public function getScoreImprovements(string $userId, string $mapUid, int $score): array {
 		$improvements = [1, 10, 100, 1000];
@@ -563,6 +638,8 @@ class TrackmaniaAPIService {
 	 * @param bool $onlyWorld
 	 * @return array|string[]
 	 * @throws PreConditionNotMetException
+	 * @throws TmApiRequestException
+	 * @throws TokenRefreshException
 	 */
 	public function getMapTop(string $userId, string $mapUid, int $offset = 0, int $length = 20, bool $onlyWorld = true): array {
 		$params = [
@@ -579,6 +656,8 @@ class TrackmaniaAPIService {
 	 * @param int $position
 	 * @return bool
 	 * @throws PreConditionNotMetException
+	 * @throws TmApiRequestException
+	 * @throws TokenRefreshException
 	 */
 	private function positionExists(string $userId, string $mapUid, int $position): bool {
 		$top = $this->getMapTop($userId, $mapUid, $position, 1);
@@ -621,6 +700,9 @@ class TrackmaniaAPIService {
 	 * @param string $userId
 	 * @param string $mapUid
 	 * @return int
+	 * @throws PreConditionNotMetException
+	 * @throws TmApiRequestException
+	 * @throws TokenRefreshException
 	 */
 	public function getMapFinishCount(string $userId, string $mapUid): int {
 		$positionFrom3rdParty = $this->getMapFinishCount3rdParty($mapUid);
@@ -797,12 +879,15 @@ class TrackmaniaAPIService {
 
 	/**
 	 * @param string $userId
+	 * @param string $audience
 	 * @param string $endPoint
 	 * @param array $params
 	 * @param string $method
 	 * @param bool $jsonResponse
-	 * @return array|mixed|resource|string|string[]
+	 * @return array|mixed|resource|string
 	 * @throws PreConditionNotMetException
+	 * @throws TmApiRequestException
+	 * @throws TokenRefreshException
 	 */
 	public function request(
 		string $userId, string $audience, string $endPoint, array $params = [], string $method = 'GET', bool $jsonResponse = true
@@ -862,20 +947,19 @@ class TrackmaniaAPIService {
 					return $body;
 				}
 			}
-		} catch (ServerException | ClientException $e) {
+		} catch (ClientException | ServerException $e) {
 			$body = $e->getResponse()->getBody();
-			$this->logger->warning('API error : ' . $body, ['app' => Application::APP_ID]);
-			return ['error' => $e->getMessage()];
-		} catch (Exception | Throwable $e) {
-			$this->logger->warning('API error', ['exception' => $e, 'app' => Application::APP_ID]);
-			return ['error' => $e->getMessage()];
+			$this->logger->warning('API error Client/Server exception: ' . $body, ['exception' => $e]);
+			throw new TmApiRequestException($e, $audience, $endPoint, $method, $params);
 		}
 	}
 
 	/**
 	 * @param string $userId
+	 * @param string $audience
 	 * @return void
-	 * @throws \OCP\PreConditionNotMetException
+	 * @throws PreConditionNotMetException
+	 * @throws TokenRefreshException
 	 */
 	private function checkTokenExpiration(string $userId, string $audience): void {
 		$refreshToken = $this->config->getUserValue($userId, Application::APP_ID, Application::AUDIENCES[$audience]['token_config_key_prefix'] . 'refresh_token');
@@ -892,8 +976,10 @@ class TrackmaniaAPIService {
 
 	/**
 	 * @param string $userId
+	 * @param string $audience
 	 * @return bool
-	 * @throws \OCP\PreConditionNotMetException
+	 * @throws PreConditionNotMetException
+	 * @throws TokenRefreshException
 	 */
 	private function refreshToken(string $userId, string $audience): bool {
 		$refreshToken = $this->config->getUserValue($userId, Application::APP_ID, Application::AUDIENCES[$audience]['token_config_key_prefix'] . 'refresh_token');
@@ -944,7 +1030,7 @@ class TrackmaniaAPIService {
 					['app' => Application::APP_ID]
 				);
 			}
-			throw $e;
+			throw new TokenRefreshException($e);
 		}
 	}
 

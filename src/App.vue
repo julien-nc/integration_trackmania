@@ -233,16 +233,14 @@ export default {
 				this.getPbsInfo(mapIdList)
 			}).catch((error) => {
 				const data = error.response?.data
-				if (data?.error === 'trackmania_request_failed' && data?.status_code === 401) {
+				if (data?.error === 'token_refresh_failed' && data?.status_code === 401) {
 					showError(
 						t('integration_trackmania', 'Your Trackmania session has expired and cannot be refreshed anymore. Please reconnect'),
 					)
 					this.disconnect()
 				} else {
-					showError(
-						t('integration_trackmania', 'Failed to get data')
-						+ ': ' + (data?.error ?? ''),
-					)
+					showError(t('integration_trackmania', 'Failed to get data'))
+					this.loadingData = false
 				}
 				console.debug(error)
 			}).then(() => {
