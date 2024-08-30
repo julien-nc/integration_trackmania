@@ -34,6 +34,7 @@
 				<referencedClass name="Doctrine\DBAL\Types\Type" />
 				<referencedClass name="GuzzleHttp\Exception\ClientException" />
 				<referencedClass name="GuzzleHttp\Exception\ServerException" />
+				<referencedClass name="GuzzleHttp\Exception\BadResponseException" />
 			</errorLevel>
 		</UndefinedClass>
 		<UndefinedDocblockClass>
