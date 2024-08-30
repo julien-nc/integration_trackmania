@@ -28,7 +28,6 @@ use OCP\AppFramework\Http\Response;
 use OCP\IRequest;
 
 use OCP\IURLGenerator;
-use OCP\PreConditionNotMetException;
 
 class TrackmaniaAPIController extends Controller {
 

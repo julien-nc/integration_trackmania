@@ -59,7 +59,7 @@ class TrackmaniaAPIService {
 		$accountId = $this->config->getUserValue($userId, Application::APP_ID, $prefix . 'account_id');
 		//		$accountId = $this->config->getUserValue($userId, Application::APP_ID, 'user_id');
 		//		return $this->request($userId, Application::AUDIENCE_CORE, 'accounts/' . $accountId);
-//				$accountId = 'e3504dbb-df3c-42c5-95a7-eb64a5a302f1';
+		//				$accountId = 'e3504dbb-df3c-42c5-95a7-eb64a5a302f1';
 		return $this->request($userId, Application::AUDIENCE_CORE, 'v2/accounts/' . $accountId . '/mapRecords');
 		//		return $this->request($userId, Application::AUDIENCE_CORE, 'mapRecords/');
 	}
