@@ -529,15 +529,15 @@ class TrackmaniaAPIService {
 	public function getMapRecords(string $userId, ?array $accountIds = null, ?array $mapIds = null): array {
 		$prefix = Application::AUDIENCES[Application::AUDIENCE_CORE]['token_config_key_prefix'];
 
+		$userAccountId = $this->config->getUserValue($userId, Application::APP_ID, $prefix . 'account_id');
 		if ($mapIds === null) {
-			$accountId = $this->config->getUserValue($userId, Application::APP_ID, $prefix . 'account_id');
 			$params = [
 				'limit' => 1000,
 				'offset' => 0,
 			];
 			$records = [];
 			do {
-				$newRecords = $this->request($userId, Application::AUDIENCE_CORE, 'v2/accounts/' . $accountId . '/mapRecords/', $params);
+				$newRecords = $this->request($userId, Application::AUDIENCE_CORE, 'v2/accounts/' . $userAccountId . '/mapRecords/', $params);
 				$records = array_merge($records, $newRecords);
 				$lastSize = count($newRecords);
 				$params['offset'] = $params['offset'] + 1000;
@@ -546,7 +546,7 @@ class TrackmaniaAPIService {
 		}
 
 		$params = [
-			'accountIdList' => implode(',', $accountIds),
+			'accountIdList' => $accountIds === null ? $userAccountId : implode(',', $accountIds),
 		];
 		return array_reduce(
 			$mapIds,
