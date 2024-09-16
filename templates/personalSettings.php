@@ -1,6 +1,10 @@
 <?php
+
+use OCP\Util;
+
 $appId = OCA\Trackmania\AppInfo\Application::APP_ID;
-\OCP\Util::addScript($appId, $appId . '-personalSettings');
+Util::addScript($appId, $appId . '-personalSettings');
+Util::addStyle($appId, $appId . '-personalSettings');
 ?>
 
 <div id="trackmania_prefs"></div>

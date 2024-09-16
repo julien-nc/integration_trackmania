@@ -1,4 +1,8 @@
 <?php
 
-$appId = OCA\Trackmania\AppInfo\Application::APP_ID;
-\OCP\Util::addScript($appId, $appId . '-main');
+use OCA\Trackmania\AppInfo\Application;
+use OCP\Util;
+
+$appId = Application::APP_ID;
+Util::addScript($appId, $appId . '-main');
+Util::addStyle($appId, $appId . '-main');
