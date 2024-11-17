@@ -20,7 +20,9 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class GetRecords extends Base {
 
-	public function __construct(private TrackmaniaAPIService $trackmaniaAPIService) {
+	public function __construct(
+		private TrackmaniaAPIService $trackmaniaAPIService,
+	) {
 		parent::__construct();
 	}
 

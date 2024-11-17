@@ -41,7 +41,7 @@ class TrackmaniaAPIService {
 		private IConfig $config,
 		private SecretService $secretService,
 		ICacheFactory $cacheFactory,
-		IClientService $clientService
+		IClientService $clientService,
 	) {
 		$this->client = $clientService->newClient();
 		$this->cache = $cacheFactory->createDistributed(Application::APP_ID);
@@ -611,7 +611,7 @@ class TrackmaniaAPIService {
 				],
 			],
 		];
-		return $this->request($userId, Application::AUDIENCE_LIVE, 'leaderboard/group/map?scores['.$mapUid.']='.$score, $params, 'POST');
+		return $this->request($userId, Application::AUDIENCE_LIVE, 'leaderboard/group/map?scores[' . $mapUid . ']=' . $score, $params, 'POST');
 	}
 
 	/**
@@ -677,9 +677,9 @@ class TrackmaniaAPIService {
 			$body = $response->getBody();
 			$parsedBody = json_decode($body, true);
 			if (is_array($parsedBody) && isset($parsedBody['player_count']) && is_numeric($parsedBody['player_count'])) {
-				return (int) $parsedBody['player_count'];
+				return (int)$parsedBody['player_count'];
 			}
-		} catch (Exception | Throwable $e) {
+		} catch (Exception|Throwable $e) {
 			$this->logger->warning('Failed to get nb players from tm.waalrus.xyz', ['app' => Application::APP_ID, 'exception' => $e]);
 		}
 
@@ -689,9 +689,9 @@ class TrackmaniaAPIService {
 			$body = $response->getBody();
 			$parsedBody = json_decode($body, true);
 			if (is_array($parsedBody) && isset($parsedBody['nb_players']) && is_numeric($parsedBody['nb_players'])) {
-				return (int) $parsedBody['nb_players'];
+				return (int)$parsedBody['nb_players'];
 			}
-		} catch (Exception | Throwable $e) {
+		} catch (Exception|Throwable $e) {
 			$this->logger->warning('Failed to get nb players from map-monitor.xk.io', ['app' => Application::APP_ID, 'exception' => $e]);
 		}
 
@@ -869,11 +869,11 @@ class TrackmaniaAPIService {
 					return $body;
 				}
 			}
-		} catch (ServerException | ClientException $e) {
+		} catch (ServerException|ClientException $e) {
 			$body = $e->getResponse()->getBody();
 			$this->logger->warning('Trackmania.io API error : ' . $body, ['app' => Application::APP_ID]);
 			return ['error' => $e->getMessage()];
-		} catch (Exception | Throwable $e) {
+		} catch (Exception|Throwable $e) {
 			$this->logger->warning('Trackmania.io API error', ['exception' => $e, 'app' => Application::APP_ID]);
 			return ['error' => $e->getMessage()];
 		}
@@ -892,7 +892,7 @@ class TrackmaniaAPIService {
 	 * @throws TokenRefreshException
 	 */
 	public function request(
-		string $userId, string $audience, string $endPoint, array $params = [], string $method = 'GET', bool $jsonResponse = true
+		string $userId, string $audience, string $endPoint, array $params = [], string $method = 'GET', bool $jsonResponse = true,
 	) {
 		$this->checkTokenExpiration($userId, $audience);
 		$accessToken = $this->secretService->getEncryptedUserValue($userId, Application::AUDIENCES[$audience]['token_config_key_prefix'] . 'token');
@@ -949,7 +949,7 @@ class TrackmaniaAPIService {
 					return $body;
 				}
 			}
-		} catch (ClientException | ServerException $e) {
+		} catch (ClientException|ServerException $e) {
 			$body = $e->getResponse()->getBody();
 			$this->logger->warning('API error Client/Server exception: ' . $body, ['exception' => $e]);
 			throw new TmApiRequestException($e, $audience, $endPoint, $method, $params);
@@ -968,7 +968,7 @@ class TrackmaniaAPIService {
 		$expireAt = $this->config->getUserValue($userId, Application::APP_ID, Application::AUDIENCES[$audience]['token_config_key_prefix'] . 'token_expires_at');
 		if ($refreshToken !== '' && $expireAt !== '') {
 			$nowTs = (new DateTime())->getTimestamp();
-			$expireAt = (int) $expireAt;
+			$expireAt = (int)$expireAt;
 			// if token expires in less than a minute or is already expired
 			if ($nowTs > $expireAt - 60) {
 				$this->refreshToken($userId, $audience);
@@ -1072,7 +1072,7 @@ class TrackmaniaAPIService {
 				return ['error' => $this->l10n->t('Error during login')];
 			}
 		} catch (Exception $e) {
-			$this->logger->warning('login error : '.$e->getMessage(), ['app' => Application::APP_ID]);
+			$this->logger->warning('login error : ' . $e->getMessage(), ['app' => Application::APP_ID]);
 			return ['error' => $e->getMessage()];
 		}
 	}
@@ -1109,7 +1109,7 @@ class TrackmaniaAPIService {
 				return ['error' => $this->l10n->t('Error when getting access token')];
 			}
 		} catch (Exception $e) {
-			$this->logger->warning('login error : '.$e->getMessage(), ['app' => Application::APP_ID]);
+			$this->logger->warning('login error : ' . $e->getMessage(), ['app' => Application::APP_ID]);
 			return ['error' => $e->getMessage()];
 		}
 	}

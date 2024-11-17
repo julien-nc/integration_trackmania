@@ -34,7 +34,7 @@ class ConfigController extends Controller {
 		private IAppConfig $appConfig,
 		private SecretService $secretService,
 		private TrackmaniaAPIService $trackmaniaAPIService,
-		private ?string $userId
+		private ?string $userId,
 	) {
 		parent::__construct($appName, $request);
 	}
@@ -155,7 +155,7 @@ class ConfigController extends Controller {
 	private function getAccountZoneInfo(string $accountId): array {
 		$searchResult = $this->trackmaniaAPIService->searchAccount($accountId);
 		if (isset($searchResult['error']) || count($searchResult) !== 1) {
-			error_log('1111 ::: '.$accountId. '!!!! '.json_encode($searchResult));
+			error_log('1111 ::: ' . $accountId . '!!!! ' . json_encode($searchResult));
 			return [];
 		}
 		$account = $searchResult[0];

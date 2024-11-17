@@ -30,7 +30,7 @@ class PageController extends Controller {
 		private IConfig $config,
 		private SecretService $secretService,
 		private IInitialState $initialStateService,
-		private ?string $userId
+		private ?string $userId,
 	) {
 		parent::__construct($appName, $request);
 	}
