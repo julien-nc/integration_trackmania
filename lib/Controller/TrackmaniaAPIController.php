@@ -25,6 +25,7 @@ use OCP\AppFramework\Http\DataDisplayResponse;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\AppFramework\Http\RedirectResponse;
 use OCP\AppFramework\Http\Response;
+use OCP\Exceptions\AppConfigTypeConflictException;
 use OCP\IRequest;
 
 use OCP\IURLGenerator;
@@ -154,10 +155,13 @@ class TrackmaniaAPIController extends Controller {
 	/**
 	 * @param array|null $mapIdList List of map IDs to avoid getting all maps played by current account
 	 * @return DataResponse
+	 * @throws AppConfigTypeConflictException
 	 */
 	#[NoAdminRequired]
 	#[NoCSRFRequired]
 	public function getMyRawRecords(?array $mapIdList = null): DataResponse {
+		// get a token once to avoid trying to get multiple new ones simultaneously in /pbs/info
+		$this->trackmaniaAPIService->getOAuthToken();
 		try {
 			$result = $this->trackmaniaAPIService->getMapRecordsAndFavorites($this->userId, $mapIdList);
 		} catch (TokenRefreshException|TmApiRequestException $e) {
@@ -180,8 +184,8 @@ class TrackmaniaAPIController extends Controller {
 			$result = $this->trackmaniaAPIService->getMapsInfoAndRecordPositions($this->userId, $pbTimesByMapId, $otherAccountId);
 		} catch (TokenRefreshException|TmApiRequestException $e) {
 			return $this->getExceptionResponse($e);
-		} catch (\Throwable $e) {
-			return new DataResponse($e->getMessage(), Http::STATUS_BAD_REQUEST);
+//		} catch (\Throwable $e) {
+//			return new DataResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
 		}
 		return new DataResponse($result);
 	}

@@ -47,6 +47,12 @@
 				{{ t('integration_trackmania', 'Favorite') }}
 			</NcCheckboxRadioSwitch>
 			<NcCheckboxRadioSwitch
+				:checked="configState.show_column_author_name !== '0'"
+				class="checkColumn"
+				@update:checked="onColumnCheck('show_column_author_name', $event)">
+				{{ t('integration_trackmania', 'Author name') }}
+			</NcCheckboxRadioSwitch>
+			<NcCheckboxRadioSwitch
 				:checked="configState.show_column_date !== '0'"
 				class="checkColumn"
 				@update:checked="onColumnCheck('show_column_date', $event)">
@@ -138,6 +144,10 @@
 					:title="row.otherRecord?.formattedDateWithZone ?? undefined">
 					{{ row.otherRecord?.formattedDate ?? '' }}
 				</span>
+				<span v-else-if="column.field === 'mapInfo.authorName'"
+					:title="row.mapInfo.author ?? undefined">
+					{{ row.mapInfo.authorName ?? '' }}
+				</span>
 				<span v-else>
 					{{ getRawCellValue(row, column.field) }}
 				</span>
@@ -153,6 +163,16 @@
 					class="text-input-filter"
 					@keyup.enter="onMapNameFilterChange"
 					@trailing-button-click="setMapNameFilter('')" />
+				<NcTextField
+					v-else-if="column.field === 'mapInfo.authorName'"
+					:value="mapAuthorNameFilter"
+					type="text"
+					:label="t('integration_trackmania', 'Map author name filter')"
+					:placeholder="t('integration_trackmania', 'Nadeo')"
+					:show-trailing-button="!!mapAuthorNameFilter"
+					class="text-input-filter"
+					@keyup.enter="onMapAuthorNameFilterChange"
+					@trailing-button-click="setMapAuthorNameFilter('')" />
 				<NcTextField
 					v-else-if="column.field === 'record.recordScore.time'"
 					:value="timeFilter"
@@ -375,6 +395,7 @@ export default {
 			dateMinFilter: this.configState.filter_dateMin ? moment.unix(this.configState.filter_dateMin).toDate() : '',
 			dateMaxFilter: this.configState.filter_dateMax ? moment.unix(this.configState.filter_dateMax).toDate() : '',
 			mapNameFilter: this.configState.filter_mapName ?? '',
+			mapAuthorNameFilter: this.configState.filter_mapAuthorName ?? '',
 			timeFilter: this.configState.filter_time ?? '',
 			otherTimeFilter: this.configState.filter_other_time ?? '',
 			otherDeltaFilter: this.configState.filter_other_delta ?? '',
@@ -394,6 +415,7 @@ export default {
 				|| this.otherTimeFilter
 				|| this.otherDeltaFilter
 				|| this.mapNameFilter
+				|| this.mapAuthorNameFilter
 				|| this.dateMinFilter
 				|| this.dateMaxFilter
 		},
@@ -416,6 +438,9 @@ export default {
 			}
 			if (this.mapNameFilter) {
 				myFiltered = myFiltered.filter(pb => this.filterString(pb.mapInfo.cleanName, this.mapNameFilter))
+			}
+			if (this.mapAuthorNameFilter) {
+				myFiltered = myFiltered.filter(pb => this.filterString(pb.mapInfo.authorName, this.mapAuthorNameFilter))
 			}
 			if (this.timeFilter) {
 				myFiltered = myFiltered.filter(pb => this.filterNumber(pb.record.recordScore.time, this.timeFilter))
@@ -552,21 +577,28 @@ export default {
 					sortName: 'favorite',
 				})
 			}
-			columns.push(...[
-				{
-					label: t('integration_trackmania', 'Map name'),
+			columns.push({
+				label: t('integration_trackmania', 'Map name'),
+				type: 'text',
+				field: 'mapInfo.cleanName',
+				tdClass: 'mapNameColumn',
+				sortName: 'mapName',
+			})
+			if (this.configState.show_column_author_name !== '0') {
+				columns.push({
+					label: t('integration_trackmania', 'Author name'),
 					type: 'text',
-					field: 'mapInfo.cleanName',
-					tdClass: 'mapNameColumn',
-					sortName: 'mapName',
-				},
-				{
-					label: t('integration_trackmania', 'PB'),
-					type: 'number',
-					field: 'record.recordScore.time',
-					sortName: 'time',
-				},
-			])
+					field: 'mapInfo.authorName',
+					tdClass: 'mapAuthorNameColumn',
+					sortName: 'authorName',
+				})
+			}
+			columns.push({
+				label: t('integration_trackmania', 'PB'),
+				type: 'number',
+				field: 'record.recordScore.time',
+				sortName: 'time',
+			})
 			if (this.configState.show_column_date !== '0') {
 				columns.push({
 					label: t('integration_trackmania', 'Date'),
@@ -789,13 +821,21 @@ export default {
 			})
 		},
 		onMapNameFilterChange(e) {
-			console.debug('eeeeeee', e)
 			this.setMapNameFilter(e.target.value)
 		},
 		setMapNameFilter(value) {
 			this.mapNameFilter = value
 			this.saveOptions({
 				filter_mapName: this.mapNameFilter,
+			})
+		},
+		onMapAuthorNameFilterChange(e) {
+			this.setMapAuthorNameFilter(e.target.value)
+		},
+		setMapAuthorNameFilter(value) {
+			this.mapAuthorNameFilter = value
+			this.saveOptions({
+				filter_mapAuthorName: this.mapAuthorNameFilter,
 			})
 		},
 		onTimeFilterChange(e) {
@@ -872,6 +912,7 @@ export default {
 			this.otherTimeFilter = ''
 			this.otherDeltaFilter = ''
 			this.mapNameFilter = ''
+			this.mapAuthorNameFilter = ''
 			this.dateMinFilter = ''
 			this.dateMaxFilter = ''
 		},

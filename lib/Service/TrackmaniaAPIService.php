@@ -20,8 +20,10 @@ use OCA\Trackmania\Controller\ConfigController;
 use OCA\Trackmania\Exception\TmApiRequestException;
 use OCA\Trackmania\Exception\TokenRefreshException;
 use OCP\AppFramework\Http;
+use OCP\Exceptions\AppConfigTypeConflictException;
 use OCP\Http\Client\IClient;
 use OCP\Http\Client\IClientService;
+use OCP\IAppConfig;
 use OCP\ICache;
 use OCP\ICacheFactory;
 use OCP\IConfig;
@@ -39,6 +41,7 @@ class TrackmaniaAPIService {
 		private LoggerInterface $logger,
 		private IL10N $l10n,
 		private IConfig $config,
+		private IAppConfig $appConfig,
 		private SecretService $secretService,
 		ICacheFactory $cacheFactory,
 		IClientService $clientService,
@@ -258,6 +261,7 @@ class TrackmaniaAPIService {
 				'mapId' => $mapInfo['mapId'],
 				'name' => $mapInfo['name'],
 				'author' => $mapInfo['author'],
+				'authorName' => $mapInfo['authorName'],
 				'authorTime' => $mapInfo['authorScore'],
 				'goldTime' => $mapInfo['goldScore'],
 				'silverTime' => $mapInfo['silverScore'],
@@ -353,6 +357,7 @@ class TrackmaniaAPIService {
 					'name' => $item['mapInfo']['name'],
 					'favorite' => $item['mapInfo']['favorite'],
 					'author' => $item['mapInfo']['author'],
+					'authorName' => $item['mapInfo']['authorName'],
 					'authorTime' => $item['mapInfo']['authorScore'],
 					'goldTime' => $item['mapInfo']['goldScore'],
 					'silverTime' => $item['mapInfo']['silverScore'],
@@ -432,7 +437,80 @@ class TrackmaniaAPIService {
 				$this->cache->set($cacheKey, $mapInfo, Application::CACHE_DURATION);
 			}
 		}
-		return $mapInfos;
+
+		// get map author names
+		$authorIds = array_map(function (array $mapInfo) {
+			return $mapInfo['author'];
+		}, $mapInfos);
+		$authorIds = array_unique($authorIds);
+		$authorNames = $this->getAuthorNames($authorIds);
+		return array_map(
+			static function(array $mapInfo) use ($authorNames) {
+				$mapInfo['authorName'] = $authorNames[$mapInfo['author']] ?? '???';
+				return $mapInfo;
+			},
+			$mapInfos,
+		);
+	}
+
+	/**
+	 * @param array $authorIds
+	 * @return string[]
+	 * @throws Exception
+	 */
+	private function getAuthorNames(array $authorIds): array {
+		$authorNames = ['d2372a08-a8a1-46cb-97fb-23a161d85ad0' => 'Nadeo'];
+
+		// get cached
+		$nonCachedAuthorNames = [];
+		foreach ($authorIds as $authorId) {
+			$cacheKey = 'author-name-' . $authorId;
+			$cachedAuthorName = $this->cache->get($cacheKey);
+			if ($cachedAuthorName !== null) {
+				$authorNames[$authorId] = $cachedAuthorName;
+			} else {
+				$nonCachedAuthorNames[] = $authorId;
+			}
+		}
+
+		if (empty($nonCachedAuthorNames)) {
+			return $authorNames;
+		}
+
+		$accessToken = $this->getOAuthToken();
+		$url = 'https://api.trackmania.com/api/display-names';
+		$options = [
+			'headers' => [
+				'User-Agent' => Application::INTEGRATION_USER_AGENT,
+				'Authorization' => 'Bearer ' . $accessToken,
+			],
+		];
+
+		$chunkSize = 50;
+		$offset = 0;
+		while ($offset < count($nonCachedAuthorNames)) {
+			$authorIdsToLook = array_slice($nonCachedAuthorNames, $offset, $chunkSize);
+			$getParamsString = implode(
+				'&',
+				array_map(
+					static function(string $authorId) {
+						return 'accountId[]=' . $authorId;
+					},
+					$authorIdsToLook,
+				)
+			);
+			$response = $this->client->get($url . '?' . $getParamsString, $options);
+			$oneChunk = json_decode($response->getBody(), true);
+			$authorNames = array_merge($authorNames, $oneChunk);
+			$offset = $offset + $chunkSize;
+			// cache this chunk
+			foreach ($oneChunk as $authorId => $authorName) {
+				$cacheKey = 'author-name-' . $authorId;
+				$this->cache->set($cacheKey, $authorName, Application::CACHE_DURATION);
+			}
+		}
+
+		return $authorNames;
 	}
 
 	/**
@@ -1111,6 +1189,66 @@ class TrackmaniaAPIService {
 		} catch (Exception $e) {
 			$this->logger->warning('login error : ' . $e->getMessage(), ['app' => Application::APP_ID]);
 			return ['error' => $e->getMessage()];
+		}
+	}
+
+	/**
+	 * @return string
+	 * @throws AppConfigTypeConflictException
+	 */
+	public function getOAuthToken(): string {
+		$accessToken = $this->appConfig->getValueString(Application::APP_ID, 'access_token');
+		$expiresAt = $this->appConfig->getValueInt(Application::APP_ID, 'oauth_token_expires_at', -1);
+		if ($accessToken === '' || $expiresAt === -1 || $expiresAt < time()) {
+			return $this->getNewOAuthToken();
+		}
+		return $accessToken;
+	}
+
+	/**
+	 * @return string
+	 * @throws AppConfigTypeConflictException
+	 */
+	public function getNewOAuthToken(): string {
+		$clientId = $this->appConfig->getValueString(Application::APP_ID, 'client_id');
+		$clientSecret = $this->appConfig->getValueString(Application::APP_ID, 'client_secret');
+		if ($clientId === '' || $clientSecret === '') {
+			throw new \Exception('No client id or secret set');
+		}
+		try {
+			$url = 'https://api.trackmania.com/api/access_token';
+			$options = [
+				'headers' => [
+					'User-Agent' => Application::INTEGRATION_USER_AGENT,
+					'Content-Type' => 'application/json',
+				],
+				'json' => [
+					'grant_type' => 'client_credentials',
+					'client_id' => $clientId,
+					'client_secret' => $clientSecret,
+				],
+			];
+			$response = $this->client->post($url, $options);
+			$body = $response->getBody();
+			$respCode = $response->getStatusCode();
+
+			if ($respCode >= 400) {
+				throw new Exception('Invalid credentials');
+			} else {
+				$bodyArray = json_decode($body, true);
+				if (isset($bodyArray['access_token'], $bodyArray['expires_in'])) {
+					$this->appConfig->setValueString(Application::APP_ID, 'access_token', $bodyArray['access_token'], false, true);
+
+					$expiresIn = (int)$bodyArray['expires_in'];
+					$expiresAt = time() + $expiresIn;
+					$this->appConfig->setValueInt(Application::APP_ID, 'oauth_token_expires_at', $expiresAt);
+					return $bodyArray['access_token'];
+				}
+				throw new Exception('No access token in OAuth response');
+			}
+		} catch (Exception $e) {
+			$this->logger->warning('Get OAuth token error: ' . $e->getMessage(), ['exception' => $e]);
+			throw $e;
 		}
 	}
 }
