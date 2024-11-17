@@ -12,9 +12,14 @@
 namespace OCA\Trackmania\Controller;
 
 use OCA\Trackmania\AppInfo\Application;
+use OCA\Trackmania\Service\SecretService;
 use OCA\Trackmania\Service\TrackmaniaAPIService;
 use OCP\AppFramework\Controller;
+use OCP\AppFramework\Http\Attribute\NoAdminRequired;
+use OCP\AppFramework\Http\Attribute\PasswordConfirmationRequired;
 use OCP\AppFramework\Http\DataResponse;
+use OCP\Exceptions\AppConfigTypeConflictException;
+use OCP\IAppConfig;
 use OCP\IConfig;
 
 use OCP\IRequest;
@@ -26,6 +31,8 @@ class ConfigController extends Controller {
 		string $appName,
 		IRequest $request,
 		private IConfig $config,
+		private IAppConfig $appConfig,
+		private SecretService $secretService,
 		private TrackmaniaAPIService $trackmaniaAPIService,
 		private ?string $userId
 	) {
@@ -33,12 +40,12 @@ class ConfigController extends Controller {
 	}
 
 	/**
-	 * @NoAdminRequired
-	 *
 	 * @return DataResponse
+	 * @throws \Exception
 	 */
+	#[NoAdminRequired]
 	public function isUserConnected(): DataResponse {
-		$token = $this->config->getUserValue($this->userId, Application::APP_ID, 'token');
+		$token = $this->secretService->getEncryptedUserValue($this->userId, Application::AUDIENCES[Application::AUDIENCE_CORE]['token_config_key_prefix'] . 'token');
 		return new DataResponse([
 			'connected' => $token !== '',
 		]);
@@ -46,12 +53,12 @@ class ConfigController extends Controller {
 
 	/**
 	 * set config values
-	 * @NoAdminRequired
 	 *
 	 * @param array $values
 	 * @return DataResponse
 	 * @throws PreConditionNotMetException
 	 */
+	#[NoAdminRequired]
 	public function setConfig(array $values): DataResponse {
 		if (isset($values['login'], $values['password'])) {
 			return $this->loginWithCredentials($values['login'], $values['password']);
@@ -82,6 +89,25 @@ class ConfigController extends Controller {
 	}
 
 	/**
+	 * Set sensitive admin config values
+	 *
+	 * @param array $values key/value pairs to store in app config
+	 * @return DataResponse
+	 * @throws AppConfigTypeConflictException
+	 */
+	#[PasswordConfirmationRequired]
+	public function setSensitiveAdminConfig(array $values): DataResponse {
+		foreach ($values as $key => $value) {
+			if (in_array($key, ['client_id', 'client_secret'], true)) {
+				$this->appConfig->setValueString(Application::APP_ID, $key, $value, false, true);
+			} else {
+				$this->appConfig->setValueString(Application::APP_ID, $key, $value);
+			}
+		}
+		return new DataResponse([]);
+	}
+
+	/**
 	 * @param string $login
 	 * @param string $password
 	 * @return DataResponse
@@ -99,8 +125,8 @@ class ConfigController extends Controller {
 
 			foreach (Application::AUDIENCES as $audienceKey => $v) {
 				$prefix = $v['token_config_key_prefix'];
-				$this->config->setUserValue($this->userId, Application::APP_ID, $prefix . 'token', $result[$audienceKey]['accessToken']);
-				$this->config->setUserValue($this->userId, Application::APP_ID, $prefix . 'refresh_token', $result[$audienceKey]['refreshToken']);
+				$this->secretService->setEncryptedUserValue($this->userId, $prefix . 'token', $result[$audienceKey]['accessToken']);
+				$this->secretService->setEncryptedUserValue($this->userId, $prefix . 'refresh_token', $result[$audienceKey]['refreshToken']);
 				$decodedToken = $this->decodeToken($result[$audienceKey]['accessToken']);
 				$expiresAt = $decodedToken['exp'];
 				$this->config->setUserValue($this->userId, Application::APP_ID, $prefix . 'token_expires_at', $expiresAt);

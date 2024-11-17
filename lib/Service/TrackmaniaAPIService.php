@@ -36,10 +36,10 @@ class TrackmaniaAPIService {
 	private ICache $cache;
 
 	public function __construct(
-		string $appName,
 		private LoggerInterface $logger,
 		private IL10N $l10n,
 		private IConfig $config,
+		private SecretService $secretService,
 		ICacheFactory $cacheFactory,
 		IClientService $clientService
 	) {
@@ -257,6 +257,7 @@ class TrackmaniaAPIService {
 				'uid' => $mapInfo['mapUid'],
 				'mapId' => $mapInfo['mapId'],
 				'name' => $mapInfo['name'],
+				'author' => $mapInfo['author'],
 				'authorTime' => $mapInfo['authorScore'],
 				'goldTime' => $mapInfo['goldScore'],
 				'silverTime' => $mapInfo['silverScore'],
@@ -351,6 +352,7 @@ class TrackmaniaAPIService {
 					'mapId' => $item['mapInfo']['mapId'],
 					'name' => $item['mapInfo']['name'],
 					'favorite' => $item['mapInfo']['favorite'],
+					'author' => $item['mapInfo']['author'],
 					'authorTime' => $item['mapInfo']['authorScore'],
 					'goldTime' => $item['mapInfo']['goldScore'],
 					'silverTime' => $item['mapInfo']['silverScore'],
@@ -893,7 +895,7 @@ class TrackmaniaAPIService {
 		string $userId, string $audience, string $endPoint, array $params = [], string $method = 'GET', bool $jsonResponse = true
 	) {
 		$this->checkTokenExpiration($userId, $audience);
-		$accessToken = $this->config->getUserValue($userId, Application::APP_ID, Application::AUDIENCES[$audience]['token_config_key_prefix'] . 'token');
+		$accessToken = $this->secretService->getEncryptedUserValue($userId, Application::AUDIENCES[$audience]['token_config_key_prefix'] . 'token');
 		try {
 			$url = Application::AUDIENCES[$audience]['base_url'] . $endPoint;
 			$options = [
@@ -962,7 +964,7 @@ class TrackmaniaAPIService {
 	 * @throws TokenRefreshException
 	 */
 	private function checkTokenExpiration(string $userId, string $audience): void {
-		$refreshToken = $this->config->getUserValue($userId, Application::APP_ID, Application::AUDIENCES[$audience]['token_config_key_prefix'] . 'refresh_token');
+		$refreshToken = $this->secretService->getEncryptedUserValue($userId, Application::AUDIENCES[$audience]['token_config_key_prefix'] . 'refresh_token');
 		$expireAt = $this->config->getUserValue($userId, Application::APP_ID, Application::AUDIENCES[$audience]['token_config_key_prefix'] . 'token_expires_at');
 		if ($refreshToken !== '' && $expireAt !== '') {
 			$nowTs = (new DateTime())->getTimestamp();
@@ -982,7 +984,7 @@ class TrackmaniaAPIService {
 	 * @throws TokenRefreshException
 	 */
 	private function refreshToken(string $userId, string $audience): bool {
-		$refreshToken = $this->config->getUserValue($userId, Application::APP_ID, Application::AUDIENCES[$audience]['token_config_key_prefix'] . 'refresh_token');
+		$refreshToken = $this->secretService->getEncryptedUserValue($userId, Application::AUDIENCES[$audience]['token_config_key_prefix'] . 'refresh_token');
 		if (!$refreshToken) {
 			$this->logger->error('No ' . $audience . ' refresh token found', ['app' => Application::APP_ID]);
 			return false;
@@ -1007,8 +1009,8 @@ class TrackmaniaAPIService {
 					$this->logger->info($audience . 'access token successfully refreshed', ['app' => Application::APP_ID]);
 					$accessToken = $bodyArray['accessToken'];
 					$refreshToken = $bodyArray['refreshToken'];
-					$this->config->setUserValue($userId, Application::APP_ID, Application::AUDIENCES[$audience]['token_config_key_prefix'] . 'token', $accessToken);
-					$this->config->setUserValue($userId, Application::APP_ID, Application::AUDIENCES[$audience]['token_config_key_prefix'] . 'refresh_token', $refreshToken);
+					$this->secretService->setEncryptedUserValue($userId, Application::AUDIENCES[$audience]['token_config_key_prefix'] . 'token', $accessToken);
+					$this->secretService->setEncryptedUserValue($userId, Application::AUDIENCES[$audience]['token_config_key_prefix'] . 'refresh_token', $refreshToken);
 
 					$prefix = Application::AUDIENCES[$audience]['token_config_key_prefix'];
 					$decodedToken = ConfigController::decodeToken($accessToken);

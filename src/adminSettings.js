@@ -4,8 +4,8 @@
  */
 
 import Vue from 'vue'
-import PersonalSettings from './components/PersonalSettings.vue'
+import AdminSettings from './components/AdminSettings.vue'
 Vue.mixin({ methods: { t, n } })
 
-const VuePersonalSettings = Vue.extend(PersonalSettings)
-new VuePersonalSettings().$mount('#trackmania_prefs')
+const View = Vue.extend(AdminSettings)
+new View().$mount('#trackmania_prefs')

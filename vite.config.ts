@@ -6,18 +6,29 @@ import { createAppConfig } from '@nextcloud/vite-config'
 import eslint from 'vite-plugin-eslint'
 import stylelint from 'vite-plugin-stylelint'
 
+const isProduction = process.env.NODE_ENV === 'production'
+
 export default createAppConfig({
 	main: 'src/main.js',
-	personalSettings: 'src/personalSettings.js'
+	personalSettings: 'src/personalSettings.js',
+	adminSettings: 'src/adminSettings.js'
 }, {
 	config: {
-		// resolve: { dedupe: ['vue'] },
 		css: {
 			modules: {
 				localsConvention: 'camelCase',
 			},
+			preprocessorOptions: {
+				scss: {
+					api: 'modern-compiler',
+				},
+			},
 		},
 		plugins: [eslint(), stylelint()],
+		build: {
+			cssCodeSplit: true,
+		},
 	},
 	inlineCSS: { relativeCSSInjection: true },
+	minify: isProduction,
 })

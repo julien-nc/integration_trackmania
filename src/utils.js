@@ -71,6 +71,7 @@ export function getZoneDisplayName(zone) {
 	return names.join(', ')
 }
 export function formatPbs(pbs) {
+	console.debug('xxxxxxxxxxxxxxxxxxxx PBS to format', pbs)
 	for (let i = 0; i < pbs.length; i++) {
 		const pb = pbs[i]
 		const name = pb.mapInfo.name

@@ -12,6 +12,7 @@
 namespace OCA\Trackmania\Controller;
 
 use OCA\Trackmania\AppInfo\Application;
+use OCA\Trackmania\Service\SecretService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
@@ -27,6 +28,7 @@ class PageController extends Controller {
 		string $appName,
 		IRequest $request,
 		private IConfig $config,
+		private SecretService $secretService,
 		private IInitialState $initialStateService,
 		private ?string $userId
 	) {
@@ -35,13 +37,14 @@ class PageController extends Controller {
 
 	/**
 	 * @return TemplateResponse
+	 * @throws \Exception
 	 */
 	#[NoAdminRequired]
 	#[NoCSRFRequired]
 	public function index(): TemplateResponse {
 		$prefix = Application::AUDIENCES[Application::AUDIENCE_CORE]['token_config_key_prefix'];
-		$coreToken = $this->config->getUserValue($this->userId, Application::APP_ID, $prefix . 'token');
-		$refreshToken = $this->config->getUserValue($this->userId, Application::APP_ID, $prefix . 'refresh_token');
+		$coreToken = $this->secretService->getEncryptedUserValue($this->userId, $prefix . 'token');
+		$refreshToken = $this->secretService->getEncryptedUserValue($this->userId, $prefix . 'refresh_token');
 		$userName = $this->config->getUserValue($this->userId, Application::APP_ID, 'user_name');
 		$ubisoftUserId = $this->config->getUserValue($this->userId, Application::APP_ID, 'user_id');
 		$accountId = $this->config->getUserValue($this->userId, Application::APP_ID, $prefix . 'account_id');

@@ -4,7 +4,7 @@
 	<name>Trackmania integration</name>
 	<summary>Integration of Trackmania</summary>
 	<description><![CDATA[Show all your PBs in a dynamic table and optionally compare yourself to another player.]]></description>
-	<version>1.0.1</version>
+	<version>1.0.2</version>
 	<licence>agpl</licence>
 	<author>Julien Veyssier</author>
 	<namespace>Trackmania</namespace>
@@ -18,12 +18,14 @@
 	<screenshot>https://raw.githubusercontent.com/julien-nc/integration_trackmania/main/img/screenshots/screenshot2.jpg</screenshot>
 	<screenshot>https://raw.githubusercontent.com/julien-nc/integration_trackmania/main/img/screenshots/screenshot3.jpg</screenshot>
 	<dependencies>
-		<nextcloud min-version="28" max-version="31"/>
+		<nextcloud min-version="29" max-version="31"/>
 	</dependencies>
 	<commands>
 		<command>OCA\Trackmania\Command\GetRecords</command>
 	</commands>
 	<settings>
+		<admin>OCA\Trackmania\Settings\Admin</admin>
+        <admin-section>OCA\Trackmania\Settings\AdminSection</admin-section>
 		<personal>OCA\Trackmania\Settings\Personal</personal>
 		<personal-section>OCA\Trackmania\Settings\PersonalSection</personal-section>
 	</settings>
