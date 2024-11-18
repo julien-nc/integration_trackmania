@@ -9,6 +9,9 @@
 					class="map-name"
 					v-html="pb.mapInfo.htmlName" />
 			</NcButton>
+			<span :title="pb.mapInfo.author">
+				{{ t('integration_trackmania', 'By {authorName}', { authorName: pb.mapInfo.authorName }) }}
+			</span>
 			<img :src="thumbnailUrl"
 				class="thumbnail">
 			<span>
@@ -25,6 +28,7 @@
 			</span>
 			<span :title="formattedBestMedal"
 				class="medal">
+				{{ t('integration_trackmania', 'My medal') }}:
 				<span>{{ pb.record.formattedMedal }}</span>
 				<img :src="getMedalImageUrl(pb.record.medal)">
 			</span>

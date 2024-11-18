@@ -211,7 +211,8 @@
 					:label-outside="true"
 					:aria-label-combobox="t('integration_trackmania', 'Favorite filter')"
 					:placeholder="t('integration_trackmania', 'No filter')"
-					class="select-filter"
+					class="select-filter favorite-select-filter"
+					:class="{'favorite-select-filter-not-empty': !!selectedFavoriteFilter }"
 					@input="onFavoriteFilterChange">
 					<template #option="option">
 						<div class="favorite-filter-select__option" style="display: flex; gap: 4px; align-items: center;">
@@ -1059,9 +1060,19 @@ export default {
 	}
 
 	.select-filter,
-	.medal-filter-select,
 	.text-input-filter {
 		width: 100%;
+	}
+
+	.favorite-select-filter {
+		min-width: 80px;
+		width: 80px;
+	}
+
+	.medal-filter-select,
+	.favorite-select-filter-not-empty {
+		min-width: 170px;
+		width: 170px;
 	}
 
 	.checkColumns {
