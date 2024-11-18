@@ -445,7 +445,7 @@ class TrackmaniaAPIService {
 		$authorIds = array_unique($authorIds);
 		$authorNames = $this->getAuthorNames($authorIds);
 		return array_map(
-			static function(array $mapInfo) use ($authorNames) {
+			static function (array $mapInfo) use ($authorNames) {
 				$mapInfo['authorName'] = $authorNames[$mapInfo['author']] ?? '???';
 				return $mapInfo;
 			},
@@ -493,7 +493,7 @@ class TrackmaniaAPIService {
 			$getParamsString = implode(
 				'&',
 				array_map(
-					static function(string $authorId) {
+					static function (string $authorId) {
 						return 'accountId[]=' . $authorId;
 					},
 					$authorIdsToLook,

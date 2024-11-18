@@ -184,8 +184,8 @@ class TrackmaniaAPIController extends Controller {
 			$result = $this->trackmaniaAPIService->getMapsInfoAndRecordPositions($this->userId, $pbTimesByMapId, $otherAccountId);
 		} catch (TokenRefreshException|TmApiRequestException $e) {
 			return $this->getExceptionResponse($e);
-//		} catch (\Throwable $e) {
-//			return new DataResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+			//		} catch (\Throwable $e) {
+			//			return new DataResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
 		}
 		return new DataResponse($result);
 	}
