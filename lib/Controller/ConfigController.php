@@ -45,9 +45,8 @@ class ConfigController extends Controller {
 	 */
 	#[NoAdminRequired]
 	public function isUserConnected(): DataResponse {
-		$token = $this->secretService->getEncryptedUserValue($this->userId, Application::AUDIENCES[Application::AUDIENCE_CORE]['token_config_key_prefix'] . 'token');
 		return new DataResponse([
-			'connected' => $token !== '',
+			'connected' => $this->userId !== null && $this->trackmaniaAPIService->isUserConnected($this->userId),
 		]);
 	}
 

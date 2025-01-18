@@ -17,6 +17,7 @@ use GuzzleHttp\Exception\ClientException;
 use GuzzleHttp\Exception\ServerException;
 use OCA\Trackmania\AppInfo\Application;
 use OCA\Trackmania\Controller\ConfigController;
+use OCA\Trackmania\Db\TrackPositionMapper;
 use OCA\Trackmania\Exception\TmApiRequestException;
 use OCA\Trackmania\Exception\TokenRefreshException;
 use OCP\AppFramework\Http;
@@ -43,6 +44,7 @@ class TrackmaniaAPIService {
 		private IConfig $config,
 		private IAppConfig $appConfig,
 		private SecretService $secretService,
+		private TrackPositionMapper $trackPositionMapper,
 		ICacheFactory $cacheFactory,
 		IClientService $clientService,
 	) {
@@ -75,6 +77,11 @@ class TrackmaniaAPIService {
 		];
 	}
 
+	public function isUserConnected(string $userId): bool {
+		$token = $this->secretService->getEncryptedUserValue($userId, Application::AUDIENCES[Application::AUDIENCE_CORE]['token_config_key_prefix'] . 'token');
+		return $token !== '';
+	}
+
 	/**
 	 * @param string $userId
 	 * @return array
@@ -83,6 +90,9 @@ class TrackmaniaAPIService {
 	 * @throws TokenRefreshException
 	 */
 	public function getFavoritesWithPosition(string $userId): array {
+		$prefix = Application::AUDIENCES[Application::AUDIENCE_CORE]['token_config_key_prefix'];
+		$userAccountId = $this->config->getUserValue($userId, Application::APP_ID, $prefix . 'account_id');
+
 		$allFavs = $this->getAllFavorites($userId);
 
 		//// METHOD 1: get from top on each map (slow)
@@ -135,7 +145,10 @@ class TrackmaniaAPIService {
 			$results[] = $oneResult;
 		}
 
-		return $this->formatMapResults($results);
+		$that = $this;
+		return array_map(static function (array $result) use ($userId, $userAccountId, $that) {
+			return $that->formatMapResult($userId, $userAccountId, $result);
+		}, $results);
 	}
 
 	/**
@@ -190,6 +203,9 @@ class TrackmaniaAPIService {
 	 * @throws \DateMalformedStringException
 	 */
 	public function getMapsInfoAndRecordPositions(string $userId, array $pbTimesByMapId, ?string $otherAccountId): array {
+		$prefix = Application::AUDIENCES[Application::AUDIENCE_CORE]['token_config_key_prefix'];
+		$userAccountId = $this->config->getUserValue($userId, Application::APP_ID, $prefix . 'account_id');
+
 		$coreMapInfos = $this->getCoreMapInfo($userId, array_keys($pbTimesByMapId));
 		$coreMapInfoByMapId = [];
 		$allMyPbTimesByMapUid = [];
@@ -205,7 +221,8 @@ class TrackmaniaAPIService {
 		foreach ($pbTimesByMapId as $mapId => $time) {
 			if (isset($coreMapInfoByMapId[$mapId])) {
 				$mapUid = $coreMapInfoByMapId[$mapId]['mapUid'];
-				$results[$mapId] = $this->formatMapInfoAndRecordPosition($coreMapInfoByMapId[$mapId], $positionsByMapUid[$mapUid]);
+				$this->updatePosition($userId, $userAccountId, $coreMapInfoByMapId[$mapId], $positionsByMapUid[$mapUid]);
+				$results[$mapId] = $this->formatMapInfoAndRecordPosition($userId, $userAccountId, $coreMapInfoByMapId[$mapId], $positionsByMapUid[$mapUid]);
 			}
 		}
 
@@ -254,7 +271,7 @@ class TrackmaniaAPIService {
 		return $results;
 	}
 
-	public function formatMapInfoAndRecordPosition(array $mapInfo, array $position): array {
+	public function formatMapInfoAndRecordPosition(string $userId, string $accountId, array $mapInfo, array $position): array {
 		$formatted = [
 			'mapInfo' => [
 				'uid' => $mapInfo['mapUid'],
@@ -276,18 +293,29 @@ class TrackmaniaAPIService {
 		foreach ($position['zones'] as $zone) {
 			$formatted['recordPosition']['zones'][$zone['zoneName']] = $zone['ranking']['position'];
 		}
+
+		// get best know position
+		$bestTrackPosition = $this->trackPositionMapper->getLastBestPositionOfTrack($userId, $accountId, $mapInfo['mapId']);
+		$formatted['bestKnownPosition'] = [
+			'position' => $bestTrackPosition->getPosition(),
+			'first_seen_at' => $bestTrackPosition->getFirstSeenAt(),
+			'last_seen_at' => $bestTrackPosition->getLastSeenAt(),
+		];
 		return $formatted;
 	}
 	// END Partial loading flow
 
 	/**
 	 * @param string $userId
-	 * @return array
+	 * @return \Generator
 	 * @throws PreConditionNotMetException
 	 * @throws TmApiRequestException
 	 * @throws TokenRefreshException
 	 */
-	public function getAllMapsWithPosition(string $userId): array {
+	public function getAllMapsWithPosition(string $userId): \Generator {
+		$prefix = Application::AUDIENCES[Application::AUDIENCE_CORE]['token_config_key_prefix'];
+		$userAccountId = $this->config->getUserValue($userId, Application::APP_ID, $prefix . 'account_id');
+
 		// get favorites because liveMapInfo always says favorite: false
 		$allFavs = $this->getAllFavorites($userId);
 		$allFavsByMapId = [];
@@ -320,7 +348,6 @@ class TrackmaniaAPIService {
 		}
 		*/
 		$positionsByMapUid = $this->getScorePositions($userId, $allMyPbTimesByMapUid);
-		$results = [];
 		foreach ($pbs as $k => $pb) {
 			$oneResult = [
 				'record' => $pb,
@@ -332,48 +359,64 @@ class TrackmaniaAPIService {
 				$oneResult['mapInfo']['favorite'] = isset($allFavsByMapId[$mapId]);
 				if (isset($allMyPbTimesByMapUid[$mapUid])) {
 					$oneResult['recordPosition'] = $positionsByMapUid[$mapUid];
+					$this->updatePosition($userId, $userAccountId, $oneResult['mapInfo'], $oneResult['recordPosition']);
 				} else {
 					$oneResult['recordPosition'] = null;
 				}
 			}
-			$results[] = $oneResult;
+			yield $this->formatMapResult($userId, $userAccountId, $oneResult);
 		}
 
-		return $this->formatMapResults($results);
+		return [];
 	}
 
-	public function formatMapResults(array $data): array {
-		return array_map(static function (array $item) {
-			$formatted = [
-				'record' => [
-					'accountId' => $item['record']['accountId'],
-					'medal' => $item['record']['medal'],
-					'recordScore' => $item['record']['recordScore'],
-					'unix_timestamp' => (new DateTime($item['record']['timestamp']))->getTimestamp(),
-				],
-				'mapInfo' => [
-					'uid' => $item['mapInfo']['mapUid'],
-					'mapId' => $item['mapInfo']['mapId'],
-					'name' => $item['mapInfo']['name'],
-					'favorite' => $item['mapInfo']['favorite'],
-					'author' => $item['mapInfo']['author'],
-					'authorName' => $item['mapInfo']['authorName'],
-					'authorTime' => $item['mapInfo']['authorScore'],
-					'goldTime' => $item['mapInfo']['goldScore'],
-					'silverTime' => $item['mapInfo']['silverScore'],
-					'bronzeTime' => $item['mapInfo']['bronzeScore'],
-					'thumbnailUrl' => $item['mapInfo']['thumbnailUrl'],
-				],
-				'recordPosition' => [
-					'score' => $item['recordPosition']['score'],
-					'zones' => [],
-				],
-			];
-			foreach ($item['recordPosition']['zones'] as $zone) {
-				$formatted['recordPosition']['zones'][$zone['zoneName']] = $zone['ranking']['position'];
+	private function updatePosition(string $userId, string $accountId, array $mapInfo, array $position): void {
+		foreach ($position['zones'] as $zone) {
+			if ($zone['zoneName'] === 'World') {
+				$this->trackPositionMapper->updatePositionOfTrack(
+					$userId, $accountId, $mapInfo['mapId'], $mapInfo['mapUid'], $zone['ranking']['position'],
+				);
 			}
-			return $formatted;
-		}, $data);
+		}
+	}
+
+	public function formatMapResult(string $userId, string $accountId, array $item): array {
+		$formatted = [
+			'record' => [
+				'accountId' => $item['record']['accountId'],
+				'medal' => $item['record']['medal'],
+				'recordScore' => $item['record']['recordScore'],
+				'unix_timestamp' => (new DateTime($item['record']['timestamp']))->getTimestamp(),
+			],
+			'mapInfo' => [
+				'uid' => $item['mapInfo']['mapUid'],
+				'mapId' => $item['mapInfo']['mapId'],
+				'name' => $item['mapInfo']['name'],
+				'favorite' => $item['mapInfo']['favorite'],
+				'author' => $item['mapInfo']['author'],
+				'authorName' => $item['mapInfo']['authorName'],
+				'authorTime' => $item['mapInfo']['authorScore'],
+				'goldTime' => $item['mapInfo']['goldScore'],
+				'silverTime' => $item['mapInfo']['silverScore'],
+				'bronzeTime' => $item['mapInfo']['bronzeScore'],
+				'thumbnailUrl' => $item['mapInfo']['thumbnailUrl'],
+			],
+			'recordPosition' => [
+				'score' => $item['recordPosition']['score'],
+				'zones' => [],
+			],
+		];
+		foreach ($item['recordPosition']['zones'] as $zone) {
+			$formatted['recordPosition']['zones'][$zone['zoneName']] = $zone['ranking']['position'];
+		}
+		// get best know position
+		$bestTrackPosition = $this->trackPositionMapper->getLastBestPositionOfTrack($userId, $accountId, $item['mapInfo']['mapId']);
+		$formatted['bestKnownPosition'] = [
+			'position' => $bestTrackPosition->getPosition(),
+			'first_seen_at' => $bestTrackPosition->getFirstSeenAt(),
+			'last_seen_at' => $bestTrackPosition->getLastSeenAt(),
+		];
+		return $formatted;
 	}
 
 	/**
@@ -1250,5 +1293,22 @@ class TrackmaniaAPIService {
 			$this->logger->warning('Get OAuth token error: ' . $e->getMessage(), ['exception' => $e]);
 			throw $e;
 		}
+	}
+
+	public function updatePositionsOfConnectedUsers(): \Generator {
+		$userIds = $this->trackPositionMapper->getConnectedUserIds();
+		foreach ($userIds as $userId) {
+			if (!$this->isUserConnected($userId)) {
+				continue;
+			}
+			try {
+				foreach ($this->getAllMapsWithPosition($userId) as $item) {
+					yield ['user_id' => $userId, 'map' => $item];
+				};
+			} catch (Exception|Throwable) {
+			}
+		}
+
+		return [];
 	}
 }
