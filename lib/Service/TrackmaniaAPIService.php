@@ -13,6 +13,7 @@ namespace OCA\Trackmania\Service;
 
 use DateTime;
 use Exception;
+use Generator;
 use GuzzleHttp\Exception\ClientException;
 use GuzzleHttp\Exception\ServerException;
 use OCA\Trackmania\AppInfo\Application;
@@ -83,75 +84,6 @@ class TrackmaniaAPIService {
 	}
 
 	/**
-	 * @param string $userId
-	 * @return array
-	 * @throws PreConditionNotMetException
-	 * @throws TmApiRequestException
-	 * @throws TokenRefreshException
-	 */
-	public function getFavoritesWithPosition(string $userId): array {
-		$prefix = Application::AUDIENCES[Application::AUDIENCE_CORE]['token_config_key_prefix'];
-		$userAccountId = $this->config->getUserValue($userId, Application::APP_ID, $prefix . 'account_id');
-
-		$allFavs = $this->getAllFavorites($userId);
-
-		//// METHOD 1: get from top on each map (slow)
-		//foreach ($allFavs as $k => $fav) {
-		//	$pos = $this->getMyPositionFromTop($userId, $fav['uid']);
-		//	$allFavs[$k]['myPosition'] = $pos;
-		//}
-
-		$allMyPbs = $this->getMapRecords($userId);
-		$allMyPbsByMapId = [];
-		foreach ($allMyPbs as $pb) {
-			$allMyPbsByMapId[$pb['mapId']] = $pb;
-		}
-
-		//// METHOD 2: one by one
-		//foreach ($allFavs as $k => $fav) {
-		//	$mapId = $fav['mapId'];
-		//	if (isset($allMyPbsByMapId[$mapId])) {
-		//		$time = $allMyPbsByMapId[$mapId]['recordScore']['time'];
-		//		$allFavs[$k]['myRecordTime'] = $time;
-		//		$allFavs[$k]['myRecordPosition'] = $this->getScorePosition($userId, $fav['uid'], $time);
-		//	} else {
-		//		$allFavs[$k]['myRecordTime'] = null;
-		//		$allFavs[$k]['myRecordPosition'] = null;
-		//	}
-		//}
-
-
-		// METHOD 3: all at once
-		$allMyPbTimesByMapUid = [];
-		foreach ($allFavs as $fav) {
-			$time = $allMyPbsByMapId[$fav['mapId']]['recordScore']['time'];
-			if ($time !== null) {
-				$allMyPbTimesByMapUid[$fav['uid']] = $time;
-			}
-		}
-		$positionsByMapUid = $this->getScorePositions($userId, $allMyPbTimesByMapUid);
-		$results = [];
-		foreach ($allFavs as $k => $fav) {
-			$oneResult = [
-				'record' => $allMyPbsByMapId[$fav['mapId']],
-				'mapInfo' => $fav,
-			];
-			$mapUid = $fav['uid'];
-			if (isset($allMyPbTimesByMapUid[$mapUid])) {
-				$oneResult['recordPosition'] = $positionsByMapUid[$mapUid];
-			} else {
-				$oneResult['recordPosition'] = null;
-			}
-			$results[] = $oneResult;
-		}
-
-		$that = $this;
-		return array_map(static function (array $result) use ($userId, $userAccountId, $that) {
-			return $that->formatMapResult($userId, $userAccountId, $result);
-		}, $results);
-	}
-
-	/**
 	 * Partial loading flow
 	 *
 	 * @param string $userId
@@ -171,7 +103,7 @@ class TrackmaniaAPIService {
 
 		$pbs = $this->getMapRecords($userId, null, $mapIdList);
 		// $pbs = array_slice($pbs, 0, 100);
-		return $this->formatRecordsAndFavorites($pbs, $allFavsByMapId);
+		return $this->formatRecordsAndFavorites(iterator_to_array($pbs), $allFavsByMapId);
 	}
 
 	public function formatRecordsAndFavorites(array $pbs, array $allFavsByMapId): array {
@@ -207,17 +139,30 @@ class TrackmaniaAPIService {
 		$userAccountId = $this->config->getUserValue($userId, Application::APP_ID, $prefix . 'account_id');
 
 		$coreMapInfos = $this->getCoreMapInfo($userId, array_keys($pbTimesByMapId));
+		$coreMapInfos = iterator_to_array($coreMapInfos);
+		$coreMapInfoByMapUid = [];
 		$coreMapInfoByMapId = [];
 		$allMyPbTimesByMapUid = [];
 		foreach ($coreMapInfos as $mapInfo) {
+			$coreMapInfoByMapUid[$mapInfo['mapUid']] = $mapInfo;
 			$coreMapInfoByMapId[$mapInfo['mapId']] = $mapInfo;
 			$time = $pbTimesByMapId[$mapInfo['mapId']];
 			if ($time !== null) {
 				$allMyPbTimesByMapUid[$mapInfo['mapUid']] = $time;
 			}
 		}
-		$positionsByMapUid = $this->getScorePositions($userId, $allMyPbTimesByMapUid);
+		$positions = $this->getScorePositions($userId, $allMyPbTimesByMapUid);
 		$results = [];
+		foreach ($positions as $position) {
+			$mapUid = $position['mapUid'];
+			if (isset($coreMapInfoByMapUid[$mapUid])) {
+				$mapInfo = $coreMapInfoByMapUid[$mapUid];
+				$mapId = $mapInfo['mapId'];
+				$this->updatePosition($userId, $userAccountId, $mapInfo, $position);
+				$results[$mapId] = $this->formatMapInfoAndRecordPosition($userId, $userAccountId, $mapInfo, $position);
+			}
+		}
+		/*
 		foreach ($pbTimesByMapId as $mapId => $time) {
 			if (isset($coreMapInfoByMapId[$mapId])) {
 				$mapUid = $coreMapInfoByMapId[$mapId]['mapUid'];
@@ -225,13 +170,11 @@ class TrackmaniaAPIService {
 				$results[$mapId] = $this->formatMapInfoAndRecordPosition($userId, $userAccountId, $coreMapInfoByMapId[$mapId], $positionsByMapUid[$mapUid]);
 			}
 		}
+		*/
 
 		if ($otherAccountId !== null) {
 			// get all other records by map ID
 			$otherAccountRecords = $this->getMapRecords($userId, [$otherAccountId], array_keys($pbTimesByMapId));
-			if (isset($otherAccountRecords['error'])) {
-				return $results;
-			}
 			$otherRecordsByMapId = [];
 			foreach ($otherAccountRecords as $record) {
 				$otherRecordsByMapId[$record['mapId']] = $record;
@@ -307,12 +250,12 @@ class TrackmaniaAPIService {
 
 	/**
 	 * @param string $userId
-	 * @return \Generator
+	 * @return Generator
 	 * @throws PreConditionNotMetException
 	 * @throws TmApiRequestException
 	 * @throws TokenRefreshException
 	 */
-	public function getAllMapsWithPosition(string $userId): \Generator {
+	public function getAllMapsWithPosition(string $userId): Generator {
 		$prefix = Application::AUDIENCES[Application::AUDIENCE_CORE]['token_config_key_prefix'];
 		$userAccountId = $this->config->getUserValue($userId, Application::APP_ID, $prefix . 'account_id');
 
@@ -323,17 +266,20 @@ class TrackmaniaAPIService {
 			$allFavsByMapId[$fav['mapId']] = 1;
 		}
 
+		// $pbs = iterator_to_array($this->getMapRecords($userId));
+		// $pbs = array_slice($pbs, 0, 100);
 		$pbs = $this->getMapRecords($userId);
-		//		$pbs = array_slice($pbs, 0, 100);
 		$pbTimesByMapId = [];
+		$pbByMapId = [];
 		foreach ($pbs as $pb) {
+			$pbByMapId[$pb['mapId']] = $pb;
 			$pbTimesByMapId[$pb['mapId']] = $pb['recordScore']['time'];
 		}
 		$coreMapInfos = $this->getCoreMapInfo($userId, array_keys($pbTimesByMapId));
-		$coreMapInfoByMapId = [];
+		$coreMapInfoByMapUid = [];
 		$allMyPbTimesByMapUid = [];
 		foreach ($coreMapInfos as $mapInfo) {
-			$coreMapInfoByMapId[$mapInfo['mapId']] = $mapInfo;
+			$coreMapInfoByMapUid[$mapInfo['mapUid']] = $mapInfo;
 			$time = $pbTimesByMapId[$mapInfo['mapId']];
 			if ($time !== null) {
 				$allMyPbTimesByMapUid[$mapInfo['mapUid']] = $time;
@@ -347,24 +293,24 @@ class TrackmaniaAPIService {
 			$liveMapInfoByMapId[$mapInfo['mapId']] = $mapInfo;
 		}
 		*/
-		$positionsByMapUid = $this->getScorePositions($userId, $allMyPbTimesByMapUid);
-		foreach ($pbs as $k => $pb) {
-			$oneResult = [
-				'record' => $pb,
-			];
-			$mapId = $pb['mapId'];
-			if (isset($coreMapInfoByMapId[$mapId])) {
-				$mapUid = $coreMapInfoByMapId[$mapId]['mapUid'];
-				$oneResult['mapInfo'] = $coreMapInfoByMapId[$mapId];
+		$positions = $this->getScorePositions($userId, $allMyPbTimesByMapUid);
+		foreach ($positions as $position) {
+			$mapUid = $position['mapUid'];
+			if (isset($coreMapInfoByMapUid[$mapUid])) {
+				$mapId = $coreMapInfoByMapUid[$mapUid]['mapId'];
+				$oneResult = [
+					'record' => $pbByMapId[$mapId],
+				];
+				$oneResult['mapInfo'] = $coreMapInfoByMapUid[$mapUid];
 				$oneResult['mapInfo']['favorite'] = isset($allFavsByMapId[$mapId]);
 				if (isset($allMyPbTimesByMapUid[$mapUid])) {
-					$oneResult['recordPosition'] = $positionsByMapUid[$mapUid];
+					$oneResult['recordPosition'] = $position;
 					$this->updatePosition($userId, $userAccountId, $oneResult['mapInfo'], $oneResult['recordPosition']);
 				} else {
 					$oneResult['recordPosition'] = null;
 				}
+				yield $this->formatMapResult($userId, $userAccountId, $oneResult);
 			}
-			yield $this->formatMapResult($userId, $userAccountId, $oneResult);
 		}
 
 		return [];
@@ -423,12 +369,12 @@ class TrackmaniaAPIService {
 	 * @param string $userId
 	 * @param array|null $mapIds
 	 * @param array|null $mapUids
-	 * @return array
+	 * @return Generator
 	 * @throws PreConditionNotMetException
 	 * @throws TmApiRequestException
 	 * @throws TokenRefreshException
 	 */
-	public function getCoreMapInfo(string $userId, ?array $mapIds = null, ?array $mapUids = null): array {
+	public function getCoreMapInfo(string $userId, ?array $mapIds = null, ?array $mapUids = null): Generator {
 		if ($mapIds !== null) {
 			$paramName = 'mapIdList';
 			$cachePrefix = 'id';
@@ -443,57 +389,89 @@ class TrackmaniaAPIService {
 			return [];
 		}
 
-		$mapInfos = [];
-
 		// get cached
 		$nonCachedItems = [];
+		$nonCachedStringListLength = 0;
 		foreach ($itemList as $item) {
-			$cacheKey = 'core-map-' . $cachePrefix . '-' . $item;
+			$cacheKey = 'core-map2-' . $cachePrefix . '-' . $item;
 			$cachedMapInfo = $this->cache->get($cacheKey);
 			if ($cachedMapInfo !== null) {
-				$mapInfos[] = $cachedMapInfo;
+				// $mapInfos[] = $cachedMapInfo;
+				yield $cachedMapInfo;
 			} else {
 				$nonCachedItems[] = $item;
+				$nonCachedStringListLength += strlen($item) + 1;
+				if ($nonCachedStringListLength >= 7000) {
+					$oneChunk = $this->getCoreMapInfoChunk($userId, $nonCachedItems, $paramName, $itemKeyInMapInfo, $cachePrefix);
+					foreach ($oneChunk as $mapInfo) {
+						yield $mapInfo;
+					}
+					$nonCachedItems = [];
+					$nonCachedStringListLength = 0;
+				}
+			}
+		}
+		// last chunk
+		if (count($nonCachedItems) > 0) {
+			$oneChunk = $this->getCoreMapInfoChunk($userId, $nonCachedItems, $paramName, $itemKeyInMapInfo, $cachePrefix);
+			foreach ($oneChunk as $mapInfo) {
+				yield $mapInfo;
 			}
 		}
 
-		$offset = 0;
-		while ($offset < count($nonCachedItems)) {
-			$oneRequestItemList = [];
-			$stringListLength = 0;
-			while ($stringListLength < 7000 && $offset < count($nonCachedItems)) {
-				$oneRequestItemList[] = $nonCachedItems[$offset];
-				$stringListLength += strlen($nonCachedItems[$offset]) + 1;
-				$offset++;
-			}
-			$params = [
-				$paramName => implode(',', $oneRequestItemList),
-			];
-			// max URI length: 8220 chars
-			$oneChunk = $this->request($userId, Application::AUDIENCE_CORE, 'maps/', $params);
-			if (!isset($oneChunk['error'])) {
-				$mapInfos = array_merge($mapInfos, $oneChunk);
-			}
-			// cache this chunk
-			foreach ($oneChunk as $mapInfo) {
-				$cacheKey = 'core-map-' . $cachePrefix . '-' . $mapInfo[$itemKeyInMapInfo];
-				$this->cache->set($cacheKey, $mapInfo, Application::CACHE_DURATION);
-			}
-		}
+		return [];
+	}
+
+	/**
+	 * @param string $userId
+	 * @param array $items
+	 * @param string $paramName
+	 * @param string $itemKeyInMapInfo
+	 * @param string $cachePrefix
+	 * @return Generator
+	 * @throws PreConditionNotMetException
+	 * @throws TmApiRequestException
+	 * @throws TokenRefreshException
+	 */
+	public function getCoreMapInfoChunk(
+		string $userId, array $items, string $paramName, string $itemKeyInMapInfo, string $cachePrefix,
+	): Generator {
+		$params = [
+			$paramName => implode(',', $items),
+		];
+		// max URI length: 8220 chars
+		$oneChunk = $this->request($userId, Application::AUDIENCE_CORE, 'maps/', $params);
+
+		// we yield now
+		//if (!isset($oneChunk['error'])) {
+		//	$mapInfos = array_merge($mapInfos, $oneChunk);
+		//}
 
 		// get map author names
 		$authorIds = array_map(function (array $mapInfo) {
 			return $mapInfo['author'];
-		}, $mapInfos);
+		}, $oneChunk);
 		$authorIds = array_unique($authorIds);
 		$authorNames = $this->getAuthorNames($authorIds);
-		return array_map(
+		$oneChunk = array_map(
 			static function (array $mapInfo) use ($authorNames) {
 				$mapInfo['authorName'] = $authorNames[$mapInfo['author']] ?? '???';
 				return $mapInfo;
 			},
-			$mapInfos,
+			$oneChunk,
 		);
+
+		// cache this chunk
+		foreach ($oneChunk as $mapInfo) {
+			$cacheKey = 'core-map2-' . $cachePrefix . '-' . $mapInfo[$itemKeyInMapInfo];
+			$this->cache->set($cacheKey, $mapInfo, Application::CACHE_DURATION);
+		}
+
+		foreach ($oneChunk as $mapInfo) {
+			yield $mapInfo;
+		}
+
+		return [];
 	}
 
 	/**
@@ -644,33 +622,43 @@ class TrackmaniaAPIService {
 	 * @param string $userId
 	 * @param array|null $accountIds connected account is used if null (or if $mapIds is null)
 	 * @param array|null $mapIds all records are retrieved if null (only works with the connected account)
-	 * @return array|string[]
+	 * @return Generator
 	 * @throws PreConditionNotMetException
 	 * @throws TmApiRequestException
 	 * @throws TokenRefreshException
 	 */
-	public function getMapRecords(string $userId, ?array $accountIds = null, ?array $mapIds = null): array {
+	public function getMapRecords(string $userId, ?array $accountIds = null, ?array $mapIds = null): Generator {
 		$prefix = Application::AUDIENCES[Application::AUDIENCE_CORE]['token_config_key_prefix'];
 
 		$userAccountId = $this->config->getUserValue($userId, Application::APP_ID, $prefix . 'account_id');
-		if ($mapIds === null) {
+		// if mapIds is null, we get all maps of current connected account
+		// we also use the full endpoint if accountId is null (getting current account records), it's faster than one request per map
+		if ($mapIds === null || $accountIds === null) {
 			$params = [
 				'limit' => 1000,
 				'offset' => 0,
 			];
-			$records = [];
 			do {
 				$newRecords = $this->request($userId, Application::AUDIENCE_CORE, 'v2/accounts/' . $userAccountId . '/mapRecords/', $params);
-				$records = array_merge($records, $newRecords);
+				// $records = array_merge($records, $newRecords);
+				foreach ($newRecords as $record) {
+					// skip undesired maps
+					if ($mapIds === null || in_array($record['mapId'], $mapIds)) {
+						yield $record;
+					}
+				}
 				$lastSize = count($newRecords);
 				$params['offset'] = $params['offset'] + 1000;
 			} while ($lastSize === 1000);
-			return $records;
+			return [];
 		}
 
+		// we have a map list and a list of accounts
+		// we get all records of those maps for all accounts (or current connected one)
 		$params = [
-			'accountIdList' => $accountIds === null ? $userAccountId : implode(',', $accountIds),
+			'accountIdList' => implode(',', $accountIds),
 		];
+		/*
 		return array_reduce(
 			$mapIds,
 			function ($carry, $mapId) use ($userId, $params) {
@@ -681,10 +669,20 @@ class TrackmaniaAPIService {
 			},
 			[]
 		);
+		*/
+		foreach ($mapIds as $mapId) {
+			$params['mapId'] = $mapId;
+			// max URI length: 8220 chars
+			$newRecords = $this->request($userId, Application::AUDIENCE_CORE, 'v2/mapRecords/', $params);
+			foreach ($newRecords as $record) {
+				yield $record;
+			}
+		}
+
+		return [];
 	}
 
-	public function getScorePositions(string $userId, array $scoresByMapUid): array {
-		$positionsByMapUid = [];
+	public function getScorePositions(string $userId, array $scoresByMapUid): Generator {
 		$uids = array_keys($scoresByMapUid);
 		$chunkSize = 50;
 		$offset = 0;
@@ -705,13 +703,13 @@ class TrackmaniaAPIService {
 			$positions = $this->request($userId, Application::AUDIENCE_LIVE, 'leaderboard/group/map?' . implode('&', $getParams), $params, 'POST');
 			if (!isset($positions['error'])) {
 				foreach ($positions as $position) {
-					$positionsByMapUid[$position['mapUid']] = $position;
+					yield $position;
 				}
 			}
 			$offset = $offset + $chunkSize;
 		}
 
-		return $positionsByMapUid;
+		return [];
 	}
 
 	/**
@@ -1295,7 +1293,7 @@ class TrackmaniaAPIService {
 		}
 	}
 
-	public function updatePositionsOfConnectedUsers(): \Generator {
+	public function updatePositionsOfConnectedUsers(): Generator {
 		$userIds = $this->trackPositionMapper->getConnectedUserIds();
 		foreach ($userIds as $userId) {
 			if (!$this->isUserConnected($userId)) {

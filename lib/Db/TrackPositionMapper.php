@@ -164,7 +164,7 @@ class TrackPositionMapper extends QBMapper {
 			->andWhere($qb->expr()->eq('configkey', $qb->createNamedParameter('core_token', IQueryBuilder::PARAM_STR)));
 
 		$result = $qb->executeQuery();
-		return array_map(static function(array $result) {
+		return array_map(static function (array $result) {
 			return $result['userid'];
 		}, $result->fetchAll());
 	}

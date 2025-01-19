@@ -154,17 +154,14 @@ class ConfigController extends Controller {
 	private function getAccountZoneInfo(string $accountId): array {
 		$searchResult = $this->trackmaniaAPIService->searchAccount($accountId);
 		if (isset($searchResult['error']) || count($searchResult) !== 1) {
-			error_log('1111 ::: ' . $accountId . '!!!! ' . json_encode($searchResult));
 			return [];
 		}
 		$account = $searchResult[0];
 		if (!isset($account['player'])) {
-			error_log('22222');
 			return [];
 		}
 		$player = $account['player'];
 		if (!isset($player['zone'])) {
-			error_log('33333');
 			return [];
 		}
 		$zone = $player['zone'];

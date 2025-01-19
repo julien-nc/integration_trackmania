@@ -18,7 +18,6 @@ return [
 		['name' => 'config#setAdminConfig', 'url' => '/admin-config', 'verb' => 'PUT'],
 		['name' => 'config#setSensitiveAdminConfig', 'url' => '/sensitive-admin-config', 'verb' => 'PUT'],
 
-		['name' => 'trackmaniaAPI#getMyFavorites', 'url' => '/favorites', 'verb' => 'GET'],
 		['name' => 'trackmaniaAPI#toggleFavorite', 'url' => '/map/favorite/{mapUid}/{maction}', 'verb' => 'POST'],
 		['name' => 'trackmaniaAPI#getMyRecords', 'url' => '/pbs', 'verb' => 'GET'],
 		['name' => 'trackmaniaAPI#getAccountInfo', 'url' => '/account/{accountId}', 'verb' => 'GET'],

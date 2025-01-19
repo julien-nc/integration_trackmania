@@ -112,23 +112,6 @@ class TrackmaniaAPIController extends Controller {
 		return new DataDisplayResponse('', Http::STATUS_NOT_FOUND);
 	}
 
-	/**
-	 * @return DataResponse
-	 * @throws Exception
-	 */
-	#[NoAdminRequired]
-	#[NoCSRFRequired]
-	public function getMyFavorites(): DataResponse {
-		try {
-			$result = $this->trackmaniaAPIService->getFavoritesWithPosition($this->userId);
-		} catch (TokenRefreshException|TmApiRequestException $e) {
-			return $this->getExceptionResponse($e);
-		} catch (\Throwable $e) {
-			return new DataResponse($e->getMessage(), Http::STATUS_BAD_REQUEST);
-		}
-		return new DataResponse($result);
-	}
-
 	private function getExceptionResponse(TokenRefreshException|TmApiRequestException $e): DataResponse {
 		$requestException = $e->requestException;
 		$tmResponse = $requestException->getResponse();
@@ -222,6 +205,7 @@ class TrackmaniaAPIController extends Controller {
 		} catch (\Throwable $e) {
 			return new DataResponse($e->getMessage(), Http::STATUS_BAD_REQUEST);
 		}
+		$mapInfo = iterator_to_array($mapInfo);
 		if (count($mapInfo) === 0) {
 			return new DataResponse('Map info not found', Http::STATUS_NOT_FOUND);
 		}

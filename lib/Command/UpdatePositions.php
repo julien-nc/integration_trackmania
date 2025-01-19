@@ -38,7 +38,6 @@ class UpdatePositions extends Base {
 	protected function execute(InputInterface $input, OutputInterface $output) {
 		$userId = $input->getArgument('user_id');
 		if ($userId) {
-			$output->writeln('############### Updating positions for user ' . $userId);
 			if (!$this->trackmaniaAPIService->isUserConnected($userId)) {
 				$output->writeln('!!!!!! User ' . $userId . ' is not connected to Trackmania');
 				return 0;
@@ -48,10 +47,11 @@ class UpdatePositions extends Base {
 				$output->writeln(
 					'[' . $i . '] [' . $userId . '] Updated map "' . ($item['mapInfo']['mapId'] ?? 'unknown ID') . '" '
 					. '[' . ($item['bestKnownPosition']['position'] ?? '??')
-					. ', '. ($item['bestKnownPosition']['first_seen_at'] ?? '??')
-					. ', '. ($item['bestKnownPosition']['last_seen_at'] ?? '??')
-					.']'
+					. ', ' . ($item['bestKnownPosition']['first_seen_at'] ?? '??')
+					. ', ' . ($item['bestKnownPosition']['last_seen_at'] ?? '??')
+					. ']'
 				);
+				$this->abortIfInterrupted();
 			}
 		} else {
 			$data = $this->trackmaniaAPIService->updatePositionsOfConnectedUsers();
@@ -59,10 +59,11 @@ class UpdatePositions extends Base {
 				$output->writeln(
 					'[' . $i . '] [' . $item['user_id'] . '] Updated map "' . ($item['map']['mapInfo']['mapId'] ?? 'unknown ID') . '" '
 					. '[' . ($item['map']['bestKnownPosition']['position'] ?? '??')
-					. ', '. ($item['map']['bestKnownPosition']['first_seen_at'] ?? '??')
-					. ', '. ($item['map']['bestKnownPosition']['last_seen_at'] ?? '??')
-					.']'
+					. ', ' . ($item['map']['bestKnownPosition']['first_seen_at'] ?? '??')
+					. ', ' . ($item['map']['bestKnownPosition']['last_seen_at'] ?? '??')
+					. ']'
 				);
+				$this->abortIfInterrupted();
 			}
 		}
 		return 0;
