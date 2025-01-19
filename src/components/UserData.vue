@@ -65,6 +65,12 @@
 				{{ t('integration_trackmania', 'Medals') }}
 			</NcCheckboxRadioSwitch>
 			<NcCheckboxRadioSwitch
+				:checked="configState.show_column_best_position !== '0'"
+				class="checkColumn"
+				@update:checked="onColumnCheck('show_column_best_position', $event)">
+				{{ t('integration_trackmania', 'Best position') }}
+			</NcCheckboxRadioSwitch>
+			<NcCheckboxRadioSwitch
 				v-for="zn in zoneNames"
 				:key="zn"
 				:checked="configState['show_column_zone_' + zn] !== '0'"
@@ -128,6 +134,9 @@
 				</span>
 				<span v-else-if="column.field === 'record.recordScore.time'">
 					{{ row.record.recordScore.formattedTime }}
+				</span>
+				<span v-else-if="column.field === 'bestKnownPosition.lastSeenAt'">
+					{{ row.bestKnownPosition.formattedLastSeenAt ?? '' }}
 				</span>
 				<span v-else-if="column.field === 'otherRecord.time'">
 					{{ row.otherRecord?.formattedTime ?? '' }}
@@ -229,6 +238,17 @@
 						</div>
 					</template>
 				</NcSelect>
+				<div v-else-if="column.field === 'bestKnownPosition.lastSeenAt'"
+					class="date-filters">
+					<NcDateTimePicker
+						v-model="bestPositionLastSeenAfterFilter"
+						class="date-picker"
+						type="datetime"
+						:placeholder="t('integration_trackmania', 'Lost after')"
+						:confirm="false"
+						:clearable="true"
+						@input="onLastSeenAfterFilterChange" />
+				</div>
 				<div v-else-if="column.field === 'record.unix_timestamp'"
 					class="date-filters">
 					<NcDateTimePicker
@@ -275,6 +295,16 @@
 						</div>
 					</template>
 				</NcSelect>
+				<NcTextField
+					v-else-if="column.field === 'bestKnownPosition.position'"
+					:value="bestPositionFilter"
+					type="text"
+					:label="t('integration_trackmania', 'Best position filter')"
+					:show-trailing-button="!!bestPositionFilter"
+					class="text-input-filter"
+					:placeholder="t('integration_trackmania', '\'{example}\' for top 100', { example: '<= 100' }, null, { escape: false, sanitize: false })"
+					@keyup.enter="onBestPositionFilterChange"
+					@trailing-button-click="setBestPositionFilter('')" />
 				<NcTextField
 					v-if="column.field.startsWith('recordPosition.zones.')"
 					:value="zonePositionFilters[column.field] ?? ''"
@@ -401,6 +431,8 @@ export default {
 			otherTimeFilter: this.configState.filter_other_time ?? '',
 			otherDeltaFilter: this.configState.filter_other_delta ?? '',
 			favoriteFilter: this.configState.filter_favorite ?? '',
+			bestPositionFilter: this.configState.filter_best_position ?? '',
+			bestPositionLastSeenAfterFilter: this.configState.filter_best_position_last_seen_at ? moment.unix(this.configState.filter_best_position_last_seen_at).toDate() : '',
 			medalFilter: this.configState.filter_medal ? this.configState.filter_medal.split(',').map(v => parseInt(v)) : [],
 			zonePositionFilters: {},
 			sortOptions: this.initSortOptions(),
@@ -419,6 +451,8 @@ export default {
 				|| this.mapAuthorNameFilter
 				|| this.dateMinFilter
 				|| this.dateMaxFilter
+				|| this.bestPositionFilter
+				|| this.bestPositionLastSeenAfterFilter
 		},
 		selectedMedalFilter() {
 			return this.medalFilter.map(mid => {
@@ -442,6 +476,12 @@ export default {
 			}
 			if (this.mapAuthorNameFilter) {
 				myFiltered = myFiltered.filter(pb => this.filterString(pb.mapInfo.authorName, this.mapAuthorNameFilter))
+			}
+			if (this.bestPositionLastSeenAfterTimestamp) {
+				myFiltered = myFiltered.filter(pb => pb.bestKnownPosition.lastSeenAt > this.bestPositionLastSeenAfterTimestamp)
+			}
+			if (this.bestPositionFilter) {
+				myFiltered = myFiltered.filter(pb => this.filterNumber(pb.bestKnownPosition.position, this.bestPositionFilter))
 			}
 			if (this.timeFilter) {
 				myFiltered = myFiltered.filter(pb => this.filterNumber(pb.record.recordScore.time, this.timeFilter))
@@ -627,6 +667,20 @@ export default {
 					}
 				}),
 			)
+			if (this.configState.show_column_best_position !== '0') {
+				columns.push({
+					label: t('integration_trackmania', 'Best position'),
+					type: 'number',
+					field: 'bestKnownPosition.position',
+					sortName: 'bestPosition',
+				})
+				columns.push({
+					label: t('integration_trackmania', 'Best position last seen'),
+					type: 'number',
+					field: 'bestKnownPosition.lastSeenAt',
+					sortName: 'bestPositionLastSeenAt',
+				})
+			}
 			if (this.configState.other_account_id && this.configState.show_column_other_time !== '0') {
 				columns.push({
 					label: t('integration_trackmania', 'Other PB'),
@@ -665,6 +719,12 @@ export default {
 		dateMaxTimestamp() {
 			if (this.dateMaxFilter) {
 				return moment(this.dateMaxFilter).unix()
+			}
+			return ''
+		},
+		bestPositionLastSeenAfterTimestamp() {
+			if (this.bestPositionLastSeenAfterFilter) {
+				return moment(this.bestPositionLastSeenAfterFilter).unix()
 			}
 			return ''
 		},
@@ -814,8 +874,12 @@ export default {
 				? data === false
 				: data === true
 		},
+		onLastSeenAfterFilterChange() {
+			this.saveOptions({
+				filter_best_position_last_seen_at: this.bestPositionLastSeenAfterTimestamp,
+			})
+		},
 		onDateChange() {
-			console.debug('date change')
 			this.saveOptions({
 				filter_dateMin: this.dateMinTimestamp,
 				filter_dateMax: this.dateMaxTimestamp,
@@ -837,6 +901,15 @@ export default {
 			this.mapAuthorNameFilter = value
 			this.saveOptions({
 				filter_mapAuthorName: this.mapAuthorNameFilter,
+			})
+		},
+		onBestPositionFilterChange(e) {
+			this.setBestPositionFilter(e.target.value)
+		},
+		setBestPositionFilter(value) {
+			this.bestPositionFilter = value
+			this.saveOptions({
+				filter_best_position: this.bestPositionFilter,
 			})
 		},
 		onTimeFilterChange(e) {
@@ -901,6 +974,11 @@ export default {
 				filter_mapName: '',
 				filter_dateMin: '',
 				filter_dateMax: '',
+				filter_mapAuthorName: '',
+				filter_other_time: '',
+				filter_other_delta: '',
+				filter_best_position: '',
+				filter_best_position_last_seen_at: '',
 			}
 			this.zoneNames.forEach(zn => {
 				values['filter_position_zone_' + zn] = ''
@@ -910,12 +988,14 @@ export default {
 			this.medalFilter = []
 			this.favoriteFilter = ''
 			this.timeFilter = ''
-			this.otherTimeFilter = ''
-			this.otherDeltaFilter = ''
 			this.mapNameFilter = ''
-			this.mapAuthorNameFilter = ''
 			this.dateMinFilter = ''
 			this.dateMaxFilter = ''
+			this.mapAuthorNameFilter = ''
+			this.otherTimeFilter = ''
+			this.otherDeltaFilter = ''
+			this.bestPositionFilter = ''
+			this.bestPositionLastSeenAfterFilter = ''
 		},
 		onCellClick(column, row) {
 			if (column.field === 'mapInfo.cleanName') {

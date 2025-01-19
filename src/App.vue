@@ -315,6 +315,7 @@ export default {
 							record: c.record,
 							recordPosition: info.recordPosition,
 							otherRecord: info.otherRecord,
+							bestKnownPosition: info.bestKnownPosition,
 						}
 					}
 					return c

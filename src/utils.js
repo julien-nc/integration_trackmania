@@ -98,6 +98,11 @@ export function formatPbs(pbs) {
 		pb.mapInfo.formattedGoldTime = formatMedalTime(pb, 3)
 		pb.mapInfo.formattedSilverTime = formatMedalTime(pb, 2)
 		pb.mapInfo.formattedBronzeTime = formatMedalTime(pb, 1)
+
+		if (pb.bestKnownPosition.position !== pb.recordPosition.zones.World) {
+			pb.bestKnownPosition.formattedLastSeenAt = formatTimestamp(pb.bestKnownPosition.last_seen_at)
+			pb.bestKnownPosition.lastSeenAt = pb.bestKnownPosition.last_seen_at
+		}
 	}
 	return pbs
 }
