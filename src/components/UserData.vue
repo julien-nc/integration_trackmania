@@ -240,32 +240,35 @@
 				</NcSelect>
 				<div v-else-if="column.field === 'bestKnownPosition.lastSeenAt'"
 					class="date-filters">
-					<NcDateTimePicker
+					<NcDateTimePickerNative
 						v-model="bestPositionLastSeenAfterFilter"
 						class="date-picker"
-						type="datetime"
+						type="datetime-local"
 						:placeholder="t('integration_trackmania', 'Lost after')"
 						:confirm="false"
 						:clearable="true"
+						:hide-label="true"
 						@input="onLastSeenAfterFilterChange" />
 				</div>
 				<div v-else-if="column.field === 'record.unix_timestamp'"
 					class="date-filters">
-					<NcDateTimePicker
+					<NcDateTimePickerNative
 						v-model="dateMinFilter"
 						class="date-picker"
 						type="date"
 						:placeholder="t('integration_trackmania', 'Min date')"
 						:confirm="false"
 						:clearable="true"
+						:hide-label="true"
 						@input="onDateChange" />
-					<NcDateTimePicker
+					<NcDateTimePickerNative
 						v-model="dateMaxFilter"
 						class="date-picker"
 						type="date"
 						:placeholder="t('integration_trackmania', 'Max date')"
 						:confirm="false"
 						:clearable="true"
+						:hide-label="true"
 						@input="onDateChange" />
 				</div>
 				<NcSelect
@@ -326,37 +329,31 @@ import StarOutlineIcon from 'vue-material-design-icons/StarOutline.vue'
 import FilterRemoveIcon from 'vue-material-design-icons/FilterRemove.vue'
 
 import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
-import NcDateTimePicker from '@nextcloud/vue/components/NcDateTimePicker'
-import NcTextField from '@nextcloud/vue/components/NcTextField'
-import NcSelect from '@nextcloud/vue/components/NcSelect'
 import NcButton from '@nextcloud/vue/components/NcButton'
-import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
-
-import SimpleTable from './SimpleTable.vue'
-import MapDetailModal from './MapDetailModal.vue'
-// import NbRecordsPerPosition from './charts/NbRecordsPerPosition.vue'
 
 import moment from '@nextcloud/moment'
 import { imagePath } from '@nextcloud/router'
 import { emit } from '@nextcloud/event-bus'
+import { defineAsyncComponent } from 'vue'
 import {
 	dig, getFormattedBestMedal, getMedalImageUrl,
 	authorMedalImageUrl, goldMedalImageUrl, silverMedalImageUrl, bronzeMedalImageUrl,
 } from '../utils.js'
+// import NbRecordsPerPosition from './charts/NbRecordsPerPosition.vue'
 
 export default {
 	name: 'UserData',
 
 	components: {
-		SimpleTable,
 		// NbRecordsPerPosition,
-		MapDetailModal,
-		NcSelect,
+		SimpleTable: defineAsyncComponent(() => import('./SimpleTable.vue')),
+		MapDetailModal: defineAsyncComponent(() => import('./MapDetailModal.vue')),
+		NcSelect: defineAsyncComponent(() => import('@nextcloud/vue/components/NcSelect')),
 		NcButton,
 		NcLoadingIcon,
-		NcTextField,
-		NcDateTimePicker,
-		NcCheckboxRadioSwitch,
+		NcTextField: defineAsyncComponent(() => import('@nextcloud/vue/components/NcTextField')),
+		NcDateTimePickerNative: defineAsyncComponent(() => import('@nextcloud/vue/components/NcDateTimePickerNative')),
+		NcCheckboxRadioSwitch: defineAsyncComponent(() => import('@nextcloud/vue/components/NcCheckboxRadioSwitch')),
 		FilterRemoveIcon,
 		StarIcon,
 		StarOutlineIcon,

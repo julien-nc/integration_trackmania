@@ -67,40 +67,30 @@ import CloseIcon from 'vue-material-design-icons/Close.vue'
 
 import TrackmaniaIcon from './components/icons/TrackmaniaIcon.vue'
 
-import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
-import NcAppContent from '@nextcloud/vue/components/NcAppContent'
-import NcContent from '@nextcloud/vue/components/NcContent'
-import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
-import NcProgressBar from '@nextcloud/vue/components/NcProgressBar'
-import NcButton from '@nextcloud/vue/components/NcButton'
-
-import PersonalSettings from './components/PersonalSettings.vue'
-import UserData from './components/UserData.vue'
-import AccountHeader from './components/AccountHeader.vue'
-
 import { generateUrl } from '@nextcloud/router'
 import { loadState } from '@nextcloud/initial-state'
 import axios from '@nextcloud/axios'
 import { showError } from '@nextcloud/dialogs'
 import { subscribe, unsubscribe } from '@nextcloud/event-bus'
+import { defineAsyncComponent } from 'vue'
 import { formatPbs } from './utils.js'
 
 export default {
 	name: 'App',
 
 	components: {
-		UserData,
-		AccountHeader,
+		UserData: defineAsyncComponent(() => import('./components/UserData.vue')),
+		AccountHeader: defineAsyncComponent(() => import('./components/AccountHeader.vue')),
+		PersonalSettings: defineAsyncComponent(() => import('./components/PersonalSettings.vue')),
+		NcAppContent: defineAsyncComponent(() => import('@nextcloud/vue/components/NcAppContent')),
+		NcContent: defineAsyncComponent(() => import('@nextcloud/vue/components/NcContent')),
+		NcEmptyContent: defineAsyncComponent(() => import('@nextcloud/vue/components/NcEmptyContent')),
+		NcProgressBar: defineAsyncComponent(() => import('@nextcloud/vue/components/NcProgressBar')),
+		NcLoadingIcon: defineAsyncComponent(() => import('@nextcloud/vue/components/NcLoadingIcon')),
+		NcButton: defineAsyncComponent(() => import('@nextcloud/vue/components/NcButton')),
 		TrackmaniaIcon,
-		PersonalSettings,
 		CogIcon,
 		CloseIcon,
-		NcAppContent,
-		NcContent,
-		NcEmptyContent,
-		NcLoadingIcon,
-		NcProgressBar,
-		NcButton,
 	},
 
 	props: {
