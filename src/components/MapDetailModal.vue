@@ -51,7 +51,7 @@
 				</a>
 			</div>
 			<NcTextField
-				:value.sync="accountIdForGhostUrl"
+				v-model="accountIdForGhostUrl"
 				type="text"
 				:label="t('integration_trackmania', 'Get ghost of account')"
 				:show-trailing-button="!!accountIdForGhostUrl"
@@ -67,9 +67,9 @@
 </template>
 
 <script>
-import NcModal from '@nextcloud/vue/dist/Components/NcModal.js'
-import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
-import NcTextField from '@nextcloud/vue/dist/Components/NcTextField.js'
+import NcModal from '@nextcloud/vue/components/NcModal'
+import NcButton from '@nextcloud/vue/components/NcButton'
+import NcTextField from '@nextcloud/vue/components/NcTextField'
 
 import { generateUrl } from '@nextcloud/router'
 import { emit } from '@nextcloud/event-bus'

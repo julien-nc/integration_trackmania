@@ -1,12 +1,9 @@
-import Vue from 'vue'
+import { createApp } from 'vue'
 import App from './App.vue'
-
-import VueClipboard from 'vue-clipboard2'
-
-Vue.mixin({ methods: { t, n } })
-Vue.use(VueClipboard)
+import '@nextcloud/dialogs/style.css'
 
 document.addEventListener('DOMContentLoaded', (event) => {
-	const View = Vue.extend(App)
-	new View().$mount('#content')
+	const app = createApp(App)
+	app.mixin({ methods: { t, n } })
+	app.mount('#content')
 })

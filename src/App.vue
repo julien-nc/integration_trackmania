@@ -67,12 +67,12 @@ import CloseIcon from 'vue-material-design-icons/Close.vue'
 
 import TrackmaniaIcon from './components/icons/TrackmaniaIcon.vue'
 
-import NcLoadingIcon from '@nextcloud/vue/dist/Components/NcLoadingIcon.js'
-import NcAppContent from '@nextcloud/vue/dist/Components/NcAppContent.js'
-import NcContent from '@nextcloud/vue/dist/Components/NcContent.js'
-import NcEmptyContent from '@nextcloud/vue/dist/Components/NcEmptyContent.js'
-import NcProgressBar from '@nextcloud/vue/dist/Components/NcProgressBar.js'
-import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
+import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
+import NcAppContent from '@nextcloud/vue/components/NcAppContent'
+import NcContent from '@nextcloud/vue/components/NcContent'
+import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
+import NcProgressBar from '@nextcloud/vue/components/NcProgressBar'
+import NcButton from '@nextcloud/vue/components/NcButton'
 
 import PersonalSettings from './components/PersonalSettings.vue'
 import UserData from './components/UserData.vue'
@@ -153,7 +153,7 @@ export default {
 		}
 	},
 
-	beforeDestroy() {
+	unmounted() {
 		unsubscribe('get-nb-players', this.getNbPlayers)
 		unsubscribe('toggle-favorite', this.toggleFavorite)
 		unsubscribe('save-options', this.saveOptions)
@@ -369,7 +369,7 @@ export default {
 		getNbPlayers(pb) {
 			const url = generateUrl('/apps/integration_trackmania/map/{mapUid}/finish-count', { mapUid: pb.mapInfo.uid })
 			axios.get(url).then((response) => {
-				this.$set(pb.mapInfo, 'nb_players', response.data)
+				pb.mapInfo.nb_players = response.data
 			}).catch((error) => {
 				showError(
 					t('integration_trackmania', 'Failed to get player count')
@@ -380,12 +380,12 @@ export default {
 		},
 		toggleFavorite(pb) {
 			const realPb = this.pbs.find(e => e.mapInfo.uid === pb.mapInfo.uid)
-			this.$set(realPb.mapInfo, 'favoriteLoading', true)
+			realPb.mapInfo.favoriteLoading = true
 			const url = pb.mapInfo.favorite
 				? generateUrl('/apps/integration_trackmania/map/favorite/{mapUid}/remove', { mapUid: pb.mapInfo.uid })
 				: generateUrl('/apps/integration_trackmania/map/favorite/{mapUid}/add', { mapUid: pb.mapInfo.uid })
 			axios.post(url).then((response) => {
-				this.$set(realPb.mapInfo, 'favorite', !pb.mapInfo.favorite)
+				realPb.mapInfo.favorite = !pb.mapInfo.favorite
 			}).catch((error) => {
 				showError(
 					t('integration_trackmania', 'Failed to add/remove favorite map')
@@ -393,13 +393,13 @@ export default {
 				)
 				console.error(error)
 			}).then(() => {
-				this.$set(realPb.mapInfo, 'favoriteLoading', false)
+				realPb.mapInfo.favoriteLoading = false
 			})
 		},
 		saveOptions(values) {
 			// Object.assign(this.tableState, values)
 			Object.keys(values).forEach(k => {
-				this.$set(this.tableState, k, values[k])
+				this.tableState[k] = values[k]
 			})
 			const req = {
 				values,

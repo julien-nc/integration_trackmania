@@ -39,7 +39,7 @@
 import ReloadIcon from 'vue-material-design-icons/Reload.vue'
 import CloseIcon from 'vue-material-design-icons/Close.vue'
 
-import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
+import NcButton from '@nextcloud/vue/components/NcButton'
 
 import OtherAccountSelect from './OtherAccountSelect.vue'
 

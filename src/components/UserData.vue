@@ -35,53 +35,53 @@
 		</div-->
 		<div class="checkColumns">
 			<NcCheckboxRadioSwitch
-				:checked="configState.show_column_line_number !== '0'"
+				:model-value="configState.show_column_line_number !== '0'"
 				class="checkColumn"
-				@update:checked="onColumnCheck('show_column_line_number', $event)">
+				@update:model-value="onColumnCheck('show_column_line_number', $event)">
 				{{ t('integration_trackmania', 'Line numbers') }}
 			</NcCheckboxRadioSwitch>
 			<NcCheckboxRadioSwitch
-				:checked="configState.show_column_favorite !== '0'"
+				:model-value="configState.show_column_favorite !== '0'"
 				class="checkColumn"
-				@update:checked="onColumnCheck('show_column_favorite', $event)">
+				@update:model-value="onColumnCheck('show_column_favorite', $event)">
 				{{ t('integration_trackmania', 'Favorite') }}
 			</NcCheckboxRadioSwitch>
 			<NcCheckboxRadioSwitch
-				:checked="configState.show_column_author_name !== '0'"
+				:model-value="configState.show_column_author_name !== '0'"
 				class="checkColumn"
-				@update:checked="onColumnCheck('show_column_author_name', $event)">
+				@update:model-value="onColumnCheck('show_column_author_name', $event)">
 				{{ t('integration_trackmania', 'Author name') }}
 			</NcCheckboxRadioSwitch>
 			<NcCheckboxRadioSwitch
-				:checked="configState.show_column_date !== '0'"
+				:model-value="configState.show_column_date !== '0'"
 				class="checkColumn"
-				@update:checked="onColumnCheck('show_column_date', $event)">
+				@update:model-value="onColumnCheck('show_column_date', $event)">
 				{{ t('integration_trackmania', 'Date') }}
 			</NcCheckboxRadioSwitch>
 			<NcCheckboxRadioSwitch
-				:checked="configState.show_column_medals !== '0'"
+				:model-value="configState.show_column_medals !== '0'"
 				class="checkColumn"
-				@update:checked="onColumnCheck('show_column_medals', $event)">
+				@update:model-value="onColumnCheck('show_column_medals', $event)">
 				{{ t('integration_trackmania', 'Medals') }}
 			</NcCheckboxRadioSwitch>
 			<NcCheckboxRadioSwitch
-				:checked="configState.show_column_best_position !== '0'"
+				:model-value="configState.show_column_best_position !== '0'"
 				class="checkColumn"
-				@update:checked="onColumnCheck('show_column_best_position', $event)">
+				@update:model-value="onColumnCheck('show_column_best_position', $event)">
 				{{ t('integration_trackmania', 'Best position') }}
 			</NcCheckboxRadioSwitch>
 			<NcCheckboxRadioSwitch
 				v-for="zn in zoneNames"
 				:key="zn"
-				:checked="configState['show_column_zone_' + zn] !== '0'"
+				:model-value="configState['show_column_zone_' + zn] !== '0'"
 				class="checkColumn"
-				@update:checked="onZoneCheck(zn, $event)">
+				@update:model-value="onZoneCheck(zn, $event)">
 				{{ t('integration_trackmania', 'Position in {zone}', { zone: zn }) }}
 			</NcCheckboxRadioSwitch>
 			<NcCheckboxRadioSwitch v-if="configState.other_account_id"
-				:checked="configState.show_column_other_time !== '0'"
+				:model-value="configState.show_column_other_time !== '0'"
 				class="checkColumn"
-				@update:checked="onColumnCheck('show_column_other_time', $event)">
+				@update:model-value="onColumnCheck('show_column_other_time', $event)">
 				{{ t('integration_trackmania', 'Other account information') }}
 			</NcCheckboxRadioSwitch>
 		</div>
@@ -164,7 +164,7 @@
 			<template #filter="{column}">
 				<NcTextField
 					v-if="column.field === 'mapInfo.cleanName'"
-					:value="mapNameFilter"
+					:model-value="mapNameFilter"
 					type="text"
 					:label="t('integration_trackmania', 'Map name filter')"
 					:placeholder="t('integration_trackmania', 'summer 2023')"
@@ -174,7 +174,7 @@
 					@trailing-button-click="setMapNameFilter('')" />
 				<NcTextField
 					v-else-if="column.field === 'mapInfo.authorName'"
-					:value="mapAuthorNameFilter"
+					:model-value="mapAuthorNameFilter"
 					type="text"
 					:label="t('integration_trackmania', 'Map author name filter')"
 					:placeholder="t('integration_trackmania', 'Nadeo')"
@@ -184,7 +184,7 @@
 					@trailing-button-click="setMapAuthorNameFilter('')" />
 				<NcTextField
 					v-else-if="column.field === 'record.recordScore.time'"
-					:value="timeFilter"
+					:model-value="timeFilter"
 					type="text"
 					:label="t('integration_trackmania', 'Record time filter')"
 					:show-trailing-button="!!timeFilter"
@@ -194,7 +194,7 @@
 					@trailing-button-click="setTimeFilter('')" />
 				<NcTextField
 					v-else-if="column.field === 'otherRecord.time'"
-					:value="otherTimeFilter"
+					:model-value="otherTimeFilter"
 					type="text"
 					:label="t('integration_trackmania', 'Other time filter')"
 					:show-trailing-button="!!otherTimeFilter"
@@ -204,7 +204,7 @@
 					@trailing-button-click="setOtherTimeFilter('')" />
 				<NcTextField
 					v-else-if="column.field === 'otherRecord.delta'"
-					:value="otherDeltaFilter"
+					:model-value="otherDeltaFilter"
 					type="text"
 					:label="t('integration_trackmania', 'Other delta filter')"
 					:show-trailing-button="!!otherDeltaFilter"
@@ -214,7 +214,7 @@
 					@trailing-button-click="setOtherDeltaFilter('')" />
 				<NcSelect
 					v-else-if="column.field === 'mapInfo.favorite'"
-					:value="selectedFavoriteFilter"
+					:model-value="selectedFavoriteFilter"
 					:options="favoriteFilterOptions"
 					:multiple="false"
 					:label-outside="true"
@@ -222,7 +222,7 @@
 					:placeholder="t('integration_trackmania', 'No filter')"
 					class="select-filter favorite-select-filter"
 					:class="{'favorite-select-filter-not-empty': !!selectedFavoriteFilter }"
-					@input="onFavoriteFilterChange">
+					@update:model-value="onFavoriteFilterChange">
 					<template #option="option">
 						<div class="favorite-filter-select__option" style="display: flex; gap: 4px; align-items: center;">
 							<StarIcon v-if="option.value === 'true'" style="color: var(--color-warning);" />
@@ -270,14 +270,14 @@
 				</div>
 				<NcSelect
 					v-else-if="column.field === 'record.medal'"
-					:value="selectedMedalFilter"
+					:model-value="selectedMedalFilter"
 					:options="medalFilterOptions"
 					:multiple="true"
 					:label-outside="true"
 					:aria-label-combobox="t('integration_trackmania', 'Medal filter')"
 					:placeholder="t('integration_trackmania', 'No filter')"
 					class="medal-filter-select"
-					@input="onMedalFilterChange">
+					@update:model-value="onMedalFilterChange">
 					<template #option="option">
 						<div class="medal-filter-select__option" style="display: flex; gap: 4px; align-items: center;">
 							<img v-if="option.medalImageUrl"
@@ -297,7 +297,7 @@
 				</NcSelect>
 				<NcTextField
 					v-else-if="column.field === 'bestKnownPosition.position'"
-					:value="bestPositionFilter"
+					:model-value="bestPositionFilter"
 					type="text"
 					:label="t('integration_trackmania', 'Best position filter')"
 					:show-trailing-button="!!bestPositionFilter"
@@ -307,7 +307,7 @@
 					@trailing-button-click="setBestPositionFilter('')" />
 				<NcTextField
 					v-if="column.field.startsWith('recordPosition.zones.')"
-					:value="zonePositionFilters[column.field] ?? ''"
+					:model-value="zonePositionFilters[column.field] ?? ''"
 					type="text"
 					:label="t('integration_trackmania', 'Position filter')"
 					:show-trailing-button="!!zonePositionFilters[column.field]"
@@ -325,12 +325,12 @@ import StarIcon from 'vue-material-design-icons/Star.vue'
 import StarOutlineIcon from 'vue-material-design-icons/StarOutline.vue'
 import FilterRemoveIcon from 'vue-material-design-icons/FilterRemove.vue'
 
-import NcLoadingIcon from '@nextcloud/vue/dist/Components/NcLoadingIcon.js'
-import NcDateTimePicker from '@nextcloud/vue/dist/Components/NcDateTimePicker.js'
-import NcTextField from '@nextcloud/vue/dist/Components/NcTextField.js'
-import NcSelect from '@nextcloud/vue/dist/Components/NcSelect.js'
-import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
-import NcCheckboxRadioSwitch from '@nextcloud/vue/dist/Components/NcCheckboxRadioSwitch.js'
+import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
+import NcDateTimePicker from '@nextcloud/vue/components/NcDateTimePicker'
+import NcTextField from '@nextcloud/vue/components/NcTextField'
+import NcSelect from '@nextcloud/vue/components/NcSelect'
+import NcButton from '@nextcloud/vue/components/NcButton'
+import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
 
 import SimpleTable from './SimpleTable.vue'
 import MapDetailModal from './MapDetailModal.vue'
@@ -738,7 +738,7 @@ export default {
 		Object.keys(this.configState).forEach(configKey => {
 			if (configKey.startsWith('filter_position_zone_')) {
 				const zn = configKey.replace('filter_position_zone_', '')
-				this.$set(this.zonePositionFilters, 'recordPosition.zones.' + zn, this.configState[configKey])
+				this.zonePositionFilters['recordPosition.zones.' + zn] = this.configState[configKey]
 			}
 		})
 	},
@@ -961,7 +961,7 @@ export default {
 		},
 		onZonePositionFilterChange(field, value) {
 			const zn = field.replace('recordPosition.zones.', '')
-			this.$set(this.zonePositionFilters, field, value)
+			this.zonePositionFilters[field] = value
 			this.saveOptions({
 				['filter_position_zone_' + zn]: value,
 			})
@@ -982,7 +982,7 @@ export default {
 			}
 			this.zoneNames.forEach(zn => {
 				values['filter_position_zone_' + zn] = ''
-				this.$set(this.zonePositionFilters, 'recordPosition.zones.' + zn, '')
+				this.zonePositionFilters['recordPosition.zones.' + zn] = ''
 			})
 			this.saveOptions(values)
 			this.medalFilter = []

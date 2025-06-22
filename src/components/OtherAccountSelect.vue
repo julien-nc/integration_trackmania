@@ -4,7 +4,7 @@
 			<strong>{{ t('integration_trackmania', 'Compare yourself with another player') }}</strong>
 		</h3>
 		<NcSelect
-			:value="otherAccount"
+			:model-value="otherAccount"
 			:options="otherAccountOptions"
 			class="other-account-select"
 			:multiple="false"
@@ -15,7 +15,7 @@
 			:aria-label-combobox="t('integration_trackmania', 'Search account')"
 			:placeholder="t('integration_trackmania', 'Search on trackmania.io by player name')"
 			:append-to-body="false"
-			@input="onOtherAccountSelectChange"
+			@update:model-value="onOtherAccountSelectChange"
 			@search="onOtherAccountSearch">
 			<template #option="option">
 				<div class="account-option">
@@ -37,7 +37,7 @@
 			</template>
 		</NcSelect>
 		<NcTextField
-			:value="otherAccount?.id ?? ''"
+			:model-value="otherAccount?.id ?? ''"
 			type="text"
 			:label="t('integration_trackmania', 'Account ID')"
 			:show-trailing-button="!!otherAccount?.id"
@@ -49,8 +49,8 @@
 </template>
 
 <script>
-import NcTextField from '@nextcloud/vue/dist/Components/NcTextField.js'
-import NcSelect from '@nextcloud/vue/dist/Components/NcSelect.js'
+import NcTextField from '@nextcloud/vue/components/NcTextField'
+import NcSelect from '@nextcloud/vue/components/NcSelect'
 
 import { generateUrl } from '@nextcloud/router'
 import axios from '@nextcloud/axios'
@@ -149,7 +149,7 @@ export default {
 						zoneDisplayName: getZoneDisplayName(item.player.zone),
 					}
 				})
-				// this.$set(this, 'otherAccountOptions', response.data.map(item => item.player))
+				// this.otherAccountOptions = response.data.map(item => item.player)
 				console.debug('OPTIONs are now', this.otherAccountOptions)
 			}).catch(error => {
 				console.error(error)

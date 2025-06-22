@@ -19,11 +19,11 @@
 			<div class="line">
 				<NcTextField
 					id="trackmania-client-id"
+					v-model="state.client_id"
 					class="input"
-					:value.sync="state.client_id"
 					:label="t('integration_trackmania', 'Client ID')"
 					:show-trailing-button="!!state.client_id"
-					@update:value="onInput"
+					@update:model-value="onInput"
 					@trailing-button-click="state.client_id = '' ; onInput()">
 					<KeyIcon :size="20" />
 				</NcTextField>
@@ -31,12 +31,12 @@
 			<div class="line">
 				<NcTextField
 					id="trackmania-client-secret"
+					v-model="state.client_secret"
 					class="input"
-					:value.sync="state.client_secret"
 					type="password"
 					:label="t('integration_trackmania', 'Client secret')"
 					:show-trailing-button="!!state.client_secret"
-					@update:value="onInput"
+					@update:model-value="onInput"
 					@trailing-button-click="state.client_secret = '' ; onInput()">
 					<KeyIcon :size="20" />
 				</NcTextField>
@@ -50,8 +50,8 @@ import KeyIcon from 'vue-material-design-icons/Key.vue'
 
 import TrackmaniaIcon from './icons/TrackmaniaIcon.vue'
 
-import NcNoteCard from '@nextcloud/vue/dist/Components/NcNoteCard.js'
-import NcTextField from '@nextcloud/vue/dist/Components/NcTextField.js'
+import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
+import NcTextField from '@nextcloud/vue/components/NcTextField'
 
 import { loadState } from '@nextcloud/initial-state'
 import { generateUrl } from '@nextcloud/router'
