@@ -28,7 +28,7 @@ class GetRecords extends Base {
 
 	protected function configure() {
 		$this->setName('trackmania:get-records')
-			->setDescription('Get your records for all the maps you\'ve played')
+			->setDescription('Get the records for all the maps played by one user')
 			->addArgument(
 				'user_id',
 				InputArgument::REQUIRED,

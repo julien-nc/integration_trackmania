@@ -1300,9 +1300,11 @@ class TrackmaniaAPIService {
 				continue;
 			}
 			try {
+				error_log('[TM] Starting user ' . $userId);
 				foreach ($this->getAllMapsWithPosition($userId) as $item) {
 					yield ['user_id' => $userId, 'map' => $item];
 				};
+				error_log('[TM] End user ' . $userId);
 			} catch (Exception|Throwable) {
 			}
 		}

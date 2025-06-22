@@ -24,6 +24,6 @@ class UpdatePositions extends TimedJob {
 	 * @return void
 	 */
 	protected function run($argument): void {
-		$this->trackmaniaAPIService->updatePositionsOfConnectedUsers();
+		iterator_to_array($this->trackmaniaAPIService->updatePositionsOfConnectedUsers());
 	}
 }
