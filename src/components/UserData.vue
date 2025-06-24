@@ -248,7 +248,7 @@
 						:confirm="false"
 						:clearable="true"
 						:hide-label="true"
-						@input="onLastSeenAfterFilterChange" />
+						@update:model-value="onLastSeenAfterFilterChange" />
 				</div>
 				<div v-else-if="column.field === 'record.unix_timestamp'"
 					class="date-filters">
@@ -260,7 +260,7 @@
 						:confirm="false"
 						:clearable="true"
 						:hide-label="true"
-						@input="onDateChange" />
+						@update:model-value="onDateChange" />
 					<NcDateTimePickerNative
 						v-model="dateMaxFilter"
 						class="date-picker"
@@ -269,7 +269,7 @@
 						:confirm="false"
 						:clearable="true"
 						:hide-label="true"
-						@input="onDateChange" />
+						@update:model-value="onDateChange" />
 				</div>
 				<NcSelect
 					v-else-if="column.field === 'record.medal'"
