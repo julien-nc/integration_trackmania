@@ -18,6 +18,7 @@ use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\TemplateResponse;
 use OCP\AppFramework\Services\IInitialState;
+use OCP\IAppConfig;
 use OCP\IConfig;
 
 use OCP\IRequest;
@@ -28,6 +29,7 @@ class PageController extends Controller {
 		string $appName,
 		IRequest $request,
 		private IConfig $config,
+		private IAppConfig $appConfig,
 		private SecretService $secretService,
 		private IInitialState $initialStateService,
 		private ?string $userId,
@@ -50,6 +52,8 @@ class PageController extends Controller {
 		$accountId = $this->config->getUserValue($this->userId, Application::APP_ID, $prefix . 'account_id');
 		$userFlagCode = $this->config->getUserValue($this->userId, Application::APP_ID, 'user_flag_code');
 		$userZoneName = $this->config->getUserValue($this->userId, Application::APP_ID, 'user_zone_name');
+		$hasClientID = $this->appConfig->getValueString(Application::APP_ID, 'client_id') !== '';
+		$hasClientSecret = $this->appConfig->getValueString(Application::APP_ID, 'client_secret') !== '';
 
 		$pageInitialState = [
 			'core_token' => ($coreToken && $refreshToken) ? 'dummyTokenContent' : '',
@@ -58,6 +62,7 @@ class PageController extends Controller {
 			'user_flag_code' => $userFlagCode,
 			'user_zone_name' => $userZoneName,
 			'ubisofts_user_id' => $ubisoftUserId,
+			'has_oauth_credentials' => $hasClientID && $hasClientSecret,
 		];
 		$this->initialStateService->provideInitialState('user-config', $pageInitialState);
 

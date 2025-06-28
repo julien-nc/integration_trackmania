@@ -6,6 +6,10 @@
 		</h2>
 		<br>
 		<div id="trackmania-content">
+			<NcNoteCard v-if="!state?.has_oauth_credentials"
+				type="warning">
+				{{ t('integration_trackmania', 'Your administrator didn\'t set any Trackmania OAuth app credentials. The app won\'t work.') }}
+			</NcNoteCard>
 			<div id="trackmania-connect-block">
 				<p v-if="!connected" class="settings-hint">
 					{{ t('integration_trackmania', 'Your login/password is not stored in Nextcloud.') }}
@@ -73,6 +77,7 @@ import CheckIcon from 'vue-material-design-icons/Check.vue'
 import TrackmaniaIcon from './icons/TrackmaniaIcon.vue'
 
 import NcButton from '@nextcloud/vue/components/NcButton'
+import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 
 import { loadState } from '@nextcloud/initial-state'
 import { generateUrl } from '@nextcloud/router'
@@ -85,6 +90,7 @@ export default {
 	components: {
 		TrackmaniaIcon,
 		NcButton,
+		NcNoteCard,
 		OpenInNewIcon,
 		CloseIcon,
 		CheckIcon,
@@ -189,6 +195,10 @@ export default {
 #trackmania_prefs {
 	#trackmania-content {
 		margin-left: 40px;
+	}
+
+	h2 {
+		justify-content: start;
 	}
 
 	h2,
