@@ -7,6 +7,5 @@
 .*.sw*
 node_modules
 /.php*.cache
-/composer.lock
 /vendor
 /css
