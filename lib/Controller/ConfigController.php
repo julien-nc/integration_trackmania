@@ -100,6 +100,9 @@ class ConfigController extends Controller {
 		foreach ($values as $key => $value) {
 			if (in_array($key, ['client_id', 'client_secret'], true)) {
 				$this->appConfig->setValueString(Application::APP_ID, $key, $value, false, true);
+				// clear potential existing token if oauth credentials change
+				$this->appConfig->deleteKey(Application::APP_ID, 'access_token');
+				$this->appConfig->deleteKey(Application::APP_ID, 'oauth_token_expires_at');
 			} else {
 				$this->appConfig->setValueString(Application::APP_ID, $key, $value);
 			}

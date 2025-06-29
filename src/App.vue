@@ -45,7 +45,7 @@
 			</NcEmptyContent>
 			<div v-else>
 				<AccountHeader
-					:other-account.sync="selectedOtherAccount"
+					v-model:other-account="selectedOtherAccount"
 					:user-state="userState"
 					@disconnect="disconnect"
 					@reload="reloadData"
@@ -122,7 +122,8 @@ export default {
 	},
 
 	beforeMount() {
-		// console.debug('userState', this.userState)
+		console.debug('[trackmania] userState', this.userState)
+		console.debug('[trackmania] tableState', this.tableState)
 	},
 
 	mounted() {

@@ -20,6 +20,10 @@
 				{{ t('integration_trackmania', 'Disconnect') }}
 			</NcButton>
 		</div>
+		<NcNoteCard v-if="!userState?.has_oauth_credentials"
+			type="warning">
+			{{ t('integration_trackmania', 'Your administrator didn\'t set any Trackmania OAuth app credentials. The app won\'t work.') }}
+		</NcNoteCard>
 		<div class="accounts">
 			<div class="connected-as">
 				{{ t('integration_trackmania', 'Connected as {name}', { name: userState.user_name }) }}
@@ -40,6 +44,7 @@ import ReloadIcon from 'vue-material-design-icons/Reload.vue'
 import CloseIcon from 'vue-material-design-icons/Close.vue'
 
 import NcButton from '@nextcloud/vue/components/NcButton'
+import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 
 import OtherAccountSelect from './OtherAccountSelect.vue'
 
@@ -51,6 +56,7 @@ export default {
 	components: {
 		OtherAccountSelect,
 		NcButton,
+		NcNoteCard,
 		ReloadIcon,
 		CloseIcon,
 	},
