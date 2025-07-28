@@ -240,10 +240,10 @@
 				</NcSelect>
 				<div v-else-if="column.field === 'bestKnownPosition.lastSeenAt'"
 					class="date-filters">
-					<NcDateTimePickerNative
+					<NcDateTimePicker
 						v-model="bestPositionLastSeenAfterFilter"
 						class="date-picker"
-						type="datetime-local"
+						type="date"
 						:placeholder="t('integration_trackmania', 'Lost after')"
 						:confirm="false"
 						:clearable="true"
@@ -252,7 +252,7 @@
 				</div>
 				<div v-else-if="column.field === 'record.unix_timestamp'"
 					class="date-filters">
-					<NcDateTimePickerNative
+					<NcDateTimePicker
 						v-model="dateMinFilter"
 						class="date-picker"
 						type="date"
@@ -261,7 +261,7 @@
 						:clearable="true"
 						:hide-label="true"
 						@update:model-value="onDateChange" />
-					<NcDateTimePickerNative
+					<NcDateTimePicker
 						v-model="dateMaxFilter"
 						class="date-picker"
 						type="date"
@@ -352,7 +352,7 @@ export default {
 		NcButton,
 		NcLoadingIcon,
 		NcTextField: defineAsyncComponent(() => import('@nextcloud/vue/components/NcTextField')),
-		NcDateTimePickerNative: defineAsyncComponent(() => import('@nextcloud/vue/components/NcDateTimePickerNative')),
+		NcDateTimePicker: defineAsyncComponent(() => import('@nextcloud/vue/components/NcDateTimePicker')),
 		NcCheckboxRadioSwitch: defineAsyncComponent(() => import('@nextcloud/vue/components/NcCheckboxRadioSwitch')),
 		FilterRemoveIcon,
 		StarIcon,
