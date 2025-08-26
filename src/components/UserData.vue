@@ -1,13 +1,13 @@
 <template>
 	<div id="trackmania_main">
 		<div v-if="configState.other_account_id">
-			<p style="color: var(--color-success);">
+			<p style="color: var(--color-border-success, --color-success);">
 				👍 {{ t('integration_trackmania', '{nb} records better than other account', { nb: betterThanOtherCount }) }}
 			</p>
-			<p style="color: var(--color-error);">
+			<p style="color: var(--color-border-error, --color-error);">
 				👎 {{ t('integration_trackmania', '{nb} records worse than other account', { nb: worseThanOtherCount }) }}
 			</p>
-			<p v-if="equalThanOtherCount > 0" style="color: var(--color-warning);">
+			<p v-if="equalThanOtherCount > 0" style="color: var(--color-favorite, --color-warning);">
 				👌 {{ t('integration_trackmania', '{nb} records equal than other account', { nb: equalThanOtherCount }) }}
 			</p>
 		</div>
@@ -118,7 +118,7 @@
 				<span v-else-if="column.field === 'mapInfo.favorite'"
 					:title="t('integration_trackmania', 'Click to toggle favorite')">
 					<NcLoadingIcon v-if="row.mapInfo.favoriteLoading" />
-					<StarIcon v-else-if="row.mapInfo.favorite" style="color: var(--color-warning);" />
+					<StarIcon v-else-if="row.mapInfo.favorite" style="color: var(--color-favorite, --color-warning);" />
 					<StarOutlineIcon v-else style="color: var(--color-text-maxcontrast);" />
 				</span>
 				<span v-else-if="column.field === 'record.medal'"
@@ -142,7 +142,7 @@
 					{{ row.otherRecord?.formattedTime ?? '' }}
 				</span>
 				<span v-else-if="column.field === 'otherRecord.delta'"
-					:style="row.otherRecord?.delta < 0 ? 'color: var(--color-success);' : 'color: var(--color-error);'">
+					:style="row.otherRecord?.delta < 0 ? 'color: var(--color-border-success, --color-success);' : 'color: var(--color-border-error, --color-error);'">
 					{{ row.otherRecord?.formattedDelta ?? '' }}
 				</span>
 				<span v-else-if="column.field === 'record.unix_timestamp'"
@@ -225,14 +225,14 @@
 					@update:model-value="onFavoriteFilterChange">
 					<template #option="option">
 						<div class="favorite-filter-select__option" style="display: flex; gap: 4px; align-items: center;">
-							<StarIcon v-if="option.value === 'true'" style="color: var(--color-warning);" />
+							<StarIcon v-if="option.value === 'true'" style="color: var(--color-favorite, --color-warning);" />
 							<StarOutlineIcon v-else-if="option.value === 'false'" style="color: var(--color-text-maxcontrast);" />
 							{{ option.label }}
 						</div>
 					</template>
 					<template #selected-option="option">
 						<div class="favorite-filter-select__option" style="display: flex; gap: 4px; align-items: center;">
-							<StarIcon v-if="option.value === 'true'" style="color: var(--color-warning);" />
+							<StarIcon v-if="option.value === 'true'" style="color: var(--color-favorite, --color-warning);" />
 							<StarOutlineIcon v-else-if="option.value === 'false'" style="color: var(--color-text-maxcontrast);" />
 							{{ option.label }}
 						</div>

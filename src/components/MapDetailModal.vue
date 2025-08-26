@@ -210,10 +210,10 @@ export default {
 		}
 	}
 	.medalTime {
-		color: var(--color-error);
+		color: var(--color-border-error, --color-error);
 	}
 	.success {
-		color: var(--color-success);
+		color: var(--color-border-success, --color-success);
 	}
 }
 </style>
