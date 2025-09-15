@@ -106,6 +106,8 @@ export default {
 			pbs: [],
 			infoLoadingPercent: 0,
 			selectedOtherAccount: {},
+			nbChunksDone: 0,
+			nbChunks: 0,
 		}
 	},
 
@@ -251,6 +253,8 @@ export default {
 				}
 				chunks.push(currentChunk)
 			}
+			this.nbChunksDone = 0
+			this.nbChunks = chunks.length
 			Promise.all(chunks.map(c => this.getPbsChunkInfo(c)))
 				.then(results => {
 					if (results.some(result => result.code === 'ERR_CANCELED')) {
@@ -313,7 +317,7 @@ export default {
 				})
 				this.$options.pbsWithInfo.push(...chunkWithInfo)
 				this.infoLoadingPercent = parseInt(this.$options.pbsWithInfo.length / this.$options.rawPbsToGetInfoOn.length * 100)
-				console.debug('----- ONE done', this.infoLoadingPercent)
+				console.debug(`----- ${++this.nbChunksDone}/${this.nbChunks} chunks done ${this.infoLoadingPercent} %`)
 				return response
 			}).catch((error) => {
 				console.error(error)
