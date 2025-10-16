@@ -4,10 +4,12 @@
 		@close="$emit('close')">
 		<div class="modal-content-wrapper">
 			<NcButton class="map-name-button">
+				<!-- eslint-disable vue/no-v-html -->
 				<span
 					:title="pb.mapInfo.cleanName"
 					class="map-name"
 					v-html="pb.mapInfo.htmlName" />
+				<!-- eslint-enable -->
 			</NcButton>
 			<span :title="pb.mapInfo.author">
 				{{ t('integration_trackmania', 'By {authorName}', { authorName: pb.mapInfo.authorName }) }}

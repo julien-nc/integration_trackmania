@@ -112,9 +112,11 @@
 				<span v-if="column.field === '#'">
 					{{ index + 1 }}
 				</span>
+				<!-- eslint-disable vue/no-v-html -->
 				<span v-else-if="column.field === 'mapInfo.cleanName'"
 					:title="row.mapInfo.cleanName"
 					v-html="row.mapInfo.htmlName" />
+				<!-- eslint-enable -->
 				<span v-else-if="column.field === 'mapInfo.favorite'"
 					:title="t('integration_trackmania', 'Click to toggle favorite')">
 					<NcLoadingIcon v-if="row.mapInfo.favoriteLoading" />
