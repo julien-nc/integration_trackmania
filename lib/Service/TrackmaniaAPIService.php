@@ -452,14 +452,20 @@ class TrackmaniaAPIService {
 			return $mapInfo['author'];
 		}, $oneChunk);
 		$authorIds = array_unique($authorIds);
-		$authorNames = $this->getAuthorNames($authorIds);
-		$oneChunk = array_map(
-			static function (array $mapInfo) use ($authorNames) {
-				$mapInfo['authorName'] = $authorNames[$mapInfo['author']] ?? '???';
-				return $mapInfo;
-			},
-			$oneChunk,
-		);
+
+		$clientId = $this->appConfig->getValueString(Application::APP_ID, 'client_id');
+		$clientSecret = $this->appConfig->getValueString(Application::APP_ID, 'client_secret');
+		// only try to get author names if an oauth app is set
+		if ($clientId !== '' && $clientSecret !== '') {
+			$authorNames = $this->getAuthorNames($authorIds);
+			$oneChunk = array_map(
+				static function (array $mapInfo) use ($authorNames) {
+					$mapInfo['authorName'] = $authorNames[$mapInfo['author']] ?? '???';
+					return $mapInfo;
+				},
+				$oneChunk,
+			);
+		}
 
 		// cache this chunk
 		foreach ($oneChunk as $mapInfo) {
@@ -472,6 +478,10 @@ class TrackmaniaAPIService {
 		}
 
 		return [];
+	}
+
+	public function clearMapInfoCache(): void {
+		$this->cache->clear('core-map2-');
 	}
 
 	/**

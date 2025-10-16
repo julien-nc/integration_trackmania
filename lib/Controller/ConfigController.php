@@ -103,6 +103,8 @@ class ConfigController extends Controller {
 				// clear potential existing token if oauth credentials change
 				$this->appConfig->deleteKey(Application::APP_ID, 'access_token');
 				$this->appConfig->deleteKey(Application::APP_ID, 'oauth_token_expires_at');
+				// clear map info cache to make sure we get the author names next time
+				$this->trackmaniaAPIService->clearMapInfoCache();
 			} else {
 				$this->appConfig->setValueString(Application::APP_ID, $key, $value);
 			}

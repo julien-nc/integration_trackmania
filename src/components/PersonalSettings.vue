@@ -7,8 +7,8 @@
 		<br>
 		<div id="trackmania-content">
 			<NcNoteCard v-if="!state?.has_oauth_credentials"
-				type="warning">
-				{{ t('integration_trackmania', 'Your administrator didn\'t set any Trackmania OAuth app credentials. The app won\'t work.') }}
+				type="info">
+				{{ t('integration_trackmania', 'Your administrator didn\'t set any Trackmania OAuth app credentials. The map author names won\'t be displayed') }}
 			</NcNoteCard>
 			<div id="trackmania-connect-block">
 				<p v-if="!connected" class="settings-hint">

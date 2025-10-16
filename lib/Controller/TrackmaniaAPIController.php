@@ -144,8 +144,11 @@ class TrackmaniaAPIController extends Controller {
 	#[NoAdminRequired]
 	#[NoCSRFRequired]
 	public function getMyRawRecords(?array $mapIdList = null): DataResponse {
-		// get a token once to avoid trying to get multiple new ones simultaneously in /pbs/info
-		$this->trackmaniaAPIService->getOAuthToken();
+		try {
+			// get a token once to avoid trying to get multiple new ones simultaneously in /pbs/info
+			$this->trackmaniaAPIService->getOAuthToken();
+		} catch (\Exception) {
+		}
 		try {
 			$result = $this->trackmaniaAPIService->getMapRecordsAndFavorites($this->userId, $mapIdList);
 		} catch (TokenRefreshException|TmApiRequestException $e) {
