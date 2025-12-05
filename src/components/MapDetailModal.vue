@@ -12,7 +12,7 @@
 				<!-- eslint-enable -->
 			</NcButton>
 			<span :title="pb.mapInfo.author">
-				{{ t('integration_trackmania', 'By {authorName}', { authorName: pb.mapInfo.authorName }) }}
+				{{ t('integration_trackmania', 'By {authorName}', { authorName: pb.mapInfo.authorName ?? '??' }) }}
 			</span>
 			<img :src="thumbnailUrl"
 				class="thumbnail">

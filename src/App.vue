@@ -421,6 +421,7 @@ body {
 }
 
 h2.page-title {
+	margin-top: 0;
 	padding: 20px 0 0 30px;
 	display: flex;
 	.icon {

@@ -44,7 +44,7 @@
 		"@nextcloud/router": "^3.0.0",
 		"@nextcloud/vue": "^9.0.0-rc.2",
 		"chart.js": "^4.5.0",
-		"debounce": "^2.0.0",
+		"debounce": "^3.0.0",
 		"tm-essentials": "^1.0.5",
 		"tm-text": "^1.1.0",
 		"vue": "^3.5.17",
