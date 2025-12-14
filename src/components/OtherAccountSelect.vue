@@ -95,12 +95,12 @@ export default {
 		},
 		onAccountIdSubmit(e) {
 			const submittedAccountId = e.target.value
-			console.debug('aaaaa onAccountIdSubmit', submittedAccountId)
+			console.debug('[trackmania] onAccountIdSubmit', submittedAccountId)
 			// look for account name
 			const url = generateUrl('/apps/integration_trackmania/account/search/{name}', { name: submittedAccountId })
 			axios.get(url).then((response) => {
 				if (response.data.length === 1) {
-					console.debug('aaaaa onAccountIdSubmit name search result', response.data[0])
+					console.debug('[trackmania] onAccountIdSubmit name search result', response.data[0])
 					this.$emit('update:other-account', {
 						id: response.data[0].player.id,
 						name: response.data[0].player.name,

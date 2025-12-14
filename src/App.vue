@@ -261,7 +261,7 @@ export default {
 						console.debug('At least one request has been canceled, do nothing')
 						return
 					}
-					console.debug('aaaaaa promise.all results', results)
+					console.debug('[trackmania] promise.all results', results)
 					console.debug('----- all done', this.$options.pbsWithInfo)
 					this.zoneNames = this.getZoneNames(this.$options.pbsWithInfo[0])
 					// TODO extend instead of replace

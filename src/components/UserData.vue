@@ -743,10 +743,10 @@ export default {
 	},
 
 	mounted() {
-		console.debug('aaaaaaaaaaaaa pbs', this.pbs)
-		console.debug('aaaaaaaaaaaaa tops', this.topCount)
-		console.debug('aaaaaaaaaaaaa medals', this.medalCount)
-		console.debug('aaaaaaaaaaaaa config', this.configState)
+		console.debug('[trackmania] pbs', this.pbs)
+		console.debug('[trackmania] tops', this.topCount)
+		console.debug('[trackmania] medals', this.medalCount)
+		console.debug('[trackmania] config', this.configState)
 	},
 
 	methods: {
