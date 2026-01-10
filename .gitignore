@@ -7,5 +7,5 @@
 .*.sw*
 node_modules
 /.php*.cache
-/vendor
+vendor/
 /css

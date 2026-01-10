@@ -37,36 +37,42 @@
 			<NcCheckboxRadioSwitch
 				:model-value="configState.show_column_line_number !== '0'"
 				class="checkColumn"
+				type="switch"
 				@update:model-value="onColumnCheck('show_column_line_number', $event)">
 				{{ t('integration_trackmania', 'Line numbers') }}
 			</NcCheckboxRadioSwitch>
 			<NcCheckboxRadioSwitch
 				:model-value="configState.show_column_favorite !== '0'"
 				class="checkColumn"
+				type="switch"
 				@update:model-value="onColumnCheck('show_column_favorite', $event)">
 				{{ t('integration_trackmania', 'Favorite') }}
 			</NcCheckboxRadioSwitch>
 			<NcCheckboxRadioSwitch
 				:model-value="configState.show_column_author_name !== '0'"
 				class="checkColumn"
+				type="switch"
 				@update:model-value="onColumnCheck('show_column_author_name', $event)">
 				{{ t('integration_trackmania', 'Author name') }}
 			</NcCheckboxRadioSwitch>
 			<NcCheckboxRadioSwitch
 				:model-value="configState.show_column_date !== '0'"
 				class="checkColumn"
+				type="switch"
 				@update:model-value="onColumnCheck('show_column_date', $event)">
 				{{ t('integration_trackmania', 'Date') }}
 			</NcCheckboxRadioSwitch>
 			<NcCheckboxRadioSwitch
 				:model-value="configState.show_column_medals !== '0'"
 				class="checkColumn"
+				type="switch"
 				@update:model-value="onColumnCheck('show_column_medals', $event)">
 				{{ t('integration_trackmania', 'Medals') }}
 			</NcCheckboxRadioSwitch>
 			<NcCheckboxRadioSwitch
 				:model-value="configState.show_column_best_position !== '0'"
 				class="checkColumn"
+				type="switch"
 				@update:model-value="onColumnCheck('show_column_best_position', $event)">
 				{{ t('integration_trackmania', 'Best position') }}
 			</NcCheckboxRadioSwitch>
@@ -75,12 +81,14 @@
 				:key="zn"
 				:model-value="configState['show_column_zone_' + zn] !== '0'"
 				class="checkColumn"
+				type="switch"
 				@update:model-value="onZoneCheck(zn, $event)">
 				{{ t('integration_trackmania', 'Position in {zone}', { zone: zn }) }}
 			</NcCheckboxRadioSwitch>
 			<NcCheckboxRadioSwitch v-if="configState.other_account_id"
 				:model-value="configState.show_column_other_time !== '0'"
 				class="checkColumn"
+				type="switch"
 				@update:model-value="onColumnCheck('show_column_other_time', $event)">
 				{{ t('integration_trackmania', 'Other account information') }}
 			</NcCheckboxRadioSwitch>
