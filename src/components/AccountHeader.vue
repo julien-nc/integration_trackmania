@@ -23,6 +23,9 @@
 				</template>
 				{{ t('integration_trackmania', 'Disconnect') }}
 			</NcButton>
+			<span v-if="lastUpdateTime" class="load-info">
+				{{ t('integration_trackmania', 'Last update: {time} (loaded in {duration})', { time: formattedUpdateTime, duration: formattedDuration }) }}
+			</span>
 		</div>
 		<div class="accounts">
 			<div class="connected-as">
@@ -48,6 +51,8 @@ import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 
 import OtherAccountSelect from './OtherAccountSelect.vue'
 
+import moment from '@nextcloud/moment'
+
 import { getFlagUrlFromCode } from '../utils.js'
 
 export default {
@@ -70,6 +75,14 @@ export default {
 			type: Object,
 			required: true,
 		},
+		lastUpdateTime: {
+			type: Date,
+			default: null,
+		},
+		lastLoadDurationMs: {
+			type: Number,
+			default: null,
+		},
 	},
 
 	data() {
@@ -78,6 +91,19 @@ export default {
 	},
 
 	computed: {
+		formattedUpdateTime() {
+			if (!this.lastUpdateTime) {
+				return ''
+			}
+			return moment(this.lastUpdateTime).format('LLL')
+		},
+		formattedDuration() {
+			if (this.lastLoadDurationMs === null) {
+				return ''
+			}
+			const seconds = Math.round(this.lastLoadDurationMs / 100) / 10
+			return seconds + 's'
+		},
 	},
 
 	watch: {
@@ -102,6 +128,13 @@ export default {
 		margin-bottom: 24px;
 		display: flex;
 		gap: 8px;
+		align-items: center;
+
+		.load-info {
+			margin-left: 8px;
+			color: var(--color-text-maxcontrast);
+			font-size: 0.9em;
+		}
 	}
 
 	.accounts {

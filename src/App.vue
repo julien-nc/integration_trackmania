@@ -47,6 +47,8 @@
 				<AccountHeader
 					v-model:other-account="selectedOtherAccount"
 					:user-state="userState"
+					:last-update-time="lastUpdateTime"
+					:last-load-duration-ms="lastLoadDurationMs"
 					@disconnect="disconnect"
 					@reload="reloadData"
 					@reload-filtered="reloadFilteredData"
@@ -108,6 +110,8 @@ export default {
 			selectedOtherAccount: {},
 			nbChunksDone: 0,
 			nbChunks: 0,
+			lastUpdateTime: null,
+			lastLoadDurationMs: null,
 		}
 	},
 
@@ -212,6 +216,7 @@ export default {
 			this.abortController = new AbortController()
 			this.infoLoadingPercent = 0
 			this.loadingData = true
+			this._loadStartTime = Date.now()
 			const reqData = {}
 			const reqConfig = {
 				signal: this.abortController.signal,
@@ -278,6 +283,8 @@ export default {
 				})
 				.then(() => {
 					this.loadingData = false
+					this.lastUpdateTime = new Date()
+					this.lastLoadDurationMs = Date.now() - this._loadStartTime
 				})
 		},
 		getPbsChunkInfo(chunk) {
@@ -329,6 +336,7 @@ export default {
 		 */
 		getPbsAndInfo() {
 			this.loadingData = true
+			this._loadStartTime = Date.now()
 			const url = generateUrl('/apps/integration_trackmania/pbs')
 			const reqConfig = {
 				signal: this.abortController.signal,
@@ -352,6 +360,8 @@ export default {
 				console.debug(error)
 			}).then(() => {
 				this.loadingData = false
+				this.lastUpdateTime = new Date()
+				this.lastLoadDurationMs = Date.now() - this._loadStartTime
 			})
 		},
 		mergePbs(mapIdList) {
