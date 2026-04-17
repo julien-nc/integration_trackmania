@@ -49,7 +49,6 @@ class PageController extends Controller {
 		$coreToken = $this->secretService->getEncryptedUserValue($this->userId, $prefix . 'token');
 		$refreshToken = $this->secretService->getEncryptedUserValue($this->userId, $prefix . 'refresh_token');
 		$userName = $this->config->getUserValue($this->userId, Application::APP_ID, 'user_name');
-		$ubisoftUserId = $this->config->getUserValue($this->userId, Application::APP_ID, 'user_id');
 		$accountId = $this->config->getUserValue($this->userId, Application::APP_ID, $prefix . 'account_id');
 		$userFlagCode = $this->config->getUserValue($this->userId, Application::APP_ID, 'user_flag_code');
 		$userZoneName = $this->config->getUserValue($this->userId, Application::APP_ID, 'user_zone_name');
@@ -62,7 +61,6 @@ class PageController extends Controller {
 			'user_name' => $userName,
 			'user_flag_code' => $userFlagCode,
 			'user_zone_name' => $userZoneName,
-			'ubisofts_user_id' => $ubisoftUserId,
 			'has_oauth_credentials' => $hasClientID && $hasClientSecret,
 		];
 		$this->initialStateService->provideInitialState('user-config', $pageInitialState);

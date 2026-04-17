@@ -1166,40 +1166,31 @@ class TrackmaniaAPIService {
 	}
 
 	/**
+	 * New login method
+	 * see https://webservices.openplanet.dev/auth/service 
+	 *
 	 * @param string $login
 	 * @param string $password
 	 * @return array
 	 */
 	public function login(string $login, string $password): array {
 		try {
-			$url = 'https://public-ubiservices.ubi.com/v3/profiles/sessions';
-			$options = [
-				'headers' => [
-					'User-Agent' => Application::INTEGRATION_USER_AGENT,
-					'Content-Type' => 'application/json',
-					'Ubi-AppId' => '86263886-327a-4328-ac69-527f0d20a237',
-					'Authorization' => 'Basic ' . base64_encode($login . ':' . $password),
-				],
-			];
-			$response = $this->client->post($url, $options);
-			$body = $response->getBody();
-			$respCode = $response->getStatusCode();
-
-			if ($respCode >= 400) {
-				return ['error' => $this->l10n->t('Invalid credentials')];
-			} else {
-				$bodyArray = json_decode($body, true);
-				if (isset($bodyArray['ticket'], $bodyArray['userId'], $bodyArray['nameOnPlatform'])) {
-					foreach (Application::AUDIENCES as $audienceKey => $v) {
-						$tokens = $this->getAccessTokenFromLoginTicket($bodyArray['ticket'], $audienceKey);
-						if (isset($tokens['accessToken'], $tokens['refreshToken'])) {
-							$bodyArray[$audienceKey] = $tokens;
-						}
-					}
-					return $bodyArray;
+			$result = [];
+			foreach (Application::AUDIENCES as $audienceKey => $v) {
+				$tokens = $this->getAccessTokenFromBasicAuth($login, $password, $audienceKey);
+				if (isset($tokens['accessToken'], $tokens['refreshToken'])) {
+					$result[$audienceKey] = $tokens;
 				}
-				return ['error' => $this->l10n->t('Error during login')];
 			}
+			if (isset($result[Application::AUDIENCE_CORE]['accessToken'])) {
+				$decodedToken = ConfigController::decodeToken($result[Application::AUDIENCE_CORE]['accessToken']);
+				$result['userId'] = $decodedToken['sub'];
+				$result['nameOnPlatform'] = $decodedToken['aun'];
+			}
+			if (isset($result['userId'], $result['nameOnPlatform'])) {
+				return $result;
+			}
+			return ['error' => $this->l10n->t('Error during login')];
 		} catch (Exception $e) {
 			$this->logger->warning('login error : ' . $e->getMessage(), ['app' => Application::APP_ID]);
 			return ['error' => $e->getMessage()];
@@ -1207,18 +1198,19 @@ class TrackmaniaAPIService {
 	}
 
 	/**
-	 * @param string $ticket
+	 * @param string $login
+	 * @param string $password
 	 * @param string $audience
 	 * @return array
 	 */
-	public function getAccessTokenFromLoginTicket(string $ticket, string $audience): array {
+	public function getAccessTokenFromBasicAuth(string $login, string $password, string $audience): array {
 		try {
-			$url = 'https://prod.trackmania.core.nadeo.online/v2/authentication/token/ubiservices';
+			$url = 'https://prod.trackmania.core.nadeo.online/v2/authentication/token/basic';
 			$options = [
 				'headers' => [
 					'User-Agent' => Application::INTEGRATION_USER_AGENT,
 					'Content-Type' => 'application/json',
-					'Authorization' => 'ubi_v1 t=' . $ticket,
+					'Authorization' => 'Basic ' . base64_encode($login . ':' . $password),
 				],
 				'json' => [
 					'audience' => $audience,

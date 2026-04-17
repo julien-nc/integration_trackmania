@@ -24,7 +24,7 @@
 					<input id="trackmania-login"
 						v-model="login"
 						type="text"
-						:placeholder="t('integration_trackmania', 'Trackmania login')"
+						:placeholder="t('integration_trackmania', 'Trackmania service account login')"
 						@keyup.enter="connectWithCredentials">
 				</div>
 				<div v-show="!connected"
@@ -37,7 +37,7 @@
 					<input id="trackmania-password"
 						v-model="password"
 						type="password"
-						:placeholder="t('integration_trackmania', 'Trackmania password')"
+						:placeholder="t('integration_trackmania', 'Trackmania service account password')"
 						@keyup.enter="connectWithCredentials">
 				</div>
 				<NcButton v-if="!connected"
