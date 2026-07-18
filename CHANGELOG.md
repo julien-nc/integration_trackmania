@@ -6,6 +6,24 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## 2.1.0 – 2026-07-18
+
+### Added
+
+- Support for Nextcloud 35 @julien-nc
+- Display last load date and last loading time @julien-nc
+
+### Changed
+
+- Support for Nextcloud 34, drop support for NC < 34 @julien-nc
+- Bump min PHP version to 8.3 @julien-nc
+
+### Fixed
+
+- Fix login logic, old one is not working anymore @julien-nc
+- Fix map details modal when there is no mapper name @julien-nc
+- Fix title margin @julien-nc
+
 ## 2.0.1 – 2025-10-16
 
 ### Added

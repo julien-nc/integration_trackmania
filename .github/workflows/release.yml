@@ -12,18 +12,18 @@ jobs:
       APP_ID: integration_trackmania
     runs-on: ubuntu-latest
     steps:
-      - name: Use Node 20
+      - name: Use Node 22
         uses: actions/setup-node@v2
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Set up npm
-        run: npm i -g npm@^10.0.0
+        run: npm i -g npm@^11.0.0
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'
+          php-version: '8.3'
           extensions: mbstring, intl, sqlite3
           ini-values: post_max_size=256M, max_execution_time=180
           coverage: xdebug
