@@ -771,55 +771,55 @@ export default {
 			if (type === 'boolean') {
 				return order === 'asc'
 					? (a, b) => {
-						const vA = this.getRawCellValue(a, field)
-						const vB = this.getRawCellValue(b, field)
-						return vA === vB
-							? nextSortFunction(a, b)
-							: (vA ? 1 : -1)
-					}
+							const vA = this.getRawCellValue(a, field)
+							const vB = this.getRawCellValue(b, field)
+							return vA === vB
+								? nextSortFunction(a, b)
+								: (vA ? 1 : -1)
+						}
 					: (a, b) => {
-						const vA = this.getRawCellValue(a, field)
-						const vB = this.getRawCellValue(b, field)
-						return vA === vB
-							? nextSortFunction(a, b)
-							: (vB ? 1 : -1)
-					}
+							const vA = this.getRawCellValue(a, field)
+							const vB = this.getRawCellValue(b, field)
+							return vA === vB
+								? nextSortFunction(a, b)
+								: (vB ? 1 : -1)
+						}
 			} else if (type === 'number') {
 				return order === 'asc'
 					? (a, b) => {
-						const vA = this.getRawCellValue(a, field) ?? null
-						const vB = this.getRawCellValue(b, field) ?? null
-						return vA > vB
-							? 1
-							: vA < vB
-								? -1
-								: nextSortFunction(a, b)
-					}
-					: (a, b) => {
-						const vA = this.getRawCellValue(a, field) ?? null
-						const vB = this.getRawCellValue(b, field) ?? null
-						return vA > vB
-							? -1
-							: vA < vB
+							const vA = this.getRawCellValue(a, field) ?? null
+							const vB = this.getRawCellValue(b, field) ?? null
+							return vA > vB
 								? 1
-								: nextSortFunction(a, b)
-					}
+								: vA < vB
+									? -1
+									: nextSortFunction(a, b)
+						}
+					: (a, b) => {
+							const vA = this.getRawCellValue(a, field) ?? null
+							const vB = this.getRawCellValue(b, field) ?? null
+							return vA > vB
+								? -1
+								: vA < vB
+									? 1
+									: nextSortFunction(a, b)
+						}
 			} else if (type === 'text') {
 				return order === 'asc'
 					? (a, b) => {
-						const vA = this.getRawCellValue(a, field)
-						const vB = this.getRawCellValue(b, field)
-						return vA === vB
-							? nextSortFunction(a, b)
-							: vA.localeCompare(vB)
-					}
+							const vA = this.getRawCellValue(a, field)
+							const vB = this.getRawCellValue(b, field)
+							return vA === vB
+								? nextSortFunction(a, b)
+								: vA.localeCompare(vB)
+						}
 					: (a, b) => {
-						const vA = this.getRawCellValue(a, field)
-						const vB = this.getRawCellValue(b, field)
-						return vA === vB
-							? nextSortFunction(a, b)
-							: vB.localeCompare(vA)
-					}
+							const vA = this.getRawCellValue(a, field)
+							const vB = this.getRawCellValue(b, field)
+							return vA === vB
+								? nextSortFunction(a, b)
+								: vB.localeCompare(vA)
+						}
 			}
 		},
 		initSortOptions() {

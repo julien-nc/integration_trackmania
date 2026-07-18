@@ -7,7 +7,8 @@
 					class="header"
 					@click="onClick($event, c)">
 					<div class="label">
-						<span :class="{ title: true, sorted: !!columnSortSuffix[c.sortName] }">
+						<span class="title"
+							:class="{ sorted: !!columnSortSuffix[c.sortName] }">
 							{{ c.label }}
 						</span>
 						<span class="spacer" />
@@ -67,7 +68,7 @@ export default {
 		},
 	},
 
-	emit: [
+	emits: [
 		'cell-clicked',
 		'header-clicked',
 		'header-shift-clicked',

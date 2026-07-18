@@ -72,6 +72,8 @@ export default {
 		},
 	},
 
+	emits: ['update:other-account'],
+
 	data() {
 		return {
 			otherAccountOptions: [],

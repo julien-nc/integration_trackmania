@@ -11,7 +11,7 @@
 				</template>
 				{{ t('integration_trackmania', 'Reload data') }}
 			</NcButton>
-			<NcButton @click="$emit('reload-filtered', )">
+			<NcButton @click="$emit('reload-filtered')">
 				<template #icon>
 					<ReloadIcon />
 				</template>
@@ -84,6 +84,8 @@ export default {
 			default: null,
 		},
 	},
+
+	emits: ['reload', 'reload-filtered', 'disconnect', 'update:other-account'],
 
 	data() {
 		return {

@@ -34,16 +34,24 @@
 				<span>{{ pb.record.formattedMedal }}</span>
 				<img :src="getMedalImageUrl(pb.record.medal)">
 			</span>
-			<span :class="{ medalTime: true, success: pb.record.recordScore.time - pb.mapInfo.authorTime < 0 }">
+			<span
+				class="medalTime"
+				:class="{ success: pb.record.recordScore.time - pb.mapInfo.authorTime < 0 }">
 				{{ pb.mapInfo.formattedAuthorTime }}
 			</span>
-			<span :class="{ medalTime: true, success: pb.record.recordScore.time - pb.mapInfo.goldTime < 0 }">
+			<span
+				class="medalTime"
+				:class="{ success: pb.record.recordScore.time - pb.mapInfo.goldTime < 0 }">
 				{{ pb.mapInfo.formattedGoldTime }}
 			</span>
-			<span :class="{ medalTime: true, success: pb.record.recordScore.time - pb.mapInfo.silverTime < 0 }">
+			<span
+				class="medalTime"
+				:class="{ success: pb.record.recordScore.time - pb.mapInfo.silverTime < 0 }">
 				{{ pb.mapInfo.formattedSilverTime }}
 			</span>
-			<span :class="{ medalTime: true, success: pb.record.recordScore.time - pb.mapInfo.bronzeTime < 0 }">
+			<span
+				class="medalTime"
+				:class="{ success: pb.record.recordScore.time - pb.mapInfo.bronzeTime < 0 }">
 				{{ pb.mapInfo.formattedBronzeTime }}
 			</span>
 			<div v-if="otherGhostUrl" class="ghost-url">
@@ -99,7 +107,7 @@ export default {
 		},
 	},
 
-	emit: [
+	emits: [
 		'close',
 	],
 

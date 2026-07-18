@@ -109,6 +109,8 @@ export default {
 		},
 	},
 
+	emits: ['connected'],
+
 	data() {
 		return {
 			state: this.config !== null ? { ...this.config } : loadState('integration_trackmania', 'user-config'),

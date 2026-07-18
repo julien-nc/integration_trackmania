@@ -1,6 +1,6 @@
 import '@nextcloud/dialogs/style.css'
 
-document.addEventListener('DOMContentLoaded', async (event) => {
+document.addEventListener('DOMContentLoaded', async () => {
 	const { createApp } = await import('vue')
 	const { default: App } = await import('./App.vue')
 

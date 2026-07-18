@@ -11,6 +11,14 @@ const MEDAL_STRING = {
 	4: t('integration_trackmania', 'Author'),
 }
 
+export const MEDAL = {
+	AUTHOR: 4,
+	GOLD: 3,
+	SILVER: 2,
+	BRONZE: 1,
+	NOTHING: 0,
+}
+
 let mytimer = 0
 export function delay(callback, ms) {
 	return function() {
@@ -143,14 +151,6 @@ export const authorMedalImageUrl = imagePath('integration_trackmania', 'medal.au
 export const goldMedalImageUrl = imagePath('integration_trackmania', 'medal.gold.png')
 export const silverMedalImageUrl = imagePath('integration_trackmania', 'medal.silver.png')
 export const bronzeMedalImageUrl = imagePath('integration_trackmania', 'medal.bronze.custom.png')
-
-export const MEDAL = {
-	AUTHOR: 4,
-	GOLD: 3,
-	SILVER: 2,
-	BRONZE: 1,
-	NOTHING: 0,
-}
 
 export function getMedalImageUrl(medal) {
 	if (medal === MEDAL.AUTHOR) {
