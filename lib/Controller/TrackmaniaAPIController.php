@@ -28,7 +28,6 @@ use OCP\AppFramework\Http\RedirectResponse;
 use OCP\AppFramework\Http\Response;
 use OCP\Exceptions\AppConfigTypeConflictException;
 use OCP\IRequest;
-
 use OCP\IURLGenerator;
 
 class TrackmaniaAPIController extends Controller {

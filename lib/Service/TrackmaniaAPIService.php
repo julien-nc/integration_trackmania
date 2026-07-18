@@ -1167,7 +1167,7 @@ class TrackmaniaAPIService {
 
 	/**
 	 * New login method
-	 * see https://webservices.openplanet.dev/auth/service 
+	 * see https://webservices.openplanet.dev/auth/service
 	 *
 	 * @param string $login
 	 * @param string $password

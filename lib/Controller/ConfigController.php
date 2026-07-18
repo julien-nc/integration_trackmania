@@ -22,7 +22,6 @@ use OCP\AppFramework\Http\DataResponse;
 use OCP\Exceptions\AppConfigTypeConflictException;
 use OCP\IAppConfig;
 use OCP\IConfig;
-
 use OCP\IRequest;
 use OCP\PreConditionNotMetException;
 
