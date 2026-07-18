@@ -15,6 +15,7 @@ on:
       - master
       - main
       - stable*
+      - test
     paths:
       - .github/workflows/psalm-matrix.yml
       - appinfo/**
