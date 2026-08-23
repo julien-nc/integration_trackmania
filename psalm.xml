@@ -6,6 +6,7 @@
 	findUnusedCode="false"
 	resolveFromConfigFile="true"
 	ensureOverrideAttribute="false"
+	findUnusedIssueHandlerSuppression="false"
 	phpVersion="8.2"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xmlns="https://getpsalm.org/schema/config"
@@ -38,6 +39,16 @@
 				<referencedClass name="GuzzleHttp\Exception\BadResponseException" />
 			</errorLevel>
 		</UndefinedClass>
+		<UndefinedDocblockClass>
+			<errorLevel type="suppress">
+				<referencedClass name="Doctrine\DBAL\Schema\Table" />
+				<referencedClass name="OC\User\NoUserException" />
+				<referencedClass name="OCA\Circles\Exceptions\RequestBuilderException" />
+				<referencedClass name="OCA\Circles\Exceptions\InitiatorNotFoundException" />
+				<referencedClass name="Doctrine\DBAL\Schema\Schema" />
+				<referencedClass name="Doctrine\DBAL\Types\Type" />
+			</errorLevel>
+		</UndefinedDocblockClass>
 	</issueHandlers>
 	<stubs>
 		<file name="tests/stubs/oc_core_command_base.php" />
