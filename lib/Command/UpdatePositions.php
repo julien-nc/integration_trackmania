@@ -35,7 +35,7 @@ class UpdatePositions extends Base {
 			);
 	}
 
-	protected function execute(InputInterface $input, OutputInterface $output) {
+	protected function execute(InputInterface $input, OutputInterface $output): int {
 		$userId = $input->getArgument('user_id');
 		if ($userId) {
 			if (!$this->trackmaniaAPIService->isUserConnected($userId)) {

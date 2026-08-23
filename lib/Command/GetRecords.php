@@ -35,7 +35,7 @@ class GetRecords extends Base {
 			);
 	}
 
-	protected function execute(InputInterface $input, OutputInterface $output) {
+	protected function execute(InputInterface $input, OutputInterface $output): int {
 		$userId = $input->getArgument('user_id');
 		$data = $this->trackmaniaAPIService->getAllMapsWithPosition($userId);
 		$output->writeln(json_encode($data, JSON_PRETTY_PRINT));
