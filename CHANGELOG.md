@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## 2.2.0 – 2026-08-23
+
+### Changed
+
+- Update npm and composer dependencies
+- Fix psalm issues
+
 ## 2.1.0 – 2026-07-18
 
 ### Added
