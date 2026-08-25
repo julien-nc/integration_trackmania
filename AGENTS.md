@@ -2,6 +2,10 @@
 
 Nextcloud app (PHP 8.3+ backend, Vue 3 frontend) for Trackmania integration. Targets NC 34-35.
 
+## What this app is
+
+This app allows the user to connect as a "service account" and display all the Trackmania track records in a dynamic table in a dedicated page. Users can also search for other Trackmania accounts and compare their records.
+
 ## Build & Verification
 
 **Frontend** (Vite with ESLint/Stylelint plugins):
