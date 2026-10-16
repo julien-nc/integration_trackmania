@@ -671,7 +671,7 @@ class TrackmaniaAPIService {
 
 		// we have a map list and a list of accounts
 		// we get all records of those maps for all accounts (or current connected one)
-		yield from $this->getRecordsByAccount($userId, $accountIds, $mapIds);
+		yield from $this->getRecordsByAccount($userId, $userAccountId, $accountIds, $mapIds);
 
 		return [];
 	}
@@ -680,9 +680,11 @@ class TrackmaniaAPIService {
 	 * Get the records of the given accounts on the given maps.
 	 * The endpoint only accepts one map per request, so uncached maps are fetched
 	 * with a bounded pool of parallel requests.
-	 * When asking for a single account, results are cached per (account, map).
+	 * When asking for a single other account, results are cached per (account, map).
+	 * Records of the connected account itself are never cached.
 	 *
 	 * @param string $userId
+	 * @param string $userAccountId
 	 * @param array $accountIds
 	 * @param array $mapIds
 	 * @return Generator
@@ -690,9 +692,9 @@ class TrackmaniaAPIService {
 	 * @throws TmApiRequestException
 	 * @throws TokenRefreshException
 	 */
-	private function getRecordsByAccount(string $userId, array $accountIds, array $mapIds): Generator {
+	private function getRecordsByAccount(string $userId, string $userAccountId, array $accountIds, array $mapIds): Generator {
 		$recordsByMapId = [];
-		$cacheable = count($accountIds) === 1;
+		$cacheable = count($accountIds) === 1 && $accountIds[0] !== $userAccountId;
 
 		// get cached
 		$nonCachedMapIds = [];
