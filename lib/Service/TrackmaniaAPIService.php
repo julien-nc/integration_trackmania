@@ -15,6 +15,7 @@ namespace OCA\Trackmania\Service;
 use DateTime;
 use Exception;
 use Generator;
+use GuzzleHttp\Exception\BadResponseException;
 use GuzzleHttp\Exception\ClientException;
 use GuzzleHttp\Exception\ServerException;
 use OCA\Trackmania\AppInfo\Application;
@@ -36,6 +37,11 @@ use Psr\Log\LoggerInterface;
 use Throwable;
 
 class TrackmaniaAPIService {
+
+	/** How many requests are sent at once when fetching records of one account on a map list */
+	private const CONCURRENT_RECORD_REQUESTS = 8;
+	/** Records of another account on a map change rarely, this cache avoids refetching them on every reload */
+	private const MAP_RECORD_CACHE_TTL = 60 * 60;
 
 	private IClient $client;
 	private ICache $cache;
@@ -665,26 +671,89 @@ class TrackmaniaAPIService {
 
 		// we have a map list and a list of accounts
 		// we get all records of those maps for all accounts (or current connected one)
+		yield from $this->getRecordsByAccount($userId, $accountIds, $mapIds);
+
+		return [];
+	}
+
+	/**
+	 * Get the records of the given accounts on the given maps.
+	 * The endpoint only accepts one map per request, so uncached maps are fetched
+	 * with a bounded pool of parallel requests.
+	 * When asking for a single account, results are cached per (account, map).
+	 *
+	 * @param string $userId
+	 * @param array $accountIds
+	 * @param array $mapIds
+	 * @return Generator
+	 * @throws PreConditionNotMetException
+	 * @throws TmApiRequestException
+	 * @throws TokenRefreshException
+	 */
+	private function getRecordsByAccount(string $userId, array $accountIds, array $mapIds): Generator {
+		$recordsByMapId = [];
+		$cacheable = count($accountIds) === 1;
+
+		// get cached
+		$nonCachedMapIds = [];
+		foreach ($mapIds as $mapId) {
+			if ($cacheable) {
+				$cacheKey = 'map-record-' . $accountIds[0] . '-' . $mapId;
+				$cachedRecords = $this->cache->get($cacheKey);
+				if ($cachedRecords !== null) {
+					$recordsByMapId[$mapId] = $cachedRecords;
+					continue;
+				}
+			}
+			$nonCachedMapIds[] = $mapId;
+		}
+
 		$params = [
 			'accountIdList' => implode(',', $accountIds),
 		];
-		/*
-		return array_reduce(
-			$mapIds,
-			function ($carry, $mapId) use ($userId, $params) {
-				$params['mapId'] = $mapId;
-				// max URI length: 8220 chars
-				$records = $this->request($userId, Application::AUDIENCE_CORE, 'v2/mapRecords/', $params);
-				return array_merge($carry, $records);
-			},
-			[]
-		);
-		*/
+		if (count($nonCachedMapIds) > 0) {
+			$accessToken = $this->getCheckedToken($userId, Application::AUDIENCE_CORE);
+			$options = [
+				'headers' => [
+					'Authorization' => 'nadeo_v1 t=' . $accessToken,
+					'Content-Type' => 'application/json',
+					'User-Agent' => Application::INTEGRATION_USER_AGENT,
+				],
+				'timeout' => 120,
+			];
+			for ($offset = 0; $offset < count($nonCachedMapIds); $offset += self::CONCURRENT_RECORD_REQUESTS) {
+				$batchMapIds = array_slice($nonCachedMapIds, $offset, self::CONCURRENT_RECORD_REQUESTS);
+				$promises = [];
+				foreach ($batchMapIds as $mapId) {
+					$url = $this->buildRequestUrl(
+						Application::AUDIENCES[Application::AUDIENCE_CORE]['base_url'],
+						'v2/mapRecords/',
+						array_merge($params, ['mapId' => $mapId]),
+						'GET',
+					);
+					$promises[$mapId] = $this->client->getAsync($url, $options);
+				}
+				// waiting on one promise drives the shared curl multi handler
+				// and also progresses the other requests in flight
+				foreach ($batchMapIds as $mapId) {
+					try {
+						$response = $promises[$mapId]->wait(true);
+					} catch (ClientException|ServerException $e) {
+						throw new TmApiRequestException($e, Application::AUDIENCE_CORE, 'v2/mapRecords/', 'GET', $params);
+					}
+					$records = json_decode((string)$response->getBody(), true);
+					$recordsByMapId[$mapId] = is_array($records) ? $records : [];
+				}
+			}
+			if ($cacheable) {
+				foreach ($nonCachedMapIds as $mapId) {
+					$this->cache->set('map-record-' . $accountIds[0] . '-' . $mapId, $recordsByMapId[$mapId], self::MAP_RECORD_CACHE_TTL);
+				}
+			}
+		}
+
 		foreach ($mapIds as $mapId) {
-			$params['mapId'] = $mapId;
-			// max URI length: 8220 chars
-			$newRecords = $this->request($userId, Application::AUDIENCE_CORE, 'v2/mapRecords/', $params);
-			foreach ($newRecords as $record) {
+			foreach ($recordsByMapId[$mapId] ?? [] as $record) {
 				yield $record;
 			}
 		}
@@ -1009,6 +1078,35 @@ class TrackmaniaAPIService {
 	}
 
 	/**
+	 * Build the full request url, converting array parameters into query parameters
+	 *
+	 * @param string $baseUrl
+	 * @param string $endPoint
+	 * @param array $params
+	 * @param string $method
+	 * @return string
+	 */
+	private function buildRequestUrl(string $baseUrl, string $endPoint, array $params, string $method): string {
+		$url = $baseUrl . $endPoint;
+		if (count($params) > 0 && $method === 'GET') {
+			// manage array parameters
+			$paramsContent = '';
+			foreach ($params as $key => $value) {
+				if (is_array($value)) {
+					foreach ($value as $oneArrayValue) {
+						$paramsContent .= $key . '[]=' . urlencode($oneArrayValue) . '&';
+					}
+					unset($params[$key]);
+				}
+			}
+			$paramsContent .= http_build_query($params);
+
+			$url .= '?' . $paramsContent;
+		}
+		return $url;
+	}
+
+	/**
 	 * @param string $userId
 	 * @param string $audience
 	 * @param string $endPoint
@@ -1023,10 +1121,9 @@ class TrackmaniaAPIService {
 	public function request(
 		string $userId, string $audience, string $endPoint, array $params = [], string $method = 'GET', bool $jsonResponse = true,
 	) {
-		$this->checkTokenExpiration($userId, $audience);
-		$accessToken = $this->secretService->getEncryptedUserValue($userId, Application::AUDIENCES[$audience]['token_config_key_prefix'] . 'token');
+		$accessToken = $this->getCheckedToken($userId, $audience);
 		try {
-			$url = Application::AUDIENCES[$audience]['base_url'] . $endPoint;
+			$url = $this->buildRequestUrl(Application::AUDIENCES[$audience]['base_url'], $endPoint, $params, $method);
 			$options = [
 				'headers' => [
 					'Authorization' => 'nadeo_v1 t=' . $accessToken,
@@ -1036,24 +1133,8 @@ class TrackmaniaAPIService {
 				'timeout' => 120,
 			];
 
-			if (count($params) > 0) {
-				if ($method === 'GET') {
-					// manage array parameters
-					$paramsContent = '';
-					foreach ($params as $key => $value) {
-						if (is_array($value)) {
-							foreach ($value as $oneArrayValue) {
-								$paramsContent .= $key . '[]=' . urlencode($oneArrayValue) . '&';
-							}
-							unset($params[$key]);
-						}
-					}
-					$paramsContent .= http_build_query($params);
-
-					$url .= '?' . $paramsContent;
-				} else {
-					$options['json'] = $params;
-				}
+			if (count($params) > 0 && $method !== 'GET') {
+				$options['json'] = $params;
 			}
 
 			if ($method === 'GET') {
@@ -1079,11 +1160,25 @@ class TrackmaniaAPIService {
 					return $body;
 				}
 			}
-		} catch (ClientException|ServerException $e) {
+		} catch (BadResponseException $e) {
 			$body = $e->getResponse()->getBody();
 			$this->logger->warning('API error Client/Server exception: ' . $body, ['exception' => $e]);
 			throw new TmApiRequestException($e, $audience, $endPoint, $method, $params);
 		}
+	}
+
+	/**
+	 * Refresh the token if needed and return the current access token
+	 *
+	 * @param string $userId
+	 * @param string $audience
+	 * @return string
+	 * @throws PreConditionNotMetException
+	 * @throws TokenRefreshException
+	 */
+	private function getCheckedToken(string $userId, string $audience): string {
+		$this->checkTokenExpiration($userId, $audience);
+		return $this->secretService->getEncryptedUserValue($userId, Application::AUDIENCES[$audience]['token_config_key_prefix'] . 'token');
 	}
 
 	/**
