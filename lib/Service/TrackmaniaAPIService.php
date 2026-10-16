@@ -446,7 +446,8 @@ class TrackmaniaAPIService {
 			$paramName => implode(',', $items),
 		];
 		// max URI length: 8220 chars
-		$oneChunk = $this->request($userId, Application::AUDIENCE_CORE, 'maps/', $params);
+		$endPoint = $paramName === 'mapIdList' ? 'maps/by-id/' : 'maps/by-uid/';
+		$oneChunk = $this->request($userId, Application::AUDIENCE_CORE, $endPoint, $params);
 
 		// we yield now
 		//if (!isset($oneChunk['error'])) {
@@ -514,6 +515,37 @@ class TrackmaniaAPIService {
 			return $authorNames;
 		}
 
+		$fetchedNames = $this->getDisplayNameMap($nonCachedAuthorNames);
+		$authorNames = array_merge($authorNames, $fetchedNames);
+		// cache the fetched names
+		foreach ($fetchedNames as $authorId => $authorName) {
+			$cacheKey = 'author-name-' . $authorId;
+			$this->cache->set($cacheKey, $authorName, Application::CACHE_DURATION);
+		}
+
+		return $authorNames;
+	}
+
+	/**
+	 * Get the display names of the given accounts
+	 *
+	 * @param array $accountIds
+	 * @return array map of accountId => display name
+	 * @throws Exception
+	 */
+	public function getAccountDisplayNames(array $accountIds): array {
+		return $this->getDisplayNameMap($accountIds);
+	}
+
+	/**
+	 * Get the display names of the given accounts from the OAuth API, max 50 IDs per request
+	 *
+	 * @param array $accountIds
+	 * @return array map of accountId => display name
+	 * @throws Exception
+	 */
+	private function getDisplayNameMap(array $accountIds): array {
+		$names = [];
 		$accessToken = $this->getOAuthToken();
 		$url = 'https://api.trackmania.com/api/display-names';
 		$options = [
@@ -525,29 +557,26 @@ class TrackmaniaAPIService {
 
 		$chunkSize = 50;
 		$offset = 0;
-		while ($offset < count($nonCachedAuthorNames)) {
-			$authorIdsToLook = array_slice($nonCachedAuthorNames, $offset, $chunkSize);
+		while ($offset < count($accountIds)) {
+			$accountIdsToLook = array_slice($accountIds, $offset, $chunkSize);
 			$getParamsString = implode(
 				'&',
 				array_map(
-					static function (string $authorId) {
-						return 'accountId[]=' . $authorId;
+					static function (string $accountId) {
+						return 'accountId[]=' . $accountId;
 					},
-					$authorIdsToLook,
+					$accountIdsToLook,
 				)
 			);
 			$response = $this->client->get($url . '?' . $getParamsString, $options);
 			$oneChunk = json_decode($response->getBody(), true);
-			$authorNames = array_merge($authorNames, $oneChunk);
-			$offset = $offset + $chunkSize;
-			// cache this chunk
-			foreach ($oneChunk as $authorId => $authorName) {
-				$cacheKey = 'author-name-' . $authorId;
-				$this->cache->set($cacheKey, $authorName, Application::CACHE_DURATION);
+			if (is_array($oneChunk)) {
+				$names = array_merge($names, $oneChunk);
 			}
+			$offset = $offset + $chunkSize;
 		}
 
-		return $authorNames;
+		return $names;
 	}
 
 	/**
@@ -729,7 +758,7 @@ class TrackmaniaAPIService {
 				foreach ($batchMapIds as $mapId) {
 					$url = $this->buildRequestUrl(
 						Application::AUDIENCES[Application::AUDIENCE_CORE]['base_url'],
-						'v2/mapRecords/',
+						'v2/mapRecords/by-account/',
 						array_merge($params, ['mapId' => $mapId]),
 						'GET',
 					);
@@ -741,7 +770,7 @@ class TrackmaniaAPIService {
 					try {
 						$response = $promises[$mapId]->wait(true);
 					} catch (ClientException|ServerException $e) {
-						throw new TmApiRequestException($e, Application::AUDIENCE_CORE, 'v2/mapRecords/', 'GET', $params);
+						throw new TmApiRequestException($e, Application::AUDIENCE_CORE, 'v2/mapRecords/by-account/', 'GET', $params);
 					}
 					$records = json_decode((string)$response->getBody(), true);
 					$recordsByMapId[$mapId] = is_array($records) ? $records : [];

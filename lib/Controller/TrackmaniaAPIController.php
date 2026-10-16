@@ -14,7 +14,6 @@ namespace OCA\Trackmania\Controller;
 
 use Exception;
 use GuzzleHttp\Exception\ClientException;
-use OCA\Trackmania\AppInfo\Application;
 use OCA\Trackmania\Exception\TmApiRequestException;
 use OCA\Trackmania\Exception\TokenRefreshException;
 use OCA\Trackmania\Service\TrackmaniaAPIService;
@@ -59,21 +58,14 @@ class TrackmaniaAPIController extends Controller {
 	}
 
 	/**
-	 * Does not work for the moment
-	 *
 	 * @param string $accountId
 	 * @return DataResponse
 	 */
 	#[NoAdminRequired]
 	#[NoCSRFRequired]
 	public function getAccountInfo(string $accountId): DataResponse {
-		$params = [
-			'accountIdList' => $accountId,
-		];
 		try {
-			$result = $this->trackmaniaAPIService->request($this->userId, Application::AUDIENCE_CORE, 'accounts/displayNames/', $params);
-		} catch (TokenRefreshException|TmApiRequestException $e) {
-			return $this->getExceptionResponse($e);
+			$result = $this->trackmaniaAPIService->getAccountDisplayNames([$accountId]);
 		} catch (\Throwable $e) {
 			return new DataResponse($e->getMessage(), Http::STATUS_BAD_REQUEST);
 		}
