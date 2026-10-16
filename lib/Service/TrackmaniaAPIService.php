@@ -1033,6 +1033,7 @@ class TrackmaniaAPIService {
 					'Content-Type' => 'application/json',
 					'User-Agent' => Application::INTEGRATION_USER_AGENT,
 				],
+				'timeout' => 120,
 			];
 
 			if (count($params) > 0) {
