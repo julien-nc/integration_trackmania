@@ -20,6 +20,7 @@ use GuzzleHttp\Exception\ClientException;
 use GuzzleHttp\Exception\ServerException;
 use OCA\Trackmania\AppInfo\Application;
 use OCA\Trackmania\Controller\ConfigController;
+use OCA\Trackmania\Db\TrackPosition;
 use OCA\Trackmania\Db\TrackPositionMapper;
 use OCA\Trackmania\Exception\TmApiRequestException;
 use OCA\Trackmania\Exception\TokenRefreshException;
@@ -157,26 +158,46 @@ class TrackmaniaAPIService {
 				$allMyPbTimesByMapUid[$mapInfo['mapUid']] = $time;
 			}
 		}
-		$positions = $this->getScorePositions($userId, $allMyPbTimesByMapUid);
+		$positions = iterator_to_array($this->getScorePositions($userId, $allMyPbTimesByMapUid));
+
+		// prepare the World positions to batch-save and the maps to format
+		$positionUpdatesByTrackId = [];
+		$formattedMapIds = [];
+		foreach ($positions as $position) {
+			$mapUid = $position['mapUid'];
+			if (isset($coreMapInfoByMapUid[$mapUid])) {
+				$mapId = $coreMapInfoByMapUid[$mapUid]['mapId'];
+				$formattedMapIds[] = $mapId;
+				foreach ($position['zones'] as $zone) {
+					if ($zone['zoneName'] === 'World') {
+						$positionUpdatesByTrackId[$mapId] = [
+							'trackUid' => $mapUid,
+							'position' => $zone['ranking']['position'],
+						];
+					}
+				}
+			}
+		}
+		if (count($positionUpdatesByTrackId) > 0) {
+			$this->trackPositionMapper->updatePositionsOfTracks($userId, $userAccountId, $positionUpdatesByTrackId);
+		}
+		// best positions are fetched in one query for all maps that get formatted
+		$bestPositionsByTrackId = count($formattedMapIds) > 0
+			? $this->trackPositionMapper->getLastBestPositionsOfTracks($userId, $userAccountId, $formattedMapIds)
+			: [];
+
 		$results = [];
 		foreach ($positions as $position) {
 			$mapUid = $position['mapUid'];
 			if (isset($coreMapInfoByMapUid[$mapUid])) {
 				$mapInfo = $coreMapInfoByMapUid[$mapUid];
 				$mapId = $mapInfo['mapId'];
-				$this->updatePosition($userId, $userAccountId, $mapInfo, $position);
-				$results[$mapId] = $this->formatMapInfoAndRecordPosition($userId, $userAccountId, $mapInfo, $position);
+				$results[$mapId] = $this->formatMapInfoAndRecordPosition(
+					$userId, $userAccountId, $mapInfo, $position,
+					$bestPositionsByTrackId[$mapId] ?? null,
+				);
 			}
 		}
-		/*
-		foreach ($pbTimesByMapId as $mapId => $time) {
-			if (isset($coreMapInfoByMapId[$mapId])) {
-				$mapUid = $coreMapInfoByMapId[$mapId]['mapUid'];
-				$this->updatePosition($userId, $userAccountId, $coreMapInfoByMapId[$mapId], $positionsByMapUid[$mapUid]);
-				$results[$mapId] = $this->formatMapInfoAndRecordPosition($userId, $userAccountId, $coreMapInfoByMapId[$mapId], $positionsByMapUid[$mapUid]);
-			}
-		}
-		*/
 
 		if ($otherAccountId !== null) {
 			// get all other records by map ID
@@ -220,7 +241,9 @@ class TrackmaniaAPIService {
 		return $results;
 	}
 
-	public function formatMapInfoAndRecordPosition(string $userId, string $accountId, array $mapInfo, array $position): array {
+	public function formatMapInfoAndRecordPosition(
+		string $userId, string $accountId, array $mapInfo, array $position, ?TrackPosition $bestTrackPosition,
+	): array {
 		$formatted = [
 			'mapInfo' => [
 				'uid' => $mapInfo['mapUid'],
@@ -243,12 +266,11 @@ class TrackmaniaAPIService {
 			$formatted['recordPosition']['zones'][$zone['zoneName']] = $zone['ranking']['position'];
 		}
 
-		// get best know position
-		$bestTrackPosition = $this->trackPositionMapper->getLastBestPositionOfTrack($userId, $accountId, $mapInfo['mapId']);
+		// use the best known position which was fetched beforehand
 		$formatted['bestKnownPosition'] = [
-			'position' => $bestTrackPosition->getPosition(),
-			'first_seen_at' => $bestTrackPosition->getFirstSeenAt(),
-			'last_seen_at' => $bestTrackPosition->getLastSeenAt(),
+			'position' => $bestTrackPosition === null ? null : $bestTrackPosition->getPosition(),
+			'first_seen_at' => $bestTrackPosition === null ? null : $bestTrackPosition->getFirstSeenAt(),
+			'last_seen_at' => $bestTrackPosition === null ? null : $bestTrackPosition->getLastSeenAt(),
 		];
 		return $formatted;
 	}
@@ -291,15 +313,36 @@ class TrackmaniaAPIService {
 				$allMyPbTimesByMapUid[$mapInfo['mapUid']] = $time;
 			}
 		}
-		/*
-		// there is more information in the live endpoint but nothing we really need
-		$liveMapInfos = $this->getLiveMapInfo($userId, array_keys($allMyPbTimesByMapUid));
-		$liveMapInfoByMapId = [];
-		foreach ($liveMapInfos as $mapInfo) {
-			$liveMapInfoByMapId[$mapInfo['mapId']] = $mapInfo;
+		$positions = iterator_to_array($this->getScorePositions($userId, $allMyPbTimesByMapUid));
+
+		// prepare the World positions to batch-save
+		$positionUpdatesByTrackId = [];
+		$formattedMapIds = [];
+		foreach ($positions as $position) {
+			$mapUid = $position['mapUid'];
+			if (isset($coreMapInfoByMapUid[$mapUid])) {
+				$mapId = $coreMapInfoByMapUid[$mapUid]['mapId'];
+				$formattedMapIds[] = $mapId;
+				if (isset($allMyPbTimesByMapUid[$mapUid])) {
+					foreach ($position['zones'] as $zone) {
+						if ($zone['zoneName'] === 'World') {
+							$positionUpdatesByTrackId[$mapId] = [
+								'trackUid' => $mapUid,
+								'position' => $zone['ranking']['position'],
+							];
+						}
+					}
+				}
+			}
 		}
-		*/
-		$positions = $this->getScorePositions($userId, $allMyPbTimesByMapUid);
+		if (count($positionUpdatesByTrackId) > 0) {
+			$this->trackPositionMapper->updatePositionsOfTracks($userId, $userAccountId, $positionUpdatesByTrackId);
+		}
+		// best positions are fetched in one query for all maps that get formatted
+		$bestPositionsByTrackId = count($formattedMapIds) > 0
+			? $this->trackPositionMapper->getLastBestPositionsOfTracks($userId, $userAccountId, $formattedMapIds)
+			: [];
+
 		foreach ($positions as $position) {
 			$mapUid = $position['mapUid'];
 			if (isset($coreMapInfoByMapUid[$mapUid])) {
@@ -309,30 +352,15 @@ class TrackmaniaAPIService {
 				];
 				$oneResult['mapInfo'] = $coreMapInfoByMapUid[$mapUid];
 				$oneResult['mapInfo']['favorite'] = isset($allFavsByMapId[$mapId]);
-				if (isset($allMyPbTimesByMapUid[$mapUid])) {
-					$oneResult['recordPosition'] = $position;
-					$this->updatePosition($userId, $userAccountId, $oneResult['mapInfo'], $oneResult['recordPosition']);
-				} else {
-					$oneResult['recordPosition'] = null;
-				}
-				yield $this->formatMapResult($userId, $userAccountId, $oneResult);
+				$oneResult['recordPosition'] = isset($allMyPbTimesByMapUid[$mapUid]) ? $position : null;
+				yield $this->formatMapResult($userId, $userAccountId, $oneResult, $bestPositionsByTrackId[$mapId] ?? null);
 			}
 		}
 
 		return [];
 	}
 
-	private function updatePosition(string $userId, string $accountId, array $mapInfo, array $position): void {
-		foreach ($position['zones'] as $zone) {
-			if ($zone['zoneName'] === 'World') {
-				$this->trackPositionMapper->updatePositionOfTrack(
-					$userId, $accountId, $mapInfo['mapId'], $mapInfo['mapUid'], $zone['ranking']['position'],
-				);
-			}
-		}
-	}
-
-	public function formatMapResult(string $userId, string $accountId, array $item): array {
+	public function formatMapResult(string $userId, string $accountId, array $item, ?TrackPosition $bestTrackPosition): array {
 		$formatted = [
 			'record' => [
 				'accountId' => $item['record']['accountId'],
@@ -361,12 +389,11 @@ class TrackmaniaAPIService {
 		foreach ($item['recordPosition']['zones'] as $zone) {
 			$formatted['recordPosition']['zones'][$zone['zoneName']] = $zone['ranking']['position'];
 		}
-		// get best know position
-		$bestTrackPosition = $this->trackPositionMapper->getLastBestPositionOfTrack($userId, $accountId, $item['mapInfo']['mapId']);
+		// use the best known position which was fetched beforehand
 		$formatted['bestKnownPosition'] = [
-			'position' => $bestTrackPosition->getPosition(),
-			'first_seen_at' => $bestTrackPosition->getFirstSeenAt(),
-			'last_seen_at' => $bestTrackPosition->getLastSeenAt(),
+			'position' => $bestTrackPosition === null ? null : $bestTrackPosition->getPosition(),
+			'first_seen_at' => $bestTrackPosition === null ? null : $bestTrackPosition->getFirstSeenAt(),
+			'last_seen_at' => $bestTrackPosition === null ? null : $bestTrackPosition->getLastSeenAt(),
 		];
 		return $formatted;
 	}
