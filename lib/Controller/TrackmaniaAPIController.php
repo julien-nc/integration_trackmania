@@ -157,9 +157,9 @@ class TrackmaniaAPIController extends Controller {
 	 */
 	#[NoAdminRequired]
 	#[NoCSRFRequired]
-	public function getMoreRecordInfo(array $pbTimesByMapId, ?string $otherAccountId = null):DataResponse {
+	public function getMoreRecordInfo(array $pbTimesByMapId, ?string $otherAccountId = null, bool $withWorldRecords = false):DataResponse {
 		try {
-			$result = $this->trackmaniaAPIService->getMapsInfoAndRecordPositions($this->userId, $pbTimesByMapId, $otherAccountId);
+			$result = $this->trackmaniaAPIService->getMapsInfoAndRecordPositions($this->userId, $pbTimesByMapId, $otherAccountId, $withWorldRecords);
 		} catch (TokenRefreshException|TmApiRequestException $e) {
 			return $this->getExceptionResponse($e);
 			//		} catch (\Throwable $e) {

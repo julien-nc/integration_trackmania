@@ -141,7 +141,9 @@ class TrackmaniaAPIService {
 	 * @throws TmApiRequestException
 	 * @throws TokenRefreshException
 	 */
-	public function getMapsInfoAndRecordPositions(string $userId, array $pbTimesByMapId, ?string $otherAccountId): array {
+	public function getMapsInfoAndRecordPositions(
+		string $userId, array $pbTimesByMapId, ?string $otherAccountId, bool $withWorldRecords = false,
+	): array {
 		$prefix = Application::AUDIENCES[Application::AUDIENCE_CORE]['token_config_key_prefix'];
 		$userAccountId = $this->config->getUserValue($userId, Application::APP_ID, $prefix . 'account_id');
 
@@ -186,6 +188,44 @@ class TrackmaniaAPIService {
 			? $this->trackPositionMapper->getLastBestPositionsOfTracks($userId, $userAccountId, $formattedMapIds)
 			: [];
 
+		$worldRecordsByMapUid = [];
+		if ($withWorldRecords) {
+			// you are the world record holder of a map when the world position of your record is 1,
+			// in that case, no leaderboard top request is needed
+			$faMapUidsToFetch = [];
+			foreach ($positions as $position) {
+				$mapUid = $position['mapUid'];
+				if (!isset($coreMapInfoByMapUid[$mapUid])) {
+					continue;
+				}
+				$worldPosition = null;
+				foreach ($position['zones'] as $zone) {
+					if ($zone['zoneName'] === 'World') {
+						$worldPosition = $zone['ranking']['position'];
+						break;
+					}
+				}
+				if ($worldPosition === 1) {
+					$worldRecordsByMapUid[$mapUid] = [
+						'time' => $position['score'],
+						'account_id' => $userAccountId,
+						'unix_timestamp' => null,
+					];
+				} else {
+					$faMapUidsToFetch[] = $mapUid;
+				}
+			}
+			$worldRecordsByMapUid = array_merge($worldRecordsByMapUid, $this->getWorldRecords($userId, $faMapUidsToFetch));
+			$ownNames = $this->getAuthorNames([$userAccountId]);
+			foreach ($worldRecordsByMapUid as $mapUid => $worldRecord) {
+				if ($worldRecord['time'] !== null) {
+					$worldRecordsByMapUid[$mapUid]['name'] = ($worldRecord['account_id'] === $userAccountId)
+						? ($ownNames[$userAccountId] ?? '')
+						: ($worldRecord['name'] ?? '');
+				}
+			}
+		}
+
 		$results = [];
 		foreach ($positions as $position) {
 			$mapUid = $position['mapUid'];
@@ -196,6 +236,9 @@ class TrackmaniaAPIService {
 					$userId, $userAccountId, $mapInfo, $position,
 					$bestPositionsByTrackId[$mapId] ?? null,
 				);
+				if ($withWorldRecords) {
+					$results[$mapId]['worldRecord'] = $worldRecordsByMapUid[$mapUid] ?? null;
+				}
 			}
 		}
 
@@ -906,6 +949,82 @@ class TrackmaniaAPIService {
 			'length' => $length,
 		];
 		return $this->request($userId, Application::AUDIENCE_LIVE, 'leaderboard/group/Personal_Best/map/' . $mapUid . '/top', $params);
+	}
+
+	/**
+	 * Get the world record of each given map.
+	 * One request per map through a bounded pool of concurrent requests, tokens checked once.
+	 * No caching is involved, records are fetched on each call.
+	 *
+	 * @param string $userId
+	 * @param array $mapUids
+	 * @return array map of mapUid => ['time', 'account_id', 'unix_timestamp'] or ['time' => null] when there is no record
+	 * @throws PreConditionNotMetException
+	 * @throws TmApiRequestException
+	 * @throws TokenRefreshException
+	 */
+	private function getWorldRecords(string $userId, array $mapUids): array {
+		if (count($mapUids) === 0) {
+			return [];
+		}
+		$accessToken = $this->getCheckedToken($userId, Application::AUDIENCE_LIVE);
+		$options = [
+			'headers' => [
+				'Authorization' => 'nadeo_v1 t=' . $accessToken,
+				'Content-Type' => 'application/json',
+				'User-Agent' => Application::INTEGRATION_USER_AGENT,
+			],
+			'timeout' => 120,
+		];
+
+		$worldRecordsByMapUid = [];
+		for ($offset = 0; $offset < count($mapUids); $offset += self::CONCURRENT_RECORD_REQUESTS) {
+			$batchMapUids = array_slice($mapUids, $offset, self::CONCURRENT_RECORD_REQUESTS);
+			$promises = [];
+			foreach ($batchMapUids as $mapUid) {
+				$url = $this->buildRequestUrl(
+					Application::AUDIENCES[Application::AUDIENCE_LIVE]['base_url'],
+					'leaderboard/group/Personal_Best/map/' . $mapUid . '/top',
+					['onlyWorld' => 'true', 'length' => 1],
+					'GET',
+				);
+				$promises[$mapUid] = $this->client->getAsync($url, $options);
+			}
+			// waiting on one promise drives the shared curl multi handler
+			// and also progresses the other requests in flight
+			foreach ($batchMapUids as $mapUid) {
+				$worldRecordsByMapUid[$mapUid] = [
+					'time' => null,
+					'account_id' => null,
+					'unix_timestamp' => null,
+				];
+				try {
+					$response = $promises[$mapUid]->wait(true);
+				} catch (ClientException|ServerException $e) {
+					$this->logger->warning('Failed to get world record of map ' . $mapUid, ['app' => Application::APP_ID, 'exception' => $e]);
+					continue;
+				}
+				$tops = json_decode((string)$response->getBody(), true);
+				$wr = $tops['tops'][0]['top'][0] ?? null;
+				if (is_array($wr) && isset($wr['score']) && is_numeric($wr['score']) && $wr['score'] > -1) {
+					$worldRecordsByMapUid[$mapUid] = [
+						'time' => (int)$wr['score'],
+						'account_id' => $wr['accountId'] ?? null,
+						'unix_timestamp' => isset($wr['timestamp']) ? (int)$wr['timestamp'] : null,
+					];
+				}
+			}
+		}
+
+		// WR holder names are resolved like map author names, batched and cached
+		$wrAccountIds = array_values(array_filter(array_column($worldRecordsByMapUid, 'account_id')));
+		$wrNames = $this->getAuthorNames($wrAccountIds);
+		foreach ($worldRecordsByMapUid as &$worldRecord) {
+			if ($worldRecord['account_id'] !== null) {
+				$worldRecord['name'] = $wrNames[$worldRecord['account_id']] ?? '';
+			}
+		}
+		return $worldRecordsByMapUid;
 	}
 
 	/**
