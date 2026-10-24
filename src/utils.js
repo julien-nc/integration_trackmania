@@ -98,6 +98,16 @@ export function formatPbs(pbs) {
 			pb.otherRecord.formattedDate = formatTimestamp(pb.otherRecord.unix_timestamp)
 			pb.otherRecord.formattedDateWithZone = formatTimestampWithZone(pb.otherRecord.unix_timestamp)
 		}
+		if (pb.worldRecord) {
+			pb.worldRecord.formattedTime = formatTime(pb.worldRecord.time)
+			const wrDelta = pb.record.recordScore.time - pb.worldRecord.time
+			pb.worldRecord.delta = wrDelta
+			pb.worldRecord.formattedDelta = (wrDelta > 0 ? '+' : '') + formatTime(wrDelta)
+			if (pb.worldRecord.unix_timestamp) {
+				pb.worldRecord.formattedDate = formatTimestamp(pb.worldRecord.unix_timestamp)
+				pb.worldRecord.formattedDateWithZone = formatTimestampWithZone(pb.worldRecord.unix_timestamp)
+			}
+		}
 		pb.record.formattedDate = formatTimestamp(pb.record.unix_timestamp)
 		pb.record.formattedDateWithZone = formatTimestampWithZone(pb.record.unix_timestamp)
 		pb.record.formattedMedal = formatMedals(pb.record.medal)

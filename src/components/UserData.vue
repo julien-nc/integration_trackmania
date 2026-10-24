@@ -85,6 +85,13 @@
 				@update:model-value="onZoneCheck(zn, $event)">
 				{{ t('integration_trackmania', 'Position in {zone}', { zone: zn }) }}
 			</NcCheckboxRadioSwitch>
+			<NcCheckboxRadioSwitch
+				:model-value="configState.show_column_wr !== '0'"
+				class="checkColumn"
+				type="switch"
+				@update:model-value="onColumnCheck('show_column_wr', $event)">
+				{{ t('integration_trackmania', 'World record') }}
+			</NcCheckboxRadioSwitch>
 			<NcCheckboxRadioSwitch v-if="configState.other_account_id"
 				:model-value="configState.show_column_other_time !== '0'"
 				class="checkColumn"
@@ -155,6 +162,13 @@
 					:style="row.otherRecord?.delta < 0 ? 'color: var(--color-border-success, --color-success);' : 'color: var(--color-border-error, --color-error);'">
 					{{ row.otherRecord?.formattedDelta ?? '' }}
 				</span>
+				<span v-else-if="column.field === 'worldRecord.time'">
+					{{ row.worldRecord?.formattedTime ?? '' }}
+				</span>
+				<span v-else-if="column.field === 'worldRecord.delta'"
+					:style="row.worldRecord?.delta <= 0 ? 'color: var(--color-border-success, --color-success);' : 'color: var(--color-border-error, --color-error);'">
+					{{ row.worldRecord?.formattedDelta ?? '' }}
+				</span>
 				<span v-else-if="column.field === 'record.unix_timestamp'"
 					:title="row.record.formattedDateWithZone">
 					{{ row.record.formattedDate }}
@@ -222,6 +236,36 @@
 					:placeholder="t('integration_trackmania', '\'{example}\' for less than 10 seconds', { example: '< 10000' }, null, { escape: false, sanitize: false })"
 					@keyup.enter="onOtherDeltaFilterChange"
 					@trailing-button-click="setOtherDeltaFilter('')" />
+				<NcTextField
+					v-else-if="column.field === 'worldRecord.name'"
+					:model-value="worldRecordNameFilter"
+					type="text"
+					:label="t('integration_trackmania', 'World record holder filter')"
+					:placeholder="t('integration_trackmania', 'Nadeo')"
+					:show-trailing-button="!!worldRecordNameFilter"
+					class="text-input-filter"
+					@keyup.enter="onWorldRecordNameFilterChange"
+					@trailing-button-click="setWorldRecordNameFilter('')" />
+				<NcTextField
+					v-else-if="column.field === 'worldRecord.time'"
+					:model-value="worldRecordTimeFilter"
+					type="text"
+					:label="t('integration_trackmania', 'World record time filter')"
+					:show-trailing-button="!!worldRecordTimeFilter"
+					class="text-input-filter"
+					:placeholder="t('integration_trackmania', '\'{example}\' for less than 10 seconds', { example: '< 10000' }, null, { escape: false, sanitize: false })"
+					@keyup.enter="onWorldRecordTimeFilterChange"
+					@trailing-button-click="setWorldRecordTimeFilter('')" />
+				<NcTextField
+					v-else-if="column.field === 'worldRecord.delta'"
+					:model-value="worldRecordDeltaFilter"
+					type="text"
+					:label="t('integration_trackmania', 'World record delta filter')"
+					:show-trailing-button="!!worldRecordDeltaFilter"
+					class="text-input-filter"
+					:placeholder="t('integration_trackmania', '\'{example}\' for less than 10 seconds', { example: '< 10000' }, null, { escape: false, sanitize: false })"
+					@keyup.enter="onWorldRecordDeltaFilterChange"
+					@trailing-button-click="setWorldRecordDeltaFilter('')" />
 				<NcSelect
 					v-else-if="column.field === 'mapInfo.favorite'"
 					:model-value="selectedFavoriteFilter"
@@ -437,6 +481,9 @@ export default {
 			timeFilter: this.configState.filter_time ?? '',
 			otherTimeFilter: this.configState.filter_other_time ?? '',
 			otherDeltaFilter: this.configState.filter_other_delta ?? '',
+			worldRecordNameFilter: this.configState.filter_world_record_name ?? '',
+			worldRecordTimeFilter: this.configState.filter_world_record_time ?? '',
+			worldRecordDeltaFilter: this.configState.filter_world_record_delta ?? '',
 			favoriteFilter: this.configState.filter_favorite ?? '',
 			bestPositionFilter: this.configState.filter_best_position ?? '',
 			bestPositionLastSeenAfterFilter: this.configState.filter_best_position_last_seen_at ? moment.unix(this.configState.filter_best_position_last_seen_at).toDate() : '',
@@ -498,6 +545,17 @@ export default {
 			}
 			if (this.otherDeltaFilter) {
 				myFiltered = myFiltered.filter(pb => this.filterNumber(pb.otherRecord?.delta, this.otherDeltaFilter))
+			}
+			if (this.worldRecordNameFilter) {
+				myFiltered = myFiltered.filter(pb => pb.worldRecord !== null
+					&& typeof pb.worldRecord?.name === 'string'
+					&& this.filterString(pb.worldRecord.name, this.worldRecordNameFilter))
+			}
+			if (this.worldRecordTimeFilter) {
+				myFiltered = myFiltered.filter(pb => this.filterNumber(pb.worldRecord?.time, this.worldRecordTimeFilter))
+			}
+			if (this.worldRecordDeltaFilter) {
+				myFiltered = myFiltered.filter(pb => this.filterNumber(pb.worldRecord?.delta, this.worldRecordDeltaFilter))
 			}
 			if (this.favoriteFilter) {
 				myFiltered = myFiltered.filter(pb => this.filterFavorite(pb.mapInfo.favorite, this.favoriteFilter))
@@ -715,6 +773,26 @@ export default {
 					sortName: 'otherMedal',
 				})
 			}
+			if (this.configState.show_column_wr !== '0') {
+				columns.push({
+					label: t('integration_trackmania', 'World record holder'),
+					type: 'text',
+					field: 'worldRecord.name',
+					sortName: 'wrHolderName',
+				})
+				columns.push({
+					label: t('integration_trackmania', 'World record time'),
+					type: 'number',
+					field: 'worldRecord.time',
+					sortName: 'wrTime',
+				})
+				columns.push({
+					label: t('integration_trackmania', 'Delta with world record'),
+					type: 'number',
+					field: 'worldRecord.delta',
+					sortName: 'wrDelta',
+				})
+			}
 			return columns
 		},
 		dateMinTimestamp() {
@@ -807,15 +885,15 @@ export default {
 			} else if (type === 'text') {
 				return order === 'asc'
 					? (a, b) => {
-							const vA = this.getRawCellValue(a, field)
-							const vB = this.getRawCellValue(b, field)
+							const vA = this.getRawCellValue(a, field) ?? ''
+							const vB = this.getRawCellValue(b, field) ?? ''
 							return vA === vB
 								? nextSortFunction(a, b)
 								: vA.localeCompare(vB)
 						}
 					: (a, b) => {
-							const vA = this.getRawCellValue(a, field)
-							const vB = this.getRawCellValue(b, field)
+							const vA = this.getRawCellValue(a, field) ?? ''
+							const vB = this.getRawCellValue(b, field) ?? ''
 							return vA === vB
 								? nextSortFunction(a, b)
 								: vB.localeCompare(vA)
@@ -946,6 +1024,33 @@ export default {
 				filter_other_delta: this.otherDeltaFilter,
 			})
 		},
+		onWorldRecordNameFilterChange(e) {
+			this.setWorldRecordNameFilter(e.target.value)
+		},
+		setWorldRecordNameFilter(value) {
+			this.worldRecordNameFilter = value
+			this.saveOptions({
+				filter_world_record_name: this.worldRecordNameFilter,
+			})
+		},
+		onWorldRecordTimeFilterChange(e) {
+			this.setWorldRecordTimeFilter(e.target.value)
+		},
+		setWorldRecordTimeFilter(value) {
+			this.worldRecordTimeFilter = value
+			this.saveOptions({
+				filter_world_record_time: this.worldRecordTimeFilter,
+			})
+		},
+		onWorldRecordDeltaFilterChange(e) {
+			this.setWorldRecordDeltaFilter(e.target.value)
+		},
+		setWorldRecordDeltaFilter(value) {
+			this.worldRecordDeltaFilter = value
+			this.saveOptions({
+				filter_world_record_delta: this.worldRecordDeltaFilter,
+			})
+		},
 		onFavoriteFilterChange(option) {
 			if (option === null) {
 				this.favoriteFilter = ''
@@ -984,6 +1089,9 @@ export default {
 				filter_mapAuthorName: '',
 				filter_other_time: '',
 				filter_other_delta: '',
+				filter_world_record_name: '',
+				filter_world_record_time: '',
+				filter_world_record_delta: '',
 				filter_best_position: '',
 				filter_best_position_last_seen_at: '',
 			}
@@ -1001,6 +1109,9 @@ export default {
 			this.mapAuthorNameFilter = ''
 			this.otherTimeFilter = ''
 			this.otherDeltaFilter = ''
+			this.worldRecordNameFilter = ''
+			this.worldRecordTimeFilter = ''
+			this.worldRecordDeltaFilter = ''
 			this.bestPositionFilter = ''
 			this.bestPositionLastSeenAfterFilter = ''
 		},

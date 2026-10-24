@@ -304,6 +304,9 @@ export default {
 			if (this.tableState.other_account_id) {
 				reqData.otherAccountId = this.tableState.other_account_id
 			}
+			if (this.tableState.show_column_wr !== '0') {
+				reqData.withWorldRecords = true
+			}
 			return axios.post(url, reqData, reqConfig).then(response => {
 				const infoByMapId = response.data
 				const chunkWithInfo = chunk.map(c => {
@@ -316,7 +319,8 @@ export default {
 							},
 							record: c.record,
 							recordPosition: info.recordPosition,
-							otherRecord: info.otherRecord,
+							otherRecord: info.otherRecord ?? null,
+							worldRecord: info.worldRecord ?? null,
 							bestKnownPosition: info.bestKnownPosition,
 						}
 					}
@@ -406,6 +410,10 @@ export default {
 			Object.keys(values).forEach(k => {
 				this.tableState[k] = values[k]
 			})
+			// the world record columns need the WR data to be fetched on the next full reload
+			if (values.show_column_wr !== undefined) {
+				this.reloadData()
+			}
 			const req = {
 				values,
 			}
