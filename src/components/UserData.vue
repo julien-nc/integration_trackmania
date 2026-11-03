@@ -118,7 +118,7 @@
 		</div>
 		<SimpleTable
 			:columns="columns"
-			:rows="sortedFilteredPbs"
+			:rows="renderedPbs"
 			:sort-options="sortOptions"
 			@cell-clicked="onCellClick"
 			@header-clicked="onHeaderClick"
@@ -371,6 +371,7 @@
 					@trailing-button-click="onZonePositionFilterChange(column.field, '')" />
 			</template>
 		</SimpleTable>
+		<div ref="tableEndSentinel" />
 	</div>
 </template>
 
@@ -424,6 +425,10 @@ function parseNumberFilter(filterString) {
 // Same collation ordering as localeCompare, but through a reusable collator
 // instance: the expensive setup is shared by all comparisons.
 const sortCollator = new Intl.Collator()
+
+// progressive rendering: rows are appended by chunks while the user scrolls
+const RENDER_CHUNK = 500
+const TABLE_END_ROOT_MARGIN = '1200px 0px'
 
 function compareSortValues(vA, vB, type) {
 	if (type === 'boolean') {
@@ -530,6 +535,7 @@ export default {
 			zonePositionFilters: {},
 			sortOptions: this.initSortOptions(),
 			detailPb: null,
+			visibleRowCount: RENDER_CHUNK,
 		}
 	},
 
@@ -673,6 +679,13 @@ export default {
 				return 0
 			})
 			return decorated.map(item => item.pb)
+		},
+		// the full sorted list is always complete, only the rendered rows are
+		// capped: more chunks are appended while the user scrolls
+		renderedPbs() {
+			return this.visibleRowCount >= this.sortedFilteredPbs.length
+				? this.sortedFilteredPbs
+				: this.sortedFilteredPbs.slice(0, this.visibleRowCount)
 		},
 		rowCount() {
 			return this.filteredPbs.length
@@ -908,6 +921,10 @@ export default {
 	},
 
 	watch: {
+		// each new data load restarts the progressive rendering
+		pbs() {
+			this.visibleRowCount = RENDER_CHUNK
+		},
 	},
 
 	beforeMount() {
@@ -921,10 +938,23 @@ export default {
 	},
 
 	mounted() {
-		console.debug('[trackmania] pbs', this.pbs)
-		console.debug('[trackmania] tops', this.topCount)
-		console.debug('[trackmania] medals', this.medalCount)
-		console.debug('[trackmania] config', this.configState)
+		// append RENDER_CHUNK more rows whenever the table end (plus the root
+		// margin) intersects the viewport; consecutive fires cascade until the
+		// sentinel is pushed out of the margin
+		this.tableEndObserver = new IntersectionObserver((entries) => {
+			if (entries[0].isIntersecting
+				&& this.visibleRowCount < this.sortedFilteredPbs.length) {
+				this.visibleRowCount += RENDER_CHUNK
+			}
+		}, {
+			rootMargin: TABLE_END_ROOT_MARGIN,
+		})
+		this.tableEndObserver.observe(this.$refs.tableEndSentinel)
+	},
+
+	unmounted() {
+		this.tableEndObserver?.disconnect()
+		this.tableEndObserver = null
 	},
 
 	methods: {
