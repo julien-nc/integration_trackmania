@@ -108,8 +108,6 @@ export default {
 			pbs: [],
 			infoLoadingPercent: 0,
 			selectedOtherAccount: {},
-			nbChunksDone: 0,
-			nbChunks: 0,
 			lastUpdateTime: null,
 			lastLoadDurationMs: null,
 		}
@@ -128,7 +126,7 @@ export default {
 	},
 
 	beforeMount() {
-		console.debug('[trackmania] userState', this.userState)
+		// never log userState: it contains the OAuth core token
 		console.debug('[trackmania] tableState', this.tableState)
 	},
 
@@ -258,16 +256,14 @@ export default {
 				}
 				chunks.push(currentChunk)
 			}
-			this.nbChunksDone = 0
-			this.nbChunks = chunks.length
+			this.$options.nbChunksDone = 0
+			this.$options.nbChunks = chunks.length
 			Promise.all(chunks.map(c => this.getPbsChunkInfo(c)))
 				.then(results => {
 					if (results.some(result => result.code === 'ERR_CANCELED')) {
 						console.debug('At least one request has been canceled, do nothing')
 						return
 					}
-					console.debug('[trackmania] promise.all results', results)
-					console.debug('----- all done', this.$options.pbsWithInfo)
 					this.zoneNames = this.getZoneNames(this.$options.pbsWithInfo[0])
 					// TODO extend instead of replace
 					if (mapIdList !== null) {
@@ -328,7 +324,7 @@ export default {
 				})
 				this.$options.pbsWithInfo.push(...chunkWithInfo)
 				this.infoLoadingPercent = parseInt(this.$options.pbsWithInfo.length / this.$options.rawPbsToGetInfoOn.length * 100)
-				console.debug(`----- ${++this.nbChunksDone}/${this.nbChunks} chunks done ${this.infoLoadingPercent} %`)
+				console.debug(`----- ${++this.$options.nbChunksDone}/${this.$options.nbChunks} chunks done ${this.infoLoadingPercent} %`)
 				return response
 			}).catch((error) => {
 				console.error(error)

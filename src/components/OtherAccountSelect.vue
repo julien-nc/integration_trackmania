@@ -152,7 +152,6 @@ export default {
 					}
 				})
 				// this.otherAccountOptions = response.data.map(item => item.player)
-				console.debug('OPTIONs are now', this.otherAccountOptions)
 			}).catch(error => {
 				console.error(error)
 			}).then(() => {
