@@ -31,9 +31,9 @@
 			</tr>
 		</thead>
 		<tr v-for="(r, i) in rows"
-			:key="r.id">
+			:key="r.mapId">
 			<td v-for="c in columns"
-				:key="c.field + '-' + r.id"
+				:key="c.field + '-' + r.mapId"
 				:class="{ [c.type]: true, [c.tdClass]: true }"
 				@click="$emit('cell-clicked', c, r)">
 				<slot name="cell"

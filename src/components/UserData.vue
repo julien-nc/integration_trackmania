@@ -569,7 +569,7 @@ export default {
 					myFiltered = myFiltered.filter(pb => this.filterNumber(pb.recordPosition.zones[zn], this.zonePositionFilters[zoneFilterKey]))
 				}
 			})
-			console.debug('my filtered row list', myFiltered)
+			// console.debug('my filtered row list', myFiltered)
 			return myFiltered
 		},
 		sortedFilteredPbs() {
