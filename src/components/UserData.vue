@@ -560,59 +560,87 @@ export default {
 		},
 		// refilter the pbs with table filters + external filters to count the rows
 		filteredPbs() {
-			let myFiltered = this.pbs
+			// the predicates of the active filters are collected before the
+			// single pass, so each row is filtered by every filter at once
+			// instead of once per actively chained filter
+			const predicates = []
 			if (this.dateMinTimestamp) {
-				myFiltered = myFiltered.filter(pb => pb.record.unix_timestamp > this.dateMinTimestamp)
+				const dateMinTimestamp = this.dateMinTimestamp
+				predicates.push(pb => pb.record.unix_timestamp > dateMinTimestamp)
 			}
 			if (this.dateMaxTimestamp) {
-				myFiltered = myFiltered.filter(pb => pb.record.unix_timestamp < this.dateMaxTimestamp)
+				const dateMaxTimestamp = this.dateMaxTimestamp
+				predicates.push(pb => pb.record.unix_timestamp < dateMaxTimestamp)
 			}
 			if (this.mapNameFilter) {
-				myFiltered = myFiltered.filter(pb => this.filterString(pb.mapInfo.cleanName, this.mapNameFilter))
+				const mapNameFilter = this.mapNameFilter
+				predicates.push(pb => this.filterString(pb.mapInfo.cleanName, mapNameFilter))
 			}
 			if (this.mapAuthorNameFilter) {
-				myFiltered = myFiltered.filter(pb => this.filterString(pb.mapInfo.authorName, this.mapAuthorNameFilter))
+				const mapAuthorNameFilter = this.mapAuthorNameFilter
+				predicates.push(pb => this.filterString(pb.mapInfo.authorName, mapAuthorNameFilter))
 			}
 			if (this.bestPositionLastSeenAfterTimestamp) {
-				myFiltered = myFiltered.filter(pb => pb.bestKnownPosition.lastSeenAt > this.bestPositionLastSeenAfterTimestamp)
+				const bestPositionLastSeenAfterTimestamp = this.bestPositionLastSeenAfterTimestamp
+				predicates.push(pb => pb.bestKnownPosition.lastSeenAt > bestPositionLastSeenAfterTimestamp)
 			}
 			if (this.bestPositionFilter) {
-				myFiltered = myFiltered.filter(pb => this.filterNumber(pb.bestKnownPosition.position, this.bestPositionFilter))
+				const bestPositionFilter = this.bestPositionFilter
+				predicates.push(pb => this.filterNumber(pb.bestKnownPosition.position, bestPositionFilter))
 			}
 			if (this.timeFilter) {
-				myFiltered = myFiltered.filter(pb => this.filterNumber(pb.record.recordScore.time, this.timeFilter))
+				const timeFilter = this.timeFilter
+				predicates.push(pb => this.filterNumber(pb.record.recordScore.time, timeFilter))
 			}
 			if (this.otherTimeFilter) {
-				myFiltered = myFiltered.filter(pb => this.filterNumber(pb.otherRecord?.time, this.otherTimeFilter))
+				const otherTimeFilter = this.otherTimeFilter
+				predicates.push(pb => this.filterNumber(pb.otherRecord?.time, otherTimeFilter))
 			}
 			if (this.otherDeltaFilter) {
-				myFiltered = myFiltered.filter(pb => this.filterNumber(pb.otherRecord?.delta, this.otherDeltaFilter))
+				const otherDeltaFilter = this.otherDeltaFilter
+				predicates.push(pb => this.filterNumber(pb.otherRecord?.delta, otherDeltaFilter))
 			}
 			if (this.worldRecordNameFilter) {
-				myFiltered = myFiltered.filter(pb => pb.worldRecord !== null
+				const worldRecordNameFilter = this.worldRecordNameFilter
+				predicates.push(pb => pb.worldRecord !== null
 					&& typeof pb.worldRecord?.name === 'string'
-					&& this.filterString(pb.worldRecord.name, this.worldRecordNameFilter))
+					&& this.filterString(pb.worldRecord.name, worldRecordNameFilter))
 			}
 			if (this.worldRecordTimeFilter) {
-				myFiltered = myFiltered.filter(pb => this.filterNumber(pb.worldRecord?.time, this.worldRecordTimeFilter))
+				const worldRecordTimeFilter = this.worldRecordTimeFilter
+				predicates.push(pb => this.filterNumber(pb.worldRecord?.time, worldRecordTimeFilter))
 			}
 			if (this.worldRecordDeltaFilter) {
-				myFiltered = myFiltered.filter(pb => this.filterNumber(pb.worldRecord?.delta, this.worldRecordDeltaFilter))
+				const worldRecordDeltaFilter = this.worldRecordDeltaFilter
+				predicates.push(pb => this.filterNumber(pb.worldRecord?.delta, worldRecordDeltaFilter))
 			}
 			if (this.favoriteFilter) {
-				myFiltered = myFiltered.filter(pb => this.filterFavorite(pb.mapInfo.favorite, this.favoriteFilter))
+				const favoriteFilter = this.favoriteFilter
+				predicates.push(pb => this.filterFavorite(pb.mapInfo.favorite, favoriteFilter))
 			}
 			if (this.medalFilter.length > 0) {
-				myFiltered = myFiltered.filter(pb => this.medalFilter.includes(pb.record.medal))
+				const medalFilter = this.medalFilter
+				predicates.push(pb => medalFilter.includes(pb.record.medal))
 			}
 			this.zoneNames.forEach(zn => {
 				const zoneFilterKey = `recordPosition.zones.${zn}`
-				if (this.zonePositionFilters[zoneFilterKey]) {
-					myFiltered = myFiltered.filter(pb => this.filterNumber(pb.recordPosition.zones[zn], this.zonePositionFilters[zoneFilterKey]))
+				const zoneFilterValue = this.zonePositionFilters[zoneFilterKey]
+				if (zoneFilterValue) {
+					predicates.push(pb => this.filterNumber(pb.recordPosition.zones[zn], zoneFilterValue))
 				}
 			})
-			// console.debug('my filtered row list', myFiltered)
-			return myFiltered
+
+			if (predicates.length === 0) {
+				return this.pbs
+			}
+			return this.pbs.filter(pb => {
+				for (const predicate of predicates) {
+					if (!predicate(pb)) {
+						return false
+					}
+				}
+				return true
+			})
 		},
 		sortedFilteredPbs() {
 			if (this.sortOptions.length === 0) {
