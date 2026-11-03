@@ -116,6 +116,7 @@
 				{{ t('integration_trackmania', 'Clear table filters') }}
 			</NcButton>
 		</div>
+		<div ref="tableStartSentinel" />
 		<SimpleTable
 			:columns="columns"
 			:rows="renderedPbs"
@@ -427,8 +428,9 @@ function parseNumberFilter(filterString) {
 const sortCollator = new Intl.Collator()
 
 // progressive rendering: rows are appended by chunks while the user scrolls
-const RENDER_CHUNK = 500
+const RENDER_CHUNK = 200
 const TABLE_END_ROOT_MARGIN = '1200px 0px'
+const TABLE_START_ROOT_MARGIN = '600px 0px'
 
 function compareSortValues(vA, vB, type) {
 	if (type === 'boolean') {
@@ -950,11 +952,26 @@ export default {
 			rootMargin: TABLE_END_ROOT_MARGIN,
 		})
 		this.tableEndObserver.observe(this.$refs.tableEndSentinel)
+
+		// near the table start the viewport can only show the first rows, so
+		// the rendered rows can safely shrink back to the initial chunk
+		// without removing anything from the screen
+		this.tableStartObserver = new IntersectionObserver((entries) => {
+			if (entries[0].isIntersecting
+				&& this.visibleRowCount > RENDER_CHUNK) {
+				this.visibleRowCount = RENDER_CHUNK
+			}
+		}, {
+			rootMargin: TABLE_START_ROOT_MARGIN,
+		})
+		this.tableStartObserver.observe(this.$refs.tableStartSentinel)
 	},
 
 	unmounted() {
 		this.tableEndObserver?.disconnect()
 		this.tableEndObserver = null
+		this.tableStartObserver?.disconnect()
+		this.tableStartObserver = null
 	},
 
 	methods: {
