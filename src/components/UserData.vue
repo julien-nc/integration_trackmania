@@ -395,6 +395,35 @@ import {
 } from '../utils.js'
 // import NbRecordsPerPosition from './charts/NbRecordsPerPosition.vue'
 
+// Filters are constant while a filter pass iterates the rows, so their derived
+// form (uppercased string or parsed operator/number) is memoized by raw value.
+const filterValueCache = new Map()
+
+function cachedFilterValue(value, build) {
+	let helper = filterValueCache.get(value)
+	if (helper === undefined) {
+		if (filterValueCache.size > 100) {
+			filterValueCache.clear()
+		}
+		helper = build(value)
+		filterValueCache.set(value, helper)
+	}
+	return helper
+}
+
+function parseNumberFilter(filterString) {
+	if (filterString.startsWith('<=')) {
+		return data => data <= parseInt(filterString.slice(2))
+	} else if (filterString.startsWith('<')) {
+		return data => data < parseInt(filterString.slice(1))
+	} else if (filterString.startsWith('>=')) {
+		return data => data >= parseInt(filterString.slice(2))
+	} else if (filterString.startsWith('>')) {
+		return data => data > parseInt(filterString.slice(1))
+	}
+	return data => data === parseInt(filterString)
+}
+
 export default {
 	name: 'UserData',
 
@@ -936,21 +965,11 @@ export default {
 			emit('save-options', values)
 		},
 		filterString(data, filterString) {
-			return data.toUpperCase().includes(filterString.toUpperCase())
+			return data.toUpperCase().includes(cachedFilterValue(filterString, f => f.toUpperCase()))
 		},
 		filterNumber(data, filterString) {
 			if (data) {
-				if (filterString.startsWith('<=')) {
-					return data <= parseInt(filterString.replace('<=', ''))
-				} else if (filterString.startsWith('<')) {
-					return data < parseInt(filterString.replace('<', ''))
-				} else if (filterString.startsWith('>=')) {
-					return data >= parseInt(filterString.replace('>=', ''))
-				} else if (filterString.startsWith('>')) {
-					return data > parseInt(filterString.replace('>', ''))
-				} else {
-					return data === parseInt(filterString)
-				}
+				return cachedFilterValue(filterString, parseNumberFilter)(data)
 			}
 			return false
 		},
