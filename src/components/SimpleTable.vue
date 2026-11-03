@@ -116,6 +116,15 @@ export default {
 <style scoped lang="scss">
 .simple-table {
 	position: relative;
+	counter-reset: simple-table-row;
+	// the line-number cell content is browser-computed in the rendered row
+	// order, so re-filtering/re-sorting the rows never patches it: the counter
+	// is incremented and read by the same pseudo-element (also robust if the
+	// rows are direct table children instead of tbody rows)
+	td.lineNumberColumn::before {
+		counter-increment: simple-table-row;
+		content: counter(simple-table-row);
+	}
 	&, th, td {
 		border: 1px solid var(--color-border-dark);
 		//border-collapse: collapse;

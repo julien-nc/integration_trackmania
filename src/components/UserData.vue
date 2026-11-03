@@ -123,12 +123,9 @@
 			@cell-clicked="onCellClick"
 			@header-clicked="onHeaderClick"
 			@header-shift-clicked="onHeaderShiftClick">
-			<template #cell="{row, column, index}">
-				<span v-if="column.field === '#'">
-					{{ index + 1 }}
-				</span>
+			<template #cell="{row, column}">
 				<!-- eslint-disable vue/no-v-html -->
-				<span v-else-if="column.field === 'mapInfo.cleanName'"
+				<span v-if="column.field === 'mapInfo.cleanName'"
 					:title="row.mapInfo.cleanName"
 					v-html="row.mapInfo.htmlName" />
 				<!-- eslint-enable -->
@@ -766,6 +763,7 @@ export default {
 					label: '#',
 					type: 'number',
 					field: '#',
+					tdClass: 'lineNumberColumn',
 				})
 			}
 			if (this.configState.show_column_favorite !== '0') {
