@@ -424,6 +424,19 @@ function parseNumberFilter(filterString) {
 	return data => data === parseInt(filterString)
 }
 
+// Same collation ordering as localeCompare, but through a reusable collator
+// instance: the expensive setup is shared by all comparisons.
+const sortCollator = new Intl.Collator()
+
+function compareSortValues(vA, vB, type) {
+	if (type === 'boolean') {
+		return vA === vB ? 0 : vA ? 1 : -1
+	} else if (type === 'number') {
+		return vA > vB ? 1 : vA < vB ? -1 : 0
+	}
+	return sortCollator.compare(vA, vB)
+}
+
 export default {
 	name: 'UserData',
 
@@ -606,11 +619,35 @@ export default {
 				return this.filteredPbs
 			}
 			const columns = this.sortOptions.map(so => this.columns.find(c => c.sortName === so.sortName)).filter(c => !!c)
-			if (columns.length > 0) {
-				const sortFun = this.getSortFunction(columns, this.sortOptions)
-				return this.filteredPbs.slice().sort(sortFun)
+			if (columns.length === 0) {
+				return this.filteredPbs
 			}
-			return this.filteredPbs
+			// decorate: the values of each row are resolved once instead of walking
+			// the dotted field path for both rows of every comparison
+			const decorated = this.filteredPbs.map(pb => ({
+				pb,
+				keys: columns.map(c => {
+					const value = this.getRawCellValue(pb, c.field)
+					if (c.type === 'text') {
+						return value ?? ''
+					} else if (c.type === 'number') {
+						return value ?? null
+					}
+					return value
+				}),
+			}))
+			decorated.sort((itemA, itemB) => {
+				// the index alignment between columns and sortOptions matches
+				// the previous recursive comparator
+				for (let i = 0; i < columns.length; i++) {
+					const result = compareSortValues(itemA.keys[i], itemB.keys[i], columns[i].type)
+					if (result !== 0) {
+						return this.sortOptions[i].order === 'desc' ? -result : result
+					}
+				}
+				return 0
+			})
+			return decorated.map(item => item.pb)
 		},
 		rowCount() {
 			return this.filteredPbs.length
@@ -865,70 +902,6 @@ export default {
 	},
 
 	methods: {
-		getSortFunction(columns, sortOptions) {
-			const firstColumn = columns[0]
-			const firstSortOption = sortOptions[0]
-			const field = firstColumn.field
-			const type = firstColumn.type
-			const order = firstSortOption.order
-			const nextSortFunction = columns.length > 1
-				? this.getSortFunction(columns.slice(1), sortOptions.slice(1))
-				: () => 0
-
-			if (type === 'boolean') {
-				return order === 'asc'
-					? (a, b) => {
-							const vA = this.getRawCellValue(a, field)
-							const vB = this.getRawCellValue(b, field)
-							return vA === vB
-								? nextSortFunction(a, b)
-								: (vA ? 1 : -1)
-						}
-					: (a, b) => {
-							const vA = this.getRawCellValue(a, field)
-							const vB = this.getRawCellValue(b, field)
-							return vA === vB
-								? nextSortFunction(a, b)
-								: (vB ? 1 : -1)
-						}
-			} else if (type === 'number') {
-				return order === 'asc'
-					? (a, b) => {
-							const vA = this.getRawCellValue(a, field) ?? null
-							const vB = this.getRawCellValue(b, field) ?? null
-							return vA > vB
-								? 1
-								: vA < vB
-									? -1
-									: nextSortFunction(a, b)
-						}
-					: (a, b) => {
-							const vA = this.getRawCellValue(a, field) ?? null
-							const vB = this.getRawCellValue(b, field) ?? null
-							return vA > vB
-								? -1
-								: vA < vB
-									? 1
-									: nextSortFunction(a, b)
-						}
-			} else if (type === 'text') {
-				return order === 'asc'
-					? (a, b) => {
-							const vA = this.getRawCellValue(a, field) ?? ''
-							const vB = this.getRawCellValue(b, field) ?? ''
-							return vA === vB
-								? nextSortFunction(a, b)
-								: vA.localeCompare(vB)
-						}
-					: (a, b) => {
-							const vA = this.getRawCellValue(a, field) ?? ''
-							const vB = this.getRawCellValue(b, field) ?? ''
-							return vA === vB
-								? nextSortFunction(a, b)
-								: vB.localeCompare(vA)
-						}
-			}
-		},
 		initSortOptions() {
 			if (this.configState.sort_columns && this.configState.sort_orders) {
 				const cols = this.configState.sort_columns.split(',')
