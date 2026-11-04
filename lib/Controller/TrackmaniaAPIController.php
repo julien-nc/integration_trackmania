@@ -206,6 +206,52 @@ class TrackmaniaAPIController extends Controller {
 	}
 
 	/**
+	 * Skin info of an account, the connected one by default
+	 *
+	 * @param string $accountId
+	 * @return DataResponse
+	 */
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
+	public function getMySkin(string $accountId = ''): DataResponse {
+		try {
+			$result = $this->trackmaniaAPIService->getEquippedSkinInfo(
+				$this->userId,
+				$accountId === '' ? null : $accountId,
+			);
+		} catch (TokenRefreshException|TmApiRequestException $e) {
+			return $this->getExceptionResponse($e);
+		} catch (\Throwable $e) {
+			return new DataResponse($e->getMessage(), Http::STATUS_BAD_REQUEST);
+		}
+		return new DataResponse($result);
+	}
+
+	/**
+	 * The thumbnail of a skin, converted from Nadeo TGA to PNG
+	 *
+	 * @param string $skinId
+	 * @return Response
+	 */
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
+	public function getSkinThumbnail(string $skinId): Response {
+		try {
+			$image = $this->trackmaniaAPIService->getSkinThumbnail($this->userId, $skinId);
+		} catch (TokenRefreshException|TmApiRequestException $e) {
+			return $this->getExceptionResponse($e);
+		} catch (\Throwable $e) {
+			return new DataResponse($e->getMessage(), Http::STATUS_BAD_REQUEST);
+		}
+		if ($image === null || !isset($image['body'])) {
+			return new DataDisplayResponse('', Http::STATUS_NOT_FOUND);
+		}
+		$response = new DataDisplayResponse($image['body'], Http::STATUS_OK, ['Content-Type' => 'image/png']);
+		$response->cacheFor(60 * 60 * 24, false, true);
+		return $response;
+	}
+
+	/**
 	 * @param string $mapId
 	 * @param string $fallbackName
 	 * @return Response

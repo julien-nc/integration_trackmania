@@ -30,6 +30,8 @@ return [
 		['name' => 'trackmaniaAPI#getMoreRecordInfo', 'url' => '/pbs/info', 'verb' => 'POST'],
 		// end partial load
 		['name' => 'trackmaniaAPI#getMapThumbnail', 'url' => '/map/{mapId}/thumbnail', 'verb' => 'GET'],
+		['name' => 'trackmaniaAPI#getMySkin', 'url' => '/skin', 'verb' => 'GET'],
+		['name' => 'trackmaniaAPI#getSkinThumbnail', 'url' => '/skin/{skinId}/thumbnail', 'verb' => 'GET'],
 		['name' => 'trackmaniaAPI#getLiveMapInfo', 'url' => '/map/{mapUid}', 'verb' => 'GET'],
 		['name' => 'trackmaniaAPI#getCoreMapInfoById', 'url' => '/core/map/id/{mapId}', 'verb' => 'GET'],
 		['name' => 'trackmaniaAPI#getCoreMapInfoByUid', 'url' => '/core/map/uid/{mapUid}', 'verb' => 'GET'],

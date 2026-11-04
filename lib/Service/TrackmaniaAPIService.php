@@ -24,6 +24,7 @@ use OCA\Trackmania\Db\TrackPosition;
 use OCA\Trackmania\Db\TrackPositionMapper;
 use OCA\Trackmania\Exception\TmApiRequestException;
 use OCA\Trackmania\Exception\TokenRefreshException;
+use OCA\Trackmania\Util\TgaImageConverter;
 use OCP\AppFramework\Http;
 use OCP\Exceptions\AppConfigTypeConflictException;
 use OCP\Http\Client\IClient;
@@ -45,6 +46,8 @@ class TrackmaniaAPIService {
 	private const MAP_RECORD_CACHE_TTL = 60 * 60;
 	/** Max size of an upstream records page */
 	private const OWN_RECORDS_PAGE_SIZE = 1000;
+	/** Skins change rarely, cache their info a bit */
+	private const SKIN_INFO_CACHE_TTL = 24 * 60 * 60;
 
 	private IClient $client;
 	private ICache $cache;
@@ -765,6 +768,93 @@ class TrackmaniaAPIService {
 			'length' => $limit,
 		];
 		return $this->request($userId, Application::AUDIENCE_LIVE, 'map/favorite', $params);
+	}
+
+	/**
+	 * Get the info of the skin equipped by an account, null if it has none.
+	 *
+	 * @param string $userId
+	 * @param string|null $accountId the connected account is used if null
+	 * @return array|null ['skinId' => string, 'name' => string]
+	 * @throws PreConditionNotMetException
+	 * @throws TmApiRequestException
+	 * @throws TokenRefreshException
+	 */
+	public function getEquippedSkinInfo(string $userId, ?string $accountId = null): ?array {
+		$prefix = Application::AUDIENCES[Application::AUDIENCE_CORE]['token_config_key_prefix'];
+		if ($accountId === null) {
+			$accountId = $this->config->getUserValue($userId, Application::APP_ID, $prefix . 'account_id');
+		}
+		// one request for all requested accounts, users without equipped skin are omitted
+		$equippedSkins = $this->request($userId, Application::AUDIENCE_CORE, 'accounts/skins', ['accountIdList' => $accountId]);
+		$skinId = null;
+		foreach (is_array($equippedSkins) ? $equippedSkins : [] as $equippedSkin) {
+			if (isset($equippedSkin['accountId'], $equippedSkin['skinId'])
+				&& $equippedSkin['accountId'] === $accountId) {
+				$skinId = $equippedSkin['skinId'];
+				break;
+			}
+		}
+		if ($skinId === null) {
+			return null;
+		}
+
+		$skinInfo = $this->getSkinInfo($userId, $skinId);
+		if ($skinInfo === null) {
+			return null;
+		}
+		return [
+			'skinId' => $skinId,
+			'name' => $skinInfo['skinDisplayName'] ?? '',
+		];
+	}
+
+	/**
+	 * Get the info of a skin, cached per skin ID
+	 *
+	 * @return array|null
+	 */
+	private function getSkinInfo(string $userId, string $skinId): ?array {
+		$cacheKey = 'skin-' . $skinId;
+		$skinInfo = $this->cache->get($cacheKey);
+		if ($skinInfo === null) {
+			$skinInfo = $this->request($userId, Application::AUDIENCE_CORE, 'skins/' . $skinId);
+			if (is_array($skinInfo) && isset($skinInfo['skinId'])) {
+				$this->cache->set($cacheKey, $skinInfo, self::SKIN_INFO_CACHE_TTL);
+			} else {
+				return null;
+			}
+		}
+		return is_array($skinInfo) ? $skinInfo : null;
+	}
+
+	/**
+	 * Get the thumbnail of a skin, converted to PNG.
+	 * Nadeo provides TGA files, browsers cannot render them.
+	 *
+	 * @param string $userId
+	 * @param string $skinId
+	 * @return array|null ['body' => string]
+	 * @throws PreConditionNotMetException
+	 * @throws TmApiRequestException
+	 * @throws TokenRefreshException
+	 */
+	public function getSkinThumbnail(string $userId, string $skinId): ?array {
+		$skinInfo = $this->getSkinInfo($userId, $skinId);
+		if ($skinInfo === null || empty($skinInfo['thumbnailUrl'])) {
+			return null;
+		}
+		try {
+			$image = $this->getImage($skinInfo['thumbnailUrl']);
+		} catch (ClientException|ServerException $e) {
+			$this->logger->warning('Skin thumbnail request failed: ' . $e->getMessage(), ['app' => Application::APP_ID]);
+			return null;
+		}
+		$png = TgaImageConverter::convertToPng($image['body'] ?? '');
+		if ($png === null) {
+			$this->logger->warning('Failed to convert skin thumbnail from TGA to PNG', ['app' => Application::APP_ID]);
+		}
+		return $png === null ? null : ['body' => $png];
 	}
 
 	/**
