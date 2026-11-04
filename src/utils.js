@@ -128,7 +128,7 @@ function formatMedals(value) {
 	return MEDAL_STRING[value]
 }
 function formatTimestamp(value) {
-	return moment.unix(value).format('LLL')
+	return moment.unix(value).format('YYYY-MM-DD HH:mm')
 }
 function formatTimestampWithZone(value) {
 	return moment.unix(value).format('LLL (Z)')
