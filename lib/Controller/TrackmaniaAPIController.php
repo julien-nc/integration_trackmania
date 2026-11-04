@@ -155,14 +155,13 @@ class TrackmaniaAPIController extends Controller {
 	 * is merged on the frontend to display progress while the records are fetched
 	 *
 	 * @param int $offset
-	 * @param array|null $mapIdList Only keep records on those maps
 	 * @return DataResponse
 	 */
 	#[NoAdminRequired]
 	#[NoCSRFRequired]
-	public function getRawRecordsPage(int $offset = 0, ?array $mapIdList = null): DataResponse {
+	public function getRawRecordsPage(int $offset = 0): DataResponse {
 		try {
-			$result = $this->trackmaniaAPIService->getRawRecordsPage($this->userId, $offset, $mapIdList);
+			$result = $this->trackmaniaAPIService->getRawRecordsPage($this->userId, $offset);
 		} catch (TokenRefreshException|TmApiRequestException $e) {
 			return $this->getExceptionResponse($e);
 		} catch (\Throwable $e) {

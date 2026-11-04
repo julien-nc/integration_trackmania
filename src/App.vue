@@ -52,10 +52,8 @@
 					:last-load-duration-ms="lastLoadDurationMs"
 					@disconnect="disconnect"
 					@reload="reloadData"
-					@reload-filtered="reloadFilteredData"
 					@update:other-account="onUpdateOtherAccount" />
 				<UserData
-					ref="userData"
 					:pbs="pbs"
 					:zone-names="zoneNames"
 					:config-state="tableState" />
@@ -211,26 +209,17 @@ export default {
 				this.abortController.abort()
 			}
 		},
-		reloadFilteredData() {
-			const filteredPbs = this.$refs.userData.filteredPbs
-			this.reloadData(filteredPbs.map(pb => pb.mapInfo.mapId))
-		},
-		reloadData(mapIdList = null) {
-			if (mapIdList === null) {
-				this.pbs = []
-			}
-			if (mapIdList === null || mapIdList.length > 0) {
-				this.getPbs(mapIdList)
-			}
+		reloadData() {
+			this.pbs = []
+			this.getPbs()
 		},
 		// first get favorites and raw records page by page, then map info by chunks
-		getPbs(mapIdList = null) {
+		getPbs() {
 			this.abortController = new AbortController()
 			this.infoLoadingPercent = 0
 			this.loadingText = ''
 			this.loadingData = true
 			this._loadStartTime = Date.now()
-			this.$options.mapIdList = mapIdList
 			this.$options.favoritesMapIdSet = new Set()
 			this.$options.rawPbsToGetInfoOn = null
 			this.$options.pbsWithInfo = null
@@ -247,7 +236,7 @@ export default {
 			}
 			this.$options.pbsWithInfo = []
 			if (this.$options.rawPbsToGetInfoOn.length > 0) {
-				this.getPbsInfo(this.$options.mapIdList)
+				this.getPbsInfo()
 			} else {
 				this.finishDataLoad()
 			}
@@ -274,9 +263,6 @@ export default {
 			// so no percentage is shown while they are fetched, only a growing counter
 			this.loadingText = t('integration_trackmania', 'Loading records ({count})', { count: 0 })
 			this.$options.rawPbsToGetInfoOn = []
-			const reqData = this.$options.mapIdList !== null
-				? { mapIdList: this.$options.mapIdList }
-				: {}
 			try {
 				// pages are fetched in parallel waves while keeping the offset order,
 				// so the built array does not depend on the wave splits
@@ -288,7 +274,7 @@ export default {
 					}
 					const responses = await Promise.all(offsets.map(offset => axios.post(
 						generateUrl('/apps/integration_trackmania/pbs/records') + '?offset=' + offset,
-						reqData,
+						{},
 						{ signal: this.abortController.signal },
 					)))
 					// a page with an incomplete upstream page covers the last records:
@@ -338,7 +324,7 @@ export default {
 			this.lastUpdateTime = new Date()
 			this.lastLoadDurationMs = Date.now() - this._loadStartTime
 		},
-		getPbsInfo(mapIdList = null) {
+		getPbsInfo() {
 			this.loadingText = t('integration_trackmania', 'Loading map info…')
 			const rawPbsToGetInfoOn = this.$options.rawPbsToGetInfoOn
 			const chunks = []
@@ -362,12 +348,7 @@ export default {
 						return
 					}
 					this.zoneNames = this.getZoneNames(this.$options.pbsWithInfo[0])
-					// TODO extend instead of replace
-					if (mapIdList !== null) {
-						this.mergePbs(mapIdList)
-					} else {
-						this.pbs = formatPbs(this.$options.pbsWithInfo)
-					}
+					this.pbs = formatPbs(this.$options.pbsWithInfo)
 					this.$options.rawPbsToGetInfoOn = null
 					this.$options.pbsWithInfo = null
 				})
@@ -463,10 +444,6 @@ export default {
 				this.lastUpdateTime = new Date()
 				this.lastLoadDurationMs = Date.now() - this._loadStartTime
 			})
-		},
-		mergePbs(mapIdList) {
-			this.pbs = this.pbs.filter(pb => !mapIdList.includes(pb.mapInfo.mapId))
-			this.pbs.push(...formatPbs(this.$options.pbsWithInfo))
 		},
 		getZoneNames(onePb) {
 			return Object.keys(onePb.recordPosition.zones) || []

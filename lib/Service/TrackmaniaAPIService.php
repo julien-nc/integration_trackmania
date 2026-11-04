@@ -117,33 +117,29 @@ class TrackmaniaAPIService {
 	 *
 	 * @param string $userId
 	 * @param int $offset
-	 * @param array|null $mapIdList only keep records on those maps
 	 * @return array ['records' => array, 'hasMoreRecords' => bool]
 	 * @throws PreConditionNotMetException
 	 * @throws TmApiRequestException
 	 * @throws TokenRefreshException
 	 */
-	public function getRawRecordsPage(string $userId, int $offset, ?array $mapIdList = null): array {
+	public function getRawRecordsPage(string $userId, int $offset): array {
 		$prefix = Application::AUDIENCES[Application::AUDIENCE_CORE]['token_config_key_prefix'];
 		$userAccountId = $this->config->getUserValue($userId, Application::APP_ID, $prefix . 'account_id');
 
 		$rawRecords = $this->getMapRecordsPage($userId, $userAccountId, $offset);
 		$records = [];
 		foreach ($rawRecords as $rawRecord) {
-			// skip undesired maps, this filter has no impact on upstream paging
-			if ($mapIdList === null || in_array($rawRecord['mapId'], $mapIdList)) {
-				$records[] = [
-					'record' => [
-						'accountId' => $rawRecord['accountId'],
-						'medal' => $rawRecord['medal'],
-						'recordScore' => $rawRecord['recordScore'],
-						'unix_timestamp' => (new DateTime($rawRecord['timestamp']))->getTimestamp(),
-					],
-					'mapInfo' => [
-						'mapId' => $rawRecord['mapId'],
-					],
-				];
-			}
+			$records[] = [
+				'record' => [
+					'accountId' => $rawRecord['accountId'],
+					'medal' => $rawRecord['medal'],
+					'recordScore' => $rawRecord['recordScore'],
+					'unix_timestamp' => (new DateTime($rawRecord['timestamp']))->getTimestamp(),
+				],
+				'mapInfo' => [
+					'mapId' => $rawRecord['mapId'],
+				],
+			];
 		}
 		return [
 			'records' => $records,
@@ -772,9 +768,13 @@ class TrackmaniaAPIService {
 	}
 
 	/**
+	 * Get the records of the given accounts on the given maps.
+	 * The connected account is used if $accountIds is null: in that case all its records
+	 * are retrieved and $mapIds is ignored, the full endpoint is faster than one request per map.
+	 *
 	 * @param string $userId
-	 * @param array|null $accountIds connected account is used if null (or if $mapIds is null)
-	 * @param array|null $mapIds all records are retrieved if null (only works with the connected account)
+	 * @param array|null $accountIds
+	 * @param array|null $mapIds
 	 * @return Generator
 	 * @throws PreConditionNotMetException
 	 * @throws TmApiRequestException
@@ -784,18 +784,12 @@ class TrackmaniaAPIService {
 		$prefix = Application::AUDIENCES[Application::AUDIENCE_CORE]['token_config_key_prefix'];
 
 		$userAccountId = $this->config->getUserValue($userId, Application::APP_ID, $prefix . 'account_id');
-		// if mapIds is null, we get all maps of current connected account
-		// we also use the full endpoint if accountId is null (getting current account records), it's faster than one request per map
-		if ($mapIds === null || $accountIds === null) {
+		if ($accountIds === null) {
 			$offset = 0;
 			do {
 				$newRecords = $this->getMapRecordsPage($userId, $userAccountId, $offset);
-				// $records = array_merge($records, $newRecords);
 				foreach ($newRecords as $record) {
-					// skip undesired maps
-					if ($mapIds === null || in_array($record['mapId'], $mapIds)) {
-						yield $record;
-					}
+					yield $record;
 				}
 				$offset += self::OWN_RECORDS_PAGE_SIZE;
 			} while (count($newRecords) === self::OWN_RECORDS_PAGE_SIZE);
@@ -803,7 +797,7 @@ class TrackmaniaAPIService {
 		}
 
 		// we have a map list and a list of accounts
-		// we get all records of those maps for all accounts (or current connected one)
+		// we get all records of those maps for all accounts
 		yield from $this->getRecordsByAccount($userId, $userAccountId, $accountIds, $mapIds);
 
 		return [];
