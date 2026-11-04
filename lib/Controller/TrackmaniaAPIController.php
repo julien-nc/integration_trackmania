@@ -397,6 +397,29 @@ class TrackmaniaAPIController extends Controller {
 	}
 
 	/**
+	 * @param string $mapId
+	 * @param int $time
+	 * @return DataResponse
+	 */
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
+	public function getScoreRank(string $mapId, int $time): DataResponse {
+		try {
+			$mapInfos = iterator_to_array($this->trackmaniaAPIService->getCoreMapInfo($this->userId, [$mapId]));
+			$mapUid = $mapInfos[0]['mapUid'] ?? null;
+			if ($mapUid === null) {
+				return new DataResponse(['position' => null, 'beyondPosition' => null]);
+			}
+			$rank = $this->trackmaniaAPIService->getMapScoreRank($this->userId, $mapUid, $time);
+		} catch (TokenRefreshException|TmApiRequestException $e) {
+			return $this->getExceptionResponse($e);
+		} catch (\Throwable $e) {
+			return new DataResponse($e->getMessage(), Http::STATUS_BAD_REQUEST);
+		}
+		return new DataResponse($rank);
+	}
+
+	/**
 	 * @param string $mapUid
 	 * @param int $time
 	 * @return DataResponse

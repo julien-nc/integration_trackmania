@@ -38,6 +38,8 @@ return [
 		['name' => 'trackmaniaAPI#getMapTop', 'url' => '/map/{mapUid}/top', 'verb' => 'GET'],
 		['name' => 'trackmaniaAPI#getMapFinishCount', 'url' => '/map/{mapUid}/finish-count', 'verb' => 'GET'],
 		['name' => 'trackmaniaAPI#getMapTimePosition', 'url' => '/map/{mapUid}/position/{time}', 'verb' => 'GET'],
+		// exact rank of a time, resolved by scrolling real leaderboard pages
+		['name' => 'trackmaniaAPI#getScoreRank', 'url' => '/map/{mapId}/ranking/{time}', 'verb' => 'GET'],
 		['name' => 'trackmaniaAPI#getMapTimeImprovements', 'url' => '/map/{mapUid}/improvements/{time}', 'verb' => 'GET'],
 		['name' => 'trackmaniaAPI#test', 'url' => '/test', 'verb' => 'GET'],
 		['name' => 'trackmaniaAPI#getAccountRecordOnMap', 'url' => '/map/{mapId}/record/{accountId}', 'verb' => 'GET'],

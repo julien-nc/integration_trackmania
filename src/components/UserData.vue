@@ -156,6 +156,27 @@
 				<span v-else-if="column.field === 'otherRecord.time'">
 					{{ row.otherRecord?.formattedTime ?? '' }}
 				</span>
+				<span v-else-if="column.field === 'otherRecord.position.zones.World'">
+					<template v-if="row.otherRecord?.position?.zones?.World !== undefined">
+						{{ row.otherRecord.position.zones.World }}
+					</template>
+					<template v-else-if="row.otherRecord">
+						<span class="rank-button-cell">
+							<NcLoadingIcon v-if="rankLoading[row.mapInfo.mapId]"
+								:size="16" />
+							<span v-else-if="rankBeyond[row.mapInfo.mapId]">
+								{{ formatBeyondRank(rankBeyond[row.mapInfo.mapId]) }}
+							</span>
+							<NcButton v-else
+								:title="t('integration_trackmania', 'Compute the exact position')"
+								@click="computeExactRank(row)">
+								<template #icon>
+									<TargetIcon :size="16" />
+								</template>
+							</NcButton>
+						</span>
+					</template>
+				</span>
 				<span v-else-if="column.field === 'otherRecord.delta'"
 					:style="row.otherRecord?.delta < 0 ? 'color: var(--color-border-success, --color-success);' : 'color: var(--color-border-error, --color-error);'">
 					{{ row.otherRecord?.formattedDelta ?? '' }}
@@ -361,6 +382,16 @@
 					@keyup.enter="onBestPositionFilterChange"
 					@trailing-button-click="setBestPositionFilter('')" />
 				<NcTextField
+					v-else-if="column.field === 'otherRecord.position.zones.World'"
+					:model-value="otherPositionFilter"
+					type="text"
+					:label="t('integration_trackmania', 'Other position filter')"
+					:show-trailing-button="!!otherPositionFilter"
+					class="text-input-filter"
+					:placeholder="t('integration_trackmania', '\'{example}\' for top 100', { example: '<= 100' }, null, { escape: false, sanitize: false })"
+					@keyup.enter="onOtherPositionFilterChange"
+					@trailing-button-click="setOtherPositionFilter('')" />
+				<NcTextField
 					v-if="column.field.startsWith('recordPosition.zones.')"
 					:model-value="zonePositionFilters[column.field] ?? ''"
 					type="text"
@@ -380,12 +411,14 @@
 import StarIcon from 'vue-material-design-icons/Star.vue'
 import StarOutlineIcon from 'vue-material-design-icons/StarOutline.vue'
 import FilterRemoveIcon from 'vue-material-design-icons/FilterRemove.vue'
+import TargetIcon from 'vue-material-design-icons/Target.vue'
 
 import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
 import NcButton from '@nextcloud/vue/components/NcButton'
 
 import moment from '@nextcloud/moment'
-import { imagePath } from '@nextcloud/router'
+import { generateUrl, imagePath } from '@nextcloud/router'
+import axios from '@nextcloud/axios'
 import { emit } from '@nextcloud/event-bus'
 import { defineAsyncComponent } from 'vue'
 import {
@@ -455,6 +488,7 @@ export default {
 		NcDateTimePicker: defineAsyncComponent(() => import('@nextcloud/vue/components/NcDateTimePicker')),
 		NcCheckboxRadioSwitch: defineAsyncComponent(() => import('@nextcloud/vue/components/NcCheckboxRadioSwitch')),
 		FilterRemoveIcon,
+		TargetIcon,
 		StarIcon,
 		StarOutlineIcon,
 	},
@@ -527,6 +561,7 @@ export default {
 			timeFilter: this.configState.filter_time ?? '',
 			otherTimeFilter: this.configState.filter_other_time ?? '',
 			otherDeltaFilter: this.configState.filter_other_delta ?? '',
+			otherPositionFilter: this.configState.filter_other_position_world ?? '',
 			worldRecordNameFilter: this.configState.filter_world_record_name ?? '',
 			worldRecordTimeFilter: this.configState.filter_world_record_time ?? '',
 			worldRecordDeltaFilter: this.configState.filter_world_record_delta ?? '',
@@ -538,6 +573,9 @@ export default {
 			sortOptions: this.initSortOptions(),
 			detailPb: null,
 			visibleRowCount: RENDER_CHUNK,
+			// per-map rank computations triggered from the table cells
+			rankLoading: {},
+			rankBeyond: {},
 		}
 	},
 
@@ -548,6 +586,7 @@ export default {
 				|| this.timeFilter
 				|| this.otherTimeFilter
 				|| this.otherDeltaFilter
+				|| this.otherPositionFilter
 				|| this.mapNameFilter
 				|| this.mapAuthorNameFilter
 				|| this.dateMinFilter
@@ -604,6 +643,10 @@ export default {
 			if (this.otherDeltaFilter) {
 				const otherDeltaFilter = this.otherDeltaFilter
 				predicates.push(pb => this.filterNumber(pb.otherRecord?.delta, otherDeltaFilter))
+			}
+			if (this.otherPositionFilter) {
+				const otherPositionFilter = this.otherPositionFilter
+				predicates.push(pb => this.filterNumber(pb.otherRecord?.position?.zones?.World, otherPositionFilter))
 			}
 			if (this.worldRecordNameFilter) {
 				const worldRecordNameFilter = this.worldRecordNameFilter
@@ -879,6 +922,13 @@ export default {
 					tdClass: 'mapMedalColumn',
 					sortName: 'otherMedal',
 				})
+				columns.push({
+					label: t('integration_trackmania', 'Other # in World'),
+					type: 'number',
+					field: 'otherRecord.position.zones.World',
+					tdClass: 'otherPositionColumn',
+					sortName: 'otherPosition',
+				})
 			}
 			if (this.configState.show_column_wr !== '0') {
 				columns.push({
@@ -1089,6 +1139,15 @@ export default {
 				filter_other_delta: this.otherDeltaFilter,
 			})
 		},
+		onOtherPositionFilterChange(e) {
+			this.setOtherPositionFilter(e.target.value)
+		},
+		setOtherPositionFilter(value) {
+			this.otherPositionFilter = value
+			this.saveOptions({
+				filter_other_position_world: this.otherPositionFilter,
+			})
+		},
 		onWorldRecordNameFilterChange(e) {
 			this.setWorldRecordNameFilter(e.target.value)
 		},
@@ -1143,6 +1202,40 @@ export default {
 				['filter_position_zone_' + zn]: value,
 			})
 		},
+		formatBeyondRank(beyondPosition) {
+			return '> ' + beyondPosition
+		},
+		computeExactRank(pb) {
+			const mapId = pb.mapInfo?.mapId
+			if (!mapId || this.rankLoading[mapId] || !pb.otherRecord?.time) {
+				return
+			}
+			this.rankLoading[mapId] = true
+			const url = generateUrl('/apps/integration_trackmania/map/{mapId}/ranking/{time}', {
+				mapId,
+				time: pb.otherRecord.time,
+			})
+			axios.get(url)
+				.then((response) => {
+					const { position, beyondPosition } = response.data
+					if (position !== null && position !== undefined) {
+						if (!pb.otherRecord.position) {
+							// the row is patched in place so it joins the sort and filters right away
+							pb.otherRecord.position = { score: pb.otherRecord.time, zones: {} }
+						}
+						pb.otherRecord.position.zones.World = position
+					} else if (beyondPosition !== null && beyondPosition !== undefined) {
+						this.rankBeyond[mapId] = beyondPosition
+					}
+					// without a rank and without a bound, the button stays, the click can be retried
+				})
+				.catch((error) => {
+					console.debug('Failed to compute the exact other position', error)
+				})
+				.then(() => {
+					this.rankLoading[mapId] = false
+				})
+		},
 		clearFilters() {
 			const values = {
 				filter_medal: '',
@@ -1154,6 +1247,7 @@ export default {
 				filter_mapAuthorName: '',
 				filter_other_time: '',
 				filter_other_delta: '',
+				filter_other_position_world: '',
 				filter_world_record_name: '',
 				filter_world_record_time: '',
 				filter_world_record_delta: '',
@@ -1174,6 +1268,7 @@ export default {
 			this.mapAuthorNameFilter = ''
 			this.otherTimeFilter = ''
 			this.otherDeltaFilter = ''
+			this.otherPositionFilter = ''
 			this.worldRecordNameFilter = ''
 			this.worldRecordTimeFilter = ''
 			this.worldRecordDeltaFilter = ''
@@ -1301,6 +1396,12 @@ export default {
 		img {
 			width: 32px;
 		}
+	}
+
+	:deep(.otherPositionColumn) .rank-button-cell {
+		display: flex;
+		align-items: center;
+		justify-content: center;
 	}
 
 	.date-filters {

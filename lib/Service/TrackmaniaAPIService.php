@@ -42,6 +42,10 @@ class TrackmaniaAPIService {
 
 	/** How many requests are sent at once when fetching records of one account on a map list */
 	private const CONCURRENT_RECORD_REQUESTS = 8;
+	/** How many leaderboard entries are fetched per page when computing a rank */
+	private const RANK_PAGE_SIZE = 100;
+	/** Ranks change rarely, cache their info a bit, they are based on the board state of the last hour */
+	private const RANK_CACHE_TTL = 60 * 60;
 	/** Records of another account on a map change rarely, this cache avoids refetching them on every reload */
 	private const MAP_RECORD_CACHE_TTL = 60 * 60;
 	/** Max size of an upstream records page */
@@ -296,23 +300,43 @@ class TrackmaniaAPIService {
 				}
 			}
 
+			// the position endpoint computes what rank a given score would reach,
+			// but it refuses to rank scores worse than the authenticated player's own record,
+			// so scores worse than the own PB are left null and resolved on demand
+			$otherZonesByMapUid = [];
+			$ratableOtherTimesByMapUid = [];
+			foreach ($allOtherPbTimesByMapUid as $mapUid => $otherTime) {
+				$ownTime = $allMyPbTimesByMapUid[$mapUid] ?? null;
+				if ($ownTime === null || $otherTime <= $ownTime) {
+					$ratableOtherTimesByMapUid[$mapUid] = $otherTime;
+				}
+			}
+			if (count($ratableOtherTimesByMapUid) > 0) {
+				foreach ($this->getScorePositions($userId, $ratableOtherTimesByMapUid) as $otherPosition) {
+					$otherZonesByMapUid[$otherPosition['mapUid']] = $otherPosition['zones'];
+				}
+			}
+
 			foreach ($pbTimesByMapId as $mapId => $time) {
 				if (isset($coreMapInfoByMapId[$mapId])) {
 					$mapUid = $coreMapInfoByMapId[$mapId]['mapUid'];
 					if (isset($allOtherPbTimesByMapUid[$mapUid])) {
-						/*
-						if ($allOtherPbTimesByMapUid[$mapUid] < $allMyPbTimesByMapUid[$mapUid]) {
-							$position = $this->getScorePosition($userId, $mapUid, $allOtherPbTimesByMapUid[$mapUid]);
-						} else {
-							$position = $this->getAccountPositionFromTop($userId, $mapUid, $otherAccountId);
-						}
-						*/
-						$results[$mapId]['otherRecord'] = [
+						$otherRecord = [
 							'time' => $allOtherPbTimesByMapUid[$mapUid],
 							'record' => $otherRecordsByMapId[$mapId],
 							'unix_timestamp' => (new DateTime($otherRecordsByMapId[$mapId]['timestamp']))->getTimestamp(),
-							// 'position' => $position,
 						];
+						if (isset($otherZonesByMapUid[$mapUid])) {
+							$otherZonePositions = [];
+							foreach ($otherZonesByMapUid[$mapUid] as $otherZonePosition) {
+								$otherZonePositions[$otherZonePosition['zoneName']] = $otherZonePosition['ranking']['position'];
+							}
+							$otherRecord['position'] = [
+								'score' => $allOtherPbTimesByMapUid[$mapUid],
+								'zones' => $otherZonePositions,
+							];
+						}
+						$results[$mapId]['otherRecord'] = $otherRecord;
 					}
 				}
 			}
@@ -1072,6 +1096,118 @@ class TrackmaniaAPIService {
 	}
 
 	/**
+	 * @param string $userId
+	 * @param string $mapUid
+	 * @param int $offset
+	 * @return array|null list of leaderboard rows, null on error
+	 * @throws PreConditionNotMetException
+	 * @throws TmApiRequestException
+	 * @throws TokenRefreshException
+	 */
+	private function getMapTopRows(string $userId, string $mapUid, int $offset): ?array {
+		$top = $this->getMapTop($userId, $mapUid, $offset, self::RANK_PAGE_SIZE);
+		if (isset($top['error']) || !isset($top['tops'][0]['top']) || !is_array($top['tops'][0]['top'])) {
+			return null;
+		}
+		return $top['tops'][0]['top'];
+	}
+
+	/**
+	 * Exact rank that a score would reach on the world leaderboard of a map.
+	 * Unlike the position endpoint, this works for scores of any value by
+	 * scrolling the real leaderboard pages: the position endpoint cannot rank
+	 * scores worse than the authenticated player's own record.
+	 *
+	 * @param string $userId
+	 * @param string $mapUid
+	 * @param int $score
+	 * @return array ['position' => int, 'beyondPosition' => null] or ['position' => null, 'beyondPosition' => int]
+	 * @throws PreConditionNotMetException
+	 * @throws TmApiRequestException
+	 * @throws TokenRefreshException
+	 */
+	public function getMapScoreRank(string $userId, string $mapUid, int $score): array {
+		$cacheKey = 'rank-' . $mapUid . '-' . $score;
+		$cached = $this->cache->get($cacheKey);
+		if (is_array($cached)) {
+			return $cached;
+		}
+
+		$pageSize = self::RANK_PAGE_SIZE;
+		// scoring board rows are sorted by position with ascending scores,
+		// the score lands on the first page that holds a row of a worse-or-equal score.
+		// find that page by galloping through the page boundaries, then bisecting
+		$dataLow = -1;          // last page known to hold no row with a score >= $score
+		$dataHigh = null;       // first page known to hold such a row
+		$visibleMaxPosition = null;
+		$pageIndex = 0;
+		$step = 1;
+		while (true) {
+			$pagePosition = $pageIndex * $pageSize;
+			$rows = $this->getMapTopRows($userId, $mapUid, $pagePosition);
+			// a row position different from the offset means the leaderboard is capped:
+			// the requested score is worse than every visible entry
+			if ($rows === null
+				|| count($rows) === 0
+				|| (($rows[0]['position'] ?? null) !== $pagePosition + 1)) {
+				break;
+			}
+			$visibleMaxPosition = $rows[count($rows) - 1]['position'] ?? $visibleMaxPosition;
+			if (($rows[count($rows) - 1]['score'] ?? 0) >= $score) {
+				$dataHigh = $pageIndex;
+				break;
+			}
+			$dataLow = $pageIndex;
+			$pageIndex += $step;
+			$step *= 2;
+		}
+
+		if ($dataHigh !== null) {
+			while ($dataHigh > $dataLow + 1) {
+				$middle = intdiv($dataLow + $dataHigh, 2);
+				$pagePosition = $middle * $pageSize;
+				$rows = $this->getMapTopRows($userId, $mapUid, $pagePosition);
+				if ($rows === null || count($rows) === 0 || (($rows[0]['position'] ?? null) !== $pagePosition + 1)) {
+					// the leaderboard shrank while probing, treat as capped
+					$dataHigh = null;
+					break;
+				}
+				$visibleMaxPosition = $rows[count($rows) - 1]['position'] ?? $visibleMaxPosition;
+				if (($rows[count($rows) - 1]['score'] ?? 0) >= $score) {
+					$dataHigh = $middle;
+				} else {
+					$dataLow = $middle;
+				}
+			}
+
+			if ($dataHigh !== null) {
+				$rows = $this->getMapTopRows($userId, $mapUid, $dataHigh * $pageSize) ?? [];
+				foreach ($rows as $row) {
+					if (($row['score'] ?? 0) >= $score) {
+						return $this->cacheRank($cacheKey, $row['position'], null);
+					}
+				}
+			}
+		}
+		return $this->cacheRank($cacheKey, null, $visibleMaxPosition);
+	}
+
+	/**
+	 * @param string $cacheKey
+	 * @param int|null $position
+	 * @param int|null $beyondPosition
+	 * @return array
+	 */
+	private function cacheRank(string $cacheKey, ?int $position, ?int $beyondPosition): array {
+		$result = [
+			'position' => $position,
+			'beyondPosition' => $beyondPosition,
+		];
+		$this->cache->set($cacheKey, $result, self::RANK_CACHE_TTL);
+		return $result;
+	}
+
+	/**
 	 * Get the world record of each given map.
 	 * One request per map through a bounded pool of concurrent requests, tokens checked once.
 	 * No caching is involved, records are fetched on each call.
@@ -1244,46 +1380,6 @@ class TrackmaniaAPIService {
 				? $this->getMapFinishCountDico($userId, $mapUid, $middlePosition, $maxPosition)
 				: $this->getMapFinishCountDico($userId, $mapUid, $minPosition, $middlePosition);
 		}
-	}
-
-	/**
-	 * Works but is slow
-	 *
-	 * @param string $userId
-	 * @param string $mapUid
-	 * @param string|null $accountId
-	 * @return array|null
-	 * @throws PreConditionNotMetException
-	 */
-	public function getAccountPositionFromTop(string $userId, string $mapUid, ?string $accountId = null): ?array {
-		$chunkSize = 100;
-		$prefix = Application::AUDIENCES[Application::AUDIENCE_LIVE]['token_config_key_prefix'];
-		$accountId = $accountId === null
-			? $this->config->getUserValue($userId, Application::APP_ID, $prefix . 'account_id')
-			: $accountId;
-		$pos = null;
-		$offset = 0;
-		while ($pos === null && $offset < 10000) {
-			$top = $this->getMapTop($userId, $mapUid, $offset, $chunkSize);
-			if (isset($top['error'])) {
-				return null;
-			}
-			$pos = $this->findPositionByAccountId($accountId, $top);
-			$offset = $offset + $chunkSize;
-		}
-		return $pos;
-	}
-
-	public function findPositionByAccountId(string $accountId, array $top): ?array {
-		if (isset($top['tops']) && is_array($top['tops']) && count($top['tops']) === 1) {
-			$positions = $top['tops'][0]['top'];
-			foreach ($positions as $position) {
-				if ($position['accountId'] === $accountId) {
-					return $position;
-				}
-			}
-		}
-		return null;
 	}
 
 	/**
