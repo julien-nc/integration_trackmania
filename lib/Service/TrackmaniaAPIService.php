@@ -43,6 +43,8 @@ class TrackmaniaAPIService {
 	private const CONCURRENT_RECORD_REQUESTS = 8;
 	/** Records of another account on a map change rarely, this cache avoids refetching them on every reload */
 	private const MAP_RECORD_CACHE_TTL = 60 * 60;
+	/** Max size of an upstream records page */
+	private const OWN_RECORDS_PAGE_SIZE = 1000;
 
 	private IClient $client;
 	private ICache $cache;
@@ -92,44 +94,80 @@ class TrackmaniaAPIService {
 	}
 
 	/**
-	 * Partial loading flow
+	 * Get the map IDs of all favorites of the current account.
+	 * Upstream favorites are paginated by pages of getAllFavorites()'s internal chunk size.
 	 *
 	 * @param string $userId
-	 * @param array|null $mapIdList
 	 * @return array
 	 * @throws PreConditionNotMetException
 	 * @throws TmApiRequestException
 	 * @throws TokenRefreshException
 	 */
-	public function getMapRecordsAndFavorites(string $userId, ?array $mapIdList = null): array {
-		// get favorites because liveMapInfo always says favorite: false
-		$allFavs = $this->getAllFavorites($userId);
-		$allFavsByMapId = [];
-		foreach ($allFavs as $fav) {
-			$allFavsByMapId[$fav['mapId']] = 1;
-		}
-
-		$pbs = $this->getMapRecords($userId, null, $mapIdList);
-		// $pbs = array_slice($pbs, 0, 100);
-		return $this->formatRecordsAndFavorites(iterator_to_array($pbs), $allFavsByMapId);
+	public function getAllFavoriteMapIds(string $userId): array {
+		return array_map(static function (array $favorite) {
+			return $favorite['mapId'];
+		}, $this->getAllFavorites($userId));
 	}
 
-	public function formatRecordsAndFavorites(array $pbs, array $allFavsByMapId): array {
-		return array_map(static function (array $pb) use ($allFavsByMapId) {
-			$mapId = $pb['mapId'];
-			return [
-				'record' => [
-					'accountId' => $pb['accountId'],
-					'medal' => $pb['medal'],
-					'recordScore' => $pb['recordScore'],
-					'unix_timestamp' => (new DateTime($pb['timestamp']))->getTimestamp(),
-				],
-				'mapInfo' => [
-					'favorite' => isset($allFavsByMapId[$mapId]) && $allFavsByMapId[$mapId] === 1,
-					'mapId' => $mapId,
-				],
-			];
-		}, $pbs);
+	/**
+	 * Get one page of all current account records.
+	 * The upstream endpoint does not provide the total number of records,
+	 * use 'hasMoreRecords' to know whether another page can be fetched.
+	 * The favorite flag of each record is merged on the frontend from the fetched favorites.
+	 *
+	 * @param string $userId
+	 * @param int $offset
+	 * @param array|null $mapIdList only keep records on those maps
+	 * @return array ['records' => array, 'hasMoreRecords' => bool]
+	 * @throws PreConditionNotMetException
+	 * @throws TmApiRequestException
+	 * @throws TokenRefreshException
+	 */
+	public function getRawRecordsPage(string $userId, int $offset, ?array $mapIdList = null): array {
+		$prefix = Application::AUDIENCES[Application::AUDIENCE_CORE]['token_config_key_prefix'];
+		$userAccountId = $this->config->getUserValue($userId, Application::APP_ID, $prefix . 'account_id');
+
+		$rawRecords = $this->getMapRecordsPage($userId, $userAccountId, $offset);
+		$records = [];
+		foreach ($rawRecords as $rawRecord) {
+			// skip undesired maps, this filter has no impact on upstream paging
+			if ($mapIdList === null || in_array($rawRecord['mapId'], $mapIdList)) {
+				$records[] = [
+					'record' => [
+						'accountId' => $rawRecord['accountId'],
+						'medal' => $rawRecord['medal'],
+						'recordScore' => $rawRecord['recordScore'],
+						'unix_timestamp' => (new DateTime($rawRecord['timestamp']))->getTimestamp(),
+					],
+					'mapInfo' => [
+						'mapId' => $rawRecord['mapId'],
+					],
+				];
+			}
+		}
+		return [
+			'records' => $records,
+			// the total number of records is unknown upstream, page until one comes back incomplete
+			'hasMoreRecords' => count($rawRecords) === self::OWN_RECORDS_PAGE_SIZE,
+		];
+	}
+
+	/**
+	 * Get one page of the records of an account.
+	 *
+	 * @param string $userId
+	 * @param string $userAccountId
+	 * @param int $offset
+	 * @return array
+	 * @throws PreConditionNotMetException
+	 * @throws TmApiRequestException
+	 * @throws TokenRefreshException
+	 */
+	private function getMapRecordsPage(string $userId, string $userAccountId, int $offset): array {
+		return $this->request($userId, Application::AUDIENCE_CORE, 'v2/accounts/' . $userAccountId . '/mapRecords/', [
+			'limit' => self::OWN_RECORDS_PAGE_SIZE,
+			'offset' => $offset,
+		]);
 	}
 
 	/**
@@ -749,12 +787,9 @@ class TrackmaniaAPIService {
 		// if mapIds is null, we get all maps of current connected account
 		// we also use the full endpoint if accountId is null (getting current account records), it's faster than one request per map
 		if ($mapIds === null || $accountIds === null) {
-			$params = [
-				'limit' => 1000,
-				'offset' => 0,
-			];
+			$offset = 0;
 			do {
-				$newRecords = $this->request($userId, Application::AUDIENCE_CORE, 'v2/accounts/' . $userAccountId . '/mapRecords/', $params);
+				$newRecords = $this->getMapRecordsPage($userId, $userAccountId, $offset);
 				// $records = array_merge($records, $newRecords);
 				foreach ($newRecords as $record) {
 					// skip undesired maps
@@ -762,9 +797,8 @@ class TrackmaniaAPIService {
 						yield $record;
 					}
 				}
-				$lastSize = count($newRecords);
-				$params['offset'] = $params['offset'] + 1000;
-			} while ($lastSize === 1000);
+				$offset += self::OWN_RECORDS_PAGE_SIZE;
+			} while (count($newRecords) === self::OWN_RECORDS_PAGE_SIZE);
 			return [];
 		}
 

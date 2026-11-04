@@ -34,6 +34,7 @@
 						<NcProgressBar :value="infoLoadingPercent"
 							type="linear"
 							size="medium" />
+						<span class="loading-caption">{{ loadingText }}</span>
 						<NcButton @click="cancelDataLoad">
 							<template #icon>
 								<CloseIcon />
@@ -77,6 +78,18 @@ import { subscribe, unsubscribe } from '@nextcloud/event-bus'
 import { defineAsyncComponent } from 'vue'
 import { formatPbs } from './utils.js'
 
+// While the info chunks can display an exact percentage, the number of records is unknown
+// upstream, so it is displayed as a growing counter instead.
+// The bar range 0-FAVORITES_PERCENT_END is reserved for the favorites request (made in one shot),
+// it stays at FAVORITES_PERCENT_END while the records are fetched by pages
+// and goes from FAVORITES_PERCENT_END to 100 with the info chunks.
+const FAVORITES_PERCENT_END = 10
+// must match TrackmaniaAPIService::OWN_RECORDS_PAGE_SIZE
+const OWN_RECORDS_PAGE_SIZE = 1000
+// how many records pages are fetched at once,
+// in line with the responsible request burst guidance
+const RECORDS_PAGE_WINDOW = 8
+
 export default {
 	name: 'App',
 
@@ -107,6 +120,7 @@ export default {
 			zoneNames: [],
 			pbs: [],
 			infoLoadingPercent: 0,
+			loadingText: '',
 			selectedOtherAccount: {},
 			lastUpdateTime: null,
 			lastLoadDurationMs: null,
@@ -209,40 +223,123 @@ export default {
 				this.getPbs(mapIdList)
 			}
 		},
-		// first get records and then map info by chunks
+		// first get favorites and raw records page by page, then map info by chunks
 		getPbs(mapIdList = null) {
 			this.abortController = new AbortController()
 			this.infoLoadingPercent = 0
+			this.loadingText = ''
 			this.loadingData = true
 			this._loadStartTime = Date.now()
-			const reqData = {}
-			const reqConfig = {
-				signal: this.abortController.signal,
+			this.$options.mapIdList = mapIdList
+			this.$options.favoritesMapIdSet = new Set()
+			this.$options.rawPbsToGetInfoOn = null
+			this.$options.pbsWithInfo = null
+			this.loadData()
+		},
+		async loadData() {
+			const favoritesLoaded = await this.runFavoritesPhase()
+			if (!favoritesLoaded) {
+				return
 			}
-			if (mapIdList !== null) {
-				reqData.mapIdList = mapIdList
+			const recordsLoaded = await this.runRecordsPhase()
+			if (!recordsLoaded) {
+				return
 			}
-			const url = generateUrl('/apps/integration_trackmania/pbs/raw')
-			axios.post(url, reqData, reqConfig).then((response) => {
-				this.$options.rawPbsToGetInfoOn = response.data
-				this.$options.pbsWithInfo = []
-				this.getPbsInfo(mapIdList)
-			}).catch((error) => {
-				const data = error.response?.data
-				if (data?.error === 'token_refresh_failed' && data?.status_code === 401) {
-					showError(
-						t('integration_trackmania', 'Your Trackmania session has expired and cannot be refreshed anymore. Please reconnect'),
-					)
-					this.disconnect()
-				} else {
-					showError(t('integration_trackmania', 'Failed to get data'))
-					this.loadingData = false
+			this.$options.pbsWithInfo = []
+			if (this.$options.rawPbsToGetInfoOn.length > 0) {
+				this.getPbsInfo(this.$options.mapIdList)
+			} else {
+				this.finishDataLoad()
+			}
+		},
+		async runFavoritesPhase() {
+			// all favorites are fetched in one server-side request, this phase is quick
+			this.loadingText = t('integration_trackmania', 'Loading favorites…')
+			try {
+				const response = await axios.post(
+					generateUrl('/apps/integration_trackmania/pbs/favorites'),
+					{},
+					{ signal: this.abortController.signal },
+				)
+				response.data.mapIds.forEach(mapId => this.$options.favoritesMapIdSet.add(mapId))
+				this.infoLoadingPercent = FAVORITES_PERCENT_END
+				return true
+			} catch (error) {
+				this.handleLoadError(error)
+				return false
+			}
+		},
+		async runRecordsPhase() {
+			// the total number of records is not provided by the upstream endpoint,
+			// so no percentage is shown while they are fetched, only a growing counter
+			this.loadingText = t('integration_trackmania', 'Loading records ({count})', { count: 0 })
+			this.$options.rawPbsToGetInfoOn = []
+			const reqData = this.$options.mapIdList !== null
+				? { mapIdList: this.$options.mapIdList }
+				: {}
+			try {
+				// pages are fetched in parallel waves while keeping the offset order,
+				// so the built array does not depend on the wave splits
+				let baseOffset = 0
+				while (true) {
+					const offsets = []
+					for (let p = 0; p < RECORDS_PAGE_WINDOW; p++) {
+						offsets.push(baseOffset + p * OWN_RECORDS_PAGE_SIZE)
+					}
+					const responses = await Promise.all(offsets.map(offset => axios.post(
+						generateUrl('/apps/integration_trackmania/pbs/records') + '?offset=' + offset,
+						reqData,
+						{ signal: this.abortController.signal },
+					)))
+					// a page with an incomplete upstream page covers the last records:
+					// when one returns hasMoreRecords === false, the wave pages at lower
+					// offsets are merged in order, the ones after it are beyond the last record
+					// and only come back empty
+					const reachedEnd = responses.some(response => response.data.hasMoreRecords === false)
+					for (const response of responses) {
+						response.data.records.forEach(rawPb => {
+							rawPb.mapInfo.favorite = this.$options.favoritesMapIdSet.has(rawPb.mapInfo.mapId)
+						})
+						this.$options.rawPbsToGetInfoOn.push(...response.data.records)
+					}
+					this.loadingText = t('integration_trackmania', 'Loading records ({count})', {
+						count: this.$options.rawPbsToGetInfoOn.length,
+					})
+					if (reachedEnd) {
+						break
+					}
+					baseOffset += RECORDS_PAGE_WINDOW * OWN_RECORDS_PAGE_SIZE
 				}
-				console.debug(error)
-			}).then(() => {
-			})
+				return true
+			} catch (error) {
+				this.handleLoadError(error)
+				return false
+			}
+		},
+		handleLoadError(error) {
+			if (error.code === 'ERR_CANCELED') {
+				console.debug('Data loading was canceled, do nothing')
+				return
+			}
+			const data = error.response?.data
+			if (data?.error === 'token_refresh_failed' && data?.status_code === 401) {
+				showError(
+					t('integration_trackmania', 'Your Trackmania session has expired and cannot be refreshed anymore. Please reconnect'),
+				)
+				this.disconnect()
+			} else {
+				showError(t('integration_trackmania', 'Failed to get data'))
+			}
+			console.debug(error)
+			this.loadingData = false
+		},
+		finishDataLoad() {
+			this.loadingData = false
+			this.lastUpdateTime = new Date()
+			this.lastLoadDurationMs = Date.now() - this._loadStartTime
 		},
 		getPbsInfo(mapIdList = null) {
+			this.loadingText = t('integration_trackmania', 'Loading map info…')
 			const rawPbsToGetInfoOn = this.$options.rawPbsToGetInfoOn
 			const chunks = []
 			let i = 0
@@ -278,9 +375,7 @@ export default {
 					console.error(error)
 				})
 				.then(() => {
-					this.loadingData = false
-					this.lastUpdateTime = new Date()
-					this.lastLoadDurationMs = Date.now() - this._loadStartTime
+					this.finishDataLoad()
 				})
 		},
 		getPbsChunkInfo(chunk) {
@@ -323,7 +418,12 @@ export default {
 					return c
 				})
 				this.$options.pbsWithInfo.push(...chunkWithInfo)
-				this.infoLoadingPercent = parseInt(this.$options.pbsWithInfo.length / this.$options.rawPbsToGetInfoOn.length * 100)
+				const loadedShare = this.$options.rawPbsToGetInfoOn.length > 0
+					? this.$options.pbsWithInfo.length / this.$options.rawPbsToGetInfoOn.length
+					: 1
+				this.infoLoadingPercent = parseInt(
+					FAVORITES_PERCENT_END + (loadedShare * (100 - FAVORITES_PERCENT_END)),
+				)
 				console.debug(`----- ${++this.$options.nbChunksDone}/${this.$options.nbChunks} chunks done ${this.infoLoadingPercent} %`)
 				return response
 			}).catch((error) => {
@@ -458,5 +558,9 @@ h2.page-title {
 	flex-direction: column;
 	align-items: center;
 	gap: 8px;
+}
+
+.loading-caption {
+	color: var(--color-text-maxcontrast);
 }
 </style>

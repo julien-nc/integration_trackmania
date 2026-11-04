@@ -25,7 +25,8 @@ return [
 		['name' => 'trackmaniaAPI#searchAccount', 'url' => '/account/search/{name}', 'verb' => 'GET'],
 		['name' => 'trackmaniaAPI#getFlag', 'url' => '/flag/{code}', 'verb' => 'GET'],
 		// partial load
-		['name' => 'trackmaniaAPI#getMyRawRecords', 'url' => '/pbs/raw', 'verb' => 'POST'],
+		['name' => 'trackmaniaAPI#getMyFavorites', 'url' => '/pbs/favorites', 'verb' => 'POST'],
+		['name' => 'trackmaniaAPI#getRawRecordsPage', 'url' => '/pbs/records', 'verb' => 'POST'],
 		['name' => 'trackmaniaAPI#getMoreRecordInfo', 'url' => '/pbs/info', 'verb' => 'POST'],
 		// end partial load
 		['name' => 'trackmaniaAPI#getMapThumbnail', 'url' => '/map/{mapId}/thumbnail', 'verb' => 'GET'],

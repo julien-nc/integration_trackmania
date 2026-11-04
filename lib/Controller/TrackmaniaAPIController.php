@@ -25,7 +25,6 @@ use OCP\AppFramework\Http\DataDisplayResponse;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\AppFramework\Http\RedirectResponse;
 use OCP\AppFramework\Http\Response;
-use OCP\Exceptions\AppConfigTypeConflictException;
 use OCP\IRequest;
 use OCP\IURLGenerator;
 
@@ -128,20 +127,42 @@ class TrackmaniaAPIController extends Controller {
 	}
 
 	/**
-	 * @param array|null $mapIdList List of map IDs to avoid getting all maps played by current account
+	 * All favorite maps of the current account, fetched in one request.
+	 * This also gets a token once to avoid trying to get multiple new ones simultaneously in /pbs/info
+	 *
 	 * @return DataResponse
-	 * @throws AppConfigTypeConflictException
 	 */
 	#[NoAdminRequired]
 	#[NoCSRFRequired]
-	public function getMyRawRecords(?array $mapIdList = null): DataResponse {
+	public function getMyFavorites(): DataResponse {
 		try {
 			// get a token once to avoid trying to get multiple new ones simultaneously in /pbs/info
 			$this->trackmaniaAPIService->getOAuthToken();
 		} catch (\Exception) {
 		}
 		try {
-			$result = $this->trackmaniaAPIService->getMapRecordsAndFavorites($this->userId, $mapIdList);
+			$result = ['mapIds' => $this->trackmaniaAPIService->getAllFavoriteMapIds($this->userId)];
+		} catch (TokenRefreshException|TmApiRequestException $e) {
+			return $this->getExceptionResponse($e);
+		} catch (\Throwable $e) {
+			return new DataResponse($e->getMessage(), Http::STATUS_BAD_REQUEST);
+		}
+		return new DataResponse($result);
+	}
+
+	/**
+	 * One page of the current account's raw records, their favorite flag
+	 * is merged on the frontend to display progress while the records are fetched
+	 *
+	 * @param int $offset
+	 * @param array|null $mapIdList Only keep records on those maps
+	 * @return DataResponse
+	 */
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
+	public function getRawRecordsPage(int $offset = 0, ?array $mapIdList = null): DataResponse {
+		try {
+			$result = $this->trackmaniaAPIService->getRawRecordsPage($this->userId, $offset, $mapIdList);
 		} catch (TokenRefreshException|TmApiRequestException $e) {
 			return $this->getExceptionResponse($e);
 		} catch (\Throwable $e) {
