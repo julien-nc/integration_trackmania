@@ -265,34 +265,45 @@ export default {
 			this.loadingText = t('integration_trackmania', 'Loading records ({count})', { count: 0 })
 			this.$options.rawPbsToGetInfoOn = []
 			try {
-				// pages are fetched in parallel waves while keeping the offset order,
+				// pages are fetched in parallel waves; responses are buffered per offset
+				// and merged in offset order as soon as their neighbors have arrived,
 				// so the built array does not depend on the wave splits
+				// and the counter is updated when each single page request completes
+				const waveBuffer = new Map()
+				let nextOffsetToMerge = 0
+				let waveReachedEnd = false
+				const mergeResponseByOffset = (offset, response) => {
+					waveBuffer.set(offset, response)
+					while (waveBuffer.has(nextOffsetToMerge)) {
+						const responseToMerge = waveBuffer.get(nextOffsetToMerge)
+						waveBuffer.delete(nextOffsetToMerge)
+						nextOffsetToMerge += OWN_RECORDS_PAGE_SIZE
+						// an incomplete upstream page covers the last records,
+						// the pages after it are beyond the last record and only come back empty
+						if (responseToMerge.data.hasMoreRecords === false) {
+							waveReachedEnd = true
+						}
+						responseToMerge.data.records.forEach(rawPb => {
+							rawPb.mapInfo.favorite = this.$options.favoritesMapIdSet.has(rawPb.mapInfo.mapId)
+						})
+						this.$options.rawPbsToGetInfoOn.push(...responseToMerge.data.records)
+						this.loadingText = t('integration_trackmania', 'Loading records ({count})', {
+							count: this.$options.rawPbsToGetInfoOn.length,
+						})
+					}
+				}
 				let baseOffset = 0
 				while (true) {
 					const offsets = []
 					for (let p = 0; p < RECORDS_PAGE_WINDOW; p++) {
 						offsets.push(baseOffset + p * OWN_RECORDS_PAGE_SIZE)
 					}
-					const responses = await Promise.all(offsets.map(offset => axios.post(
+					await Promise.all(offsets.map(offset => axios.post(
 						generateUrl('/apps/integration_trackmania/pbs/records') + '?offset=' + offset,
 						{},
 						{ signal: this.abortController.signal },
-					)))
-					// a page with an incomplete upstream page covers the last records:
-					// when one returns hasMoreRecords === false, the wave pages at lower
-					// offsets are merged in order, the ones after it are beyond the last record
-					// and only come back empty
-					const reachedEnd = responses.some(response => response.data.hasMoreRecords === false)
-					for (const response of responses) {
-						response.data.records.forEach(rawPb => {
-							rawPb.mapInfo.favorite = this.$options.favoritesMapIdSet.has(rawPb.mapInfo.mapId)
-						})
-						this.$options.rawPbsToGetInfoOn.push(...response.data.records)
-					}
-					this.loadingText = t('integration_trackmania', 'Loading records ({count})', {
-						count: this.$options.rawPbsToGetInfoOn.length,
-					})
-					if (reachedEnd) {
+					).then(response => mergeResponseByOffset(offset, response))))
+					if (waveReachedEnd) {
 						break
 					}
 					baseOffset += RECORDS_PAGE_WINDOW * OWN_RECORDS_PAGE_SIZE
