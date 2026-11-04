@@ -4,6 +4,7 @@ namespace OCA\Trackmania\Settings;
 
 use OCA\Trackmania\AppInfo\Application;
 use OCA\Trackmania\Service\SecretService;
+use OCA\Trackmania\Service\TrackmaniaAPIService;
 use OCP\AppFramework\Http\TemplateResponse;
 use OCP\AppFramework\Services\IInitialState;
 use OCP\IAppConfig;
@@ -16,6 +17,7 @@ class Personal implements ISettings {
 		private IConfig $config,
 		private IAppConfig $appConfig,
 		private SecretService $secretService,
+		private TrackmaniaAPIService $trackmaniaAPIService,
 		private IInitialState $initialStateService,
 		private ?string $userId,
 	) {
@@ -27,8 +29,11 @@ class Personal implements ISettings {
 	 */
 	public function getForm(): TemplateResponse {
 		$coreToken = $this->secretService->getEncryptedUserValue($this->userId, Application::AUDIENCES[Application::AUDIENCE_CORE]['token_config_key_prefix'] . 'token');
+		// the zone info and display name may be incomplete when the user connected with a service account
+		$this->trackmaniaAPIService->refreshStoredZoneInfo($this->userId);
 		$mmUserId = $this->config->getUserValue($this->userId, Application::APP_ID, 'user_id');
 		$mmUserName = $this->config->getUserValue($this->userId, Application::APP_ID, 'user_name');
+		$mmUserDisplayName = $this->config->getUserValue($this->userId, Application::APP_ID, 'user_display_name');
 
 		$hasClientID = $this->appConfig->getValueString(Application::APP_ID, 'client_id') !== '';
 		$hasClientSecret = $this->appConfig->getValueString(Application::APP_ID, 'client_secret') !== '';
@@ -37,6 +42,7 @@ class Personal implements ISettings {
 			'core_token' => $coreToken ? 'dummyTokenContent' : '',
 			'user_id' => $mmUserId,
 			'user_name' => $mmUserName,
+			'user_display_name' => $mmUserDisplayName,
 			'has_oauth_credentials' => $hasClientID && $hasClientSecret,
 		];
 		$this->initialStateService->provideInitialState('user-config', $userConfig);

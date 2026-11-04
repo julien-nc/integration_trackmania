@@ -169,6 +169,7 @@ export default {
 	methods: {
 		onConnected(data) {
 			this.userState.user_name = data.user_name
+			this.userState.user_display_name = data.user_display_name
 			this.userState.account_id = data.user_id
 			this.userState.user_flag_code = data.user_flag_code
 			this.userState.user_zone_name = data.user_zone_name

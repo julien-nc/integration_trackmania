@@ -127,7 +127,7 @@ export default {
 				&& !!this.state.user_name
 		},
 		connectedDisplayName() {
-			return this.state.user_name
+			return this.state.user_display_name || this.state.user_name
 		},
 	},
 
@@ -153,6 +153,7 @@ export default {
 				.then((response) => {
 					if (response.data.user_name !== undefined) {
 						this.state.user_name = response.data.user_name
+						this.state.user_display_name = response.data.user_display_name || this.state.user_name
 						if (this.login && this.password && response.data.user_name === '') {
 							showError(t('integration_trackmania', 'Invalid login/password'))
 						} else if (response.data.user_name) {
@@ -162,6 +163,7 @@ export default {
 							this.state.core_token = 'dumdum'
 							this.$emit('connected', {
 								user_name: this.state.user_name,
+								user_display_name: this.state.user_display_name,
 								user_id: this.state.user_id,
 								user_flag_code: response.data.user_flag_code,
 								user_zone_name: response.data.user_zone_name,

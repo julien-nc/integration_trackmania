@@ -1305,6 +1305,97 @@ class TrackmaniaAPIService {
 	}
 
 	/**
+	 * @param string $accountId
+	 * @return array|null null when the account is unknown to trackmania.io
+	 */
+	private function getAccountInfo(string $accountId): ?array {
+		$cacheKey = 'tmio-player-' . $accountId;
+		$cachedPlayer = $this->cache->get($cacheKey);
+		if ($cachedPlayer !== null) {
+			return is_array($cachedPlayer) ? $cachedPlayer : null;
+		}
+		$player = $this->requestTrackmaniaIo('player/' . $accountId);
+		if (!is_array($player) || isset($player['error']) || !isset($player['accountid'])) {
+			return null;
+		}
+		$this->cache->set($cacheKey, $player, Application::CACHE_DURATION);
+		return $player;
+	}
+
+	/**
+	 * Get the zone info of an account from trackmania.io, null when the account has none.
+	 * The flag code is the one of the country level, just above the regions, e.g. FRA for France.
+	 *
+	 * @param string $accountId
+	 * @return array|null ['flag_code' => string, 'zone_name' => string, 'display_name' => string]
+	 */
+	public function getZoneInfo(string $accountId): ?array {
+		$player = $this->getAccountInfo($accountId);
+		if ($player === null) {
+			return null;
+		}
+		// the zone can be located at the root of the player or in its trophies
+		$zone = $player['zone'] ?? $player['trophies']['zone'] ?? null;
+		if (!is_array($zone)) {
+			return null;
+		}
+		$zoneNames = [$zone['name']];
+		$flags = [$zone['flag']];
+		while (isset($zone['parent'])) {
+			$zone = $zone['parent'];
+			$zoneNames[] = $zone['name'];
+			$flags[] = $zone['flag'];
+		}
+		$flag = 'WOR';
+		if (count($flags) > 2) {
+			$flag = $flags[count($flags) - 3];
+		} elseif (count($flags) > 1) {
+			$flag = $flags[count($flags) - 2];
+		}
+		return [
+			'flag_code' => $flag,
+			'zone_name' => implode(', ', $zoneNames),
+			'display_name' => $player['displayname'] ?? '',
+		];
+	}
+
+	/**
+	 * Refresh the stored zone info of a connected user when it is incomplete.
+	 * A missing flag or display name can happen after connecting with a service account.
+	 *
+	 * @param string $userId
+	 * @return void
+	 */
+	public function refreshStoredZoneInfo(string $userId): void {
+		$prefix = Application::AUDIENCES[Application::AUDIENCE_CORE]['token_config_key_prefix'];
+		$connected = $this->secretService->getEncryptedUserValue($userId, $prefix . 'token') !== '';
+		if (!$connected) {
+			return;
+		}
+		$accountId = $this->config->getUserValue($userId, Application::APP_ID, $prefix . 'account_id');
+		if ($accountId === '') {
+			return;
+		}
+		$isIncomplete = false;
+		foreach (['user_flag_code', 'user_zone_name', 'user_display_name'] as $key) {
+			if ($this->config->getUserValue($userId, Application::APP_ID, $key) === '') {
+				$isIncomplete = true;
+				break;
+			}
+		}
+		if (!$isIncomplete) {
+			return;
+		}
+		$zoneInfo = $this->getZoneInfo($accountId);
+		if ($zoneInfo === null) {
+			return;
+		}
+		$this->config->setUserValue($userId, Application::APP_ID, 'user_flag_code', $zoneInfo['flag_code']);
+		$this->config->setUserValue($userId, Application::APP_ID, 'user_zone_name', $zoneInfo['zone_name']);
+		$this->config->setUserValue($userId, Application::APP_ID, 'user_display_name', $zoneInfo['display_name']);
+	}
+
+	/**
 	 * @param string $endPoint
 	 * @param array $params
 	 * @param string $method

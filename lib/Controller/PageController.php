@@ -14,6 +14,7 @@ namespace OCA\Trackmania\Controller;
 
 use OCA\Trackmania\AppInfo\Application;
 use OCA\Trackmania\Service\SecretService;
+use OCA\Trackmania\Service\TrackmaniaAPIService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
@@ -31,6 +32,7 @@ class PageController extends Controller {
 		private IConfig $config,
 		private IAppConfig $appConfig,
 		private SecretService $secretService,
+		private TrackmaniaAPIService $trackmaniaAPIService,
 		private IInitialState $initialStateService,
 		private ?string $userId,
 	) {
@@ -47,10 +49,13 @@ class PageController extends Controller {
 		$prefix = Application::AUDIENCES[Application::AUDIENCE_CORE]['token_config_key_prefix'];
 		$coreToken = $this->secretService->getEncryptedUserValue($this->userId, $prefix . 'token');
 		$refreshToken = $this->secretService->getEncryptedUserValue($this->userId, $prefix . 'refresh_token');
+		// the zone info and display name may be incomplete when the user connected with a service account
+		$this->trackmaniaAPIService->refreshStoredZoneInfo($this->userId);
 		$userName = $this->config->getUserValue($this->userId, Application::APP_ID, 'user_name');
 		$accountId = $this->config->getUserValue($this->userId, Application::APP_ID, $prefix . 'account_id');
 		$userFlagCode = $this->config->getUserValue($this->userId, Application::APP_ID, 'user_flag_code');
 		$userZoneName = $this->config->getUserValue($this->userId, Application::APP_ID, 'user_zone_name');
+		$userDisplayName = $this->config->getUserValue($this->userId, Application::APP_ID, 'user_display_name');
 		$hasClientID = $this->appConfig->getValueString(Application::APP_ID, 'client_id') !== '';
 		$hasClientSecret = $this->appConfig->getValueString(Application::APP_ID, 'client_secret') !== '';
 
@@ -60,6 +65,7 @@ class PageController extends Controller {
 			'user_name' => $userName,
 			'user_flag_code' => $userFlagCode,
 			'user_zone_name' => $userZoneName,
+			'user_display_name' => $userDisplayName,
 			'has_oauth_credentials' => $hasClientID && $hasClientSecret,
 		];
 		$this->initialStateService->provideInitialState('user-config', $pageInitialState);

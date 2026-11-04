@@ -23,7 +23,7 @@
 		</div>
 		<div class="accounts">
 			<div class="connected-as">
-				{{ t('integration_trackmania', 'Connected as {name}', { name: userState.user_name }) }}
+				{{ t('integration_trackmania', 'Connected as {name}', { name: displayName }) }}
 				<img v-if="userState.user_flag_code"
 					class="account-flag"
 					:src="getFlagUrlFromCode(userState.user_flag_code)"
@@ -127,6 +127,9 @@ export default {
 	},
 
 	computed: {
+		displayName() {
+			return this.userState.user_display_name || this.userState.user_name
+		},
 		formattedUpdateTime() {
 			if (!this.lastUpdateTime) {
 				return ''
@@ -147,7 +150,7 @@ export default {
 			return this.skinThumbnailUrlFor(this.otherSkin)
 		},
 		modalSkinDisplayName() {
-			return this.isModalSkinOther ? (this.otherAccount?.name ?? this.modalSkin.skinId) : this.userState.user_name
+			return this.isModalSkinOther ? (this.otherAccount?.name ?? this.modalSkin.skinId) : this.displayName
 		},
 	},
 

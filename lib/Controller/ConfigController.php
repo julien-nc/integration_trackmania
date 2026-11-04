@@ -74,6 +74,7 @@ class ConfigController extends Controller {
 			$this->config->deleteUserValue($this->userId, Application::APP_ID, 'user_name');
 			$this->config->deleteUserValue($this->userId, Application::APP_ID, 'user_flag_code');
 			$this->config->deleteUserValue($this->userId, Application::APP_ID, 'user_zone_name');
+			$this->config->deleteUserValue($this->userId, Application::APP_ID, 'user_display_name');
 			foreach (Application::AUDIENCES as $audienceKey => $v) {
 				$prefix = $v['token_config_key_prefix'];
 				$this->config->deleteUserValue($this->userId, Application::APP_ID, $prefix . 'token');
@@ -148,6 +149,7 @@ class ConfigController extends Controller {
 				'user_name' => $result['nameOnPlatform'],
 				'user_flag_code' => $zoneInfo['user_flag_code'] ?? '',
 				'user_zone_name' => $zoneInfo['user_zone_name'] ?? '',
+				'user_display_name' => $zoneInfo['user_display_name'] ?? '',
 			]);
 		}
 		return new DataResponse([
@@ -157,39 +159,17 @@ class ConfigController extends Controller {
 	}
 
 	private function getAccountZoneInfo(string $accountId): array {
-		$searchResult = $this->trackmaniaAPIService->searchAccount($accountId);
-		if (isset($searchResult['error']) || count($searchResult) !== 1) {
+		$zoneInfo = $this->trackmaniaAPIService->getZoneInfo($accountId);
+		if ($zoneInfo === null) {
 			return [];
 		}
-		$account = $searchResult[0];
-		if (!isset($account['player'])) {
-			return [];
-		}
-		$player = $account['player'];
-		if (!isset($player['zone'])) {
-			return [];
-		}
-		$zone = $player['zone'];
-		$zoneNames = [$zone['name']];
-		$flags = [$zone['flag']];
-		while (isset($zone['parent'])) {
-			$zone = $zone['parent'];
-			$zoneNames[] = $zone['name'];
-			$flags[] = $zone['flag'];
-		}
-
-		// flag
-		$flag = 'WOR';
-		if (count($flags) > 2) {
-			$flag = $flags[count($flags) - 3];
-		} elseif (count($flags) > 1) {
-			$flag = $flags[count($flags) - 2];
-		}
-		$this->config->setUserValue($this->userId, Application::APP_ID, 'user_flag_code', $flag);
-		$this->config->setUserValue($this->userId, Application::APP_ID, 'user_zone_name', implode(', ', $zoneNames));
+		$this->config->setUserValue($this->userId, Application::APP_ID, 'user_flag_code', $zoneInfo['flag_code']);
+		$this->config->setUserValue($this->userId, Application::APP_ID, 'user_zone_name', $zoneInfo['zone_name']);
+		$this->config->setUserValue($this->userId, Application::APP_ID, 'user_display_name', $zoneInfo['display_name']);
 		return [
-			'user_flag_code' => $flag,
-			'user_zone_name' => implode(', ', $zoneNames),
+			'user_flag_code' => $zoneInfo['flag_code'],
+			'user_zone_name' => $zoneInfo['zone_name'],
+			'user_display_name' => $zoneInfo['display_name'],
 		];
 	}
 
