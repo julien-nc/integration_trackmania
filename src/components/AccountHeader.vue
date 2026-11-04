@@ -30,20 +30,34 @@
 					:title="userState.user_zone_name">
 				<span>({{ userState.account_id }})</span>
 			</div>
-			<img v-if="skin"
+			<div v-if="skin && skin.hasThumbnail"
 				class="skin-thumb"
-				:src="skinThumbnailUrl"
-				:alt="skin.name"
 				:title="skin.name"
-				@click="openSkinModal(skin)"
-				@error="onSkinError(false)">
-			<img v-if="otherSkin"
+				@click="openSkinModal(skin)">
+				<img :src="skinThumbnailUrl"
+					:alt="skin.name"
+					@error="onSkinError(false)">
+			</div>
+			<div v-else-if="skin"
+				class="skin-thumb skin-no-preview"
+				:title="skin.name"
+				@click="openSkinModal(skin)">
+				<span>{{ skin.name }}</span>
+			</div>
+			<div v-if="otherSkin && otherSkin.hasThumbnail"
 				class="skin-thumb"
-				:src="otherSkinThumbnailUrl"
-				:alt="otherSkin.name"
 				:title="otherSkin.name"
-				@click="openSkinModal(otherSkin)"
-				@error="onSkinError(true)">
+				@click="openSkinModal(otherSkin)">
+				<img :src="otherSkinThumbnailUrl"
+					:alt="otherSkin.name"
+					@error="onSkinError(true)">
+			</div>
+			<div v-else-if="otherSkin"
+				class="skin-thumb skin-no-preview"
+				:title="otherSkin.name"
+				@click="openSkinModal(otherSkin)">
+				<span>{{ otherSkin.name }}</span>
+			</div>
 			<OtherAccountSelect :other-account="otherAccount"
 				@update:other-account="$emit('update:other-account', $event)" />
 		</div>
@@ -191,12 +205,11 @@ export default {
 			this.modalSkin = skin
 		},
 		onSkinError(isOtherSkin) {
-			// e.g. no TGA conversion possible on the server, do not show a broken image
+			// the thumbnail cannot be converted or fetched, degrade to the no-preview tile
 			console.debug('Failed to display a skin thumbnail')
-			if (isOtherSkin) {
-				this.otherSkin = null
-			} else {
-				this.skin = null
+			const skin = isOtherSkin ? this.otherSkin : this.skin
+			if (skin) {
+				skin.hasThumbnail = false
 			}
 		},
 	},
@@ -239,11 +252,27 @@ export default {
 		.skin-thumb {
 			height: 72px;
 			width: 72px;
-			object-fit: contain;
 			border-radius: 8px;
 			border: 1px solid var(--color-border);
 			background: var(--color-background-dark);
 			cursor: pointer;
+			overflow: hidden;
+
+			img {
+				height: 100%;
+				width: 100%;
+				object-fit: contain;
+			}
+		}
+
+		.skin-no-preview {
+			display: flex;
+			align-items: center;
+			padding: 4px;
+			font-size: 0.65em;
+			text-align: center;
+			word-break: break-word;
+			color: var(--color-text-maxcontrast);
 		}
 	}
 }

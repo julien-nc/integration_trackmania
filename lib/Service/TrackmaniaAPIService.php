@@ -806,6 +806,8 @@ class TrackmaniaAPIService {
 		return [
 			'skinId' => $skinId,
 			'name' => $skinInfo['skinDisplayName'] ?? '',
+			// skin authors do not always attach a thumbnail, and old ones can be dead
+			'hasThumbnail' => !empty($skinInfo['thumbnailUrl']),
 		];
 	}
 
