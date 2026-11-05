@@ -92,15 +92,19 @@ export default {
 		max-width: 500px;
 		max-height: 500px;
 		width: 100%;
+		border-radius: var(--tm-radius-small);
+		border: 1px solid var(--tm-ring);
 	}
 
 	.skin-icon {
 		width: 150px;
+		opacity: 0.45;
 	}
 
 	.skin-name {
 		margin-top: 8px;
 		font-weight: bold;
+		color: var(--tm-cyan);
 	}
 
 	.skin-owner {

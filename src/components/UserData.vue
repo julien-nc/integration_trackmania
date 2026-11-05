@@ -1,106 +1,142 @@
 <template>
 	<div id="trackmania_main">
-		<div v-if="configState.other_account_id">
-			<p style="color: var(--color-border-success, --color-success);">
+		<div v-if="configState.other_account_id" class="compare-badges">
+			<span class="compare-badge compare-badge--better">
 				👍 {{ t('integration_trackmania', '{nb} records better than other account', { nb: betterThanOtherCount }) }}
-			</p>
-			<p style="color: var(--color-border-error, --color-error);">
+			</span>
+			<span class="compare-badge compare-badge--worse">
 				👎 {{ t('integration_trackmania', '{nb} records worse than other account', { nb: worseThanOtherCount }) }}
-			</p>
-			<p v-if="equalThanOtherCount > 0" style="color: var(--color-favorite, --color-warning);">
+			</span>
+			<span v-if="equalThanOtherCount > 0" class="compare-badge compare-badge--equal">
 				👌 {{ t('integration_trackmania', '{nb} records equal than other account', { nb: equalThanOtherCount }) }}
-			</p>
+			</span>
 		</div>
-		<div class="summary">
-			<div class="summary__medals">
-				<h3>{{ t('integration_trackmania', 'Medals') }}</h3>
-				<p><img :src="authorMedalImageUrl"> {{ t('integration_trackmania', '{nb} Author', { nb: medalCount.author }) }}</p>
-				<p><img :src="goldMedalImageUrl">  {{ t('integration_trackmania', '{nb} Gold', { nb: medalCount.gold }) }}</p>
-				<p><img :src="silverMedalImageUrl">  {{ t('integration_trackmania', '{nb} Silver', { nb: medalCount.silver }) }}</p>
-				<p><img :src="bronzeMedalImageUrl">  {{ t('integration_trackmania', '{nb} Bronze', { nb: medalCount.bronze }) }}</p>
-				<p>{{ t('integration_trackmania', '{nb} tracks without any medal', { nb: medalCount.none }) }}</p>
-			</div>
-			<div v-for="zn in enabledZones"
-				:key="zn"
-				class="summary__top">
-				<h3>{{ zn }}</h3>
-				<p>{{ t('integration_trackmania', '{nb} records in top 1', { nb: topCount[zn][1] }) }}</p>
-				<p>{{ t('integration_trackmania', '{nb} records in top 10', { nb: topCount[zn][10] }) }}</p>
-				<p>{{ t('integration_trackmania', '{nb} records in top 100', { nb: topCount[zn][100] }) }}</p>
-				<p>{{ t('integration_trackmania', '{nb} records in top 1000', { nb: topCount[zn][1000] }) }}</p>
+		<div class="summary tm-card">
+			<div class="stat-tiles">
+				<div class="stat-tile stat-tile--medal">
+					<img :src="authorMedalImageUrl" class="stat-medal" alt="">
+					<span class="stat-number">{{ medalCount.author }}</span>
+					<span class="stat-label">{{ t('integration_trackmania', 'Author') }}</span>
+				</div>
+				<div class="stat-tile stat-tile--medal">
+					<img :src="goldMedalImageUrl" class="stat-medal" alt="">
+					<span class="stat-number">{{ medalCount.gold }}</span>
+					<span class="stat-label">{{ t('integration_trackmania', 'Gold') }}</span>
+				</div>
+				<div class="stat-tile stat-tile--medal">
+					<img :src="silverMedalImageUrl" class="stat-medal" alt="">
+					<span class="stat-number">{{ medalCount.silver }}</span>
+					<span class="stat-label">{{ t('integration_trackmania', 'Silver') }}</span>
+				</div>
+				<div class="stat-tile stat-tile--medal">
+					<img :src="bronzeMedalImageUrl" class="stat-medal" alt="">
+					<span class="stat-number">{{ medalCount.bronze }}</span>
+					<span class="stat-label">{{ t('integration_trackmania', 'Bronze') }}</span>
+				</div>
+				<div class="stat-tile stat-tile--none">
+					<span class="stat-number">{{ medalCount.none }}</span>
+					<span class="stat-label">{{ t('integration_trackmania', 'tracks without any medal') }}</span>
+				</div>
+				<div v-for="zn in enabledZones"
+					:key="zn"
+					class="stat-tile stat-tile--zone"
+					:class="{ 'stat-tile--zone-open': unfoldedZones[zn] }"
+					:title="t('integration_trackmania', 'Toggle the top 10/100/1000 details')"
+					@click="toggleZoneTile(zn)">
+					<span class="stat-zone-name">{{ zn }}</span>
+					<span class="stat-number">{{ topCount[zn][1] }}</span>
+					<span class="stat-label">{{ t('integration_trackmania', 'records in top 1') }}</span>
+					<div v-if="unfoldedZones[zn]" class="stat-zone-rows">
+						<span class="stat-zone-number">{{ topCount[zn][10] }}</span> {{ t('integration_trackmania', 'top 10') }}
+						<span class="stat-zone-number">{{ topCount[zn][100] }}</span> {{ t('integration_trackmania', 'top 100') }}
+						<span class="stat-zone-number">{{ topCount[zn][1000] }}</span> {{ t('integration_trackmania', 'top 1000') }}
+					</div>
+					<ChevronDownIcon class="stat-zone-chevron" :size="16" />
+				</div>
 			</div>
 		</div>
 		<!--div class="charts">
 			<NbRecordsPerPosition :pbs="filteredPbs" />
 		</div-->
-		<div class="checkColumns">
-			<NcCheckboxRadioSwitch
-				:model-value="configState.show_column_line_number !== '0'"
-				class="checkColumn"
-				type="switch"
-				@update:model-value="onColumnCheck('show_column_line_number', $event)">
-				{{ t('integration_trackmania', 'Line numbers') }}
-			</NcCheckboxRadioSwitch>
-			<NcCheckboxRadioSwitch
-				:model-value="configState.show_column_favorite !== '0'"
-				class="checkColumn"
-				type="switch"
-				@update:model-value="onColumnCheck('show_column_favorite', $event)">
-				{{ t('integration_trackmania', 'Favorite') }}
-			</NcCheckboxRadioSwitch>
-			<NcCheckboxRadioSwitch
-				:model-value="configState.show_column_author_name !== '0'"
-				class="checkColumn"
-				type="switch"
-				@update:model-value="onColumnCheck('show_column_author_name', $event)">
-				{{ t('integration_trackmania', 'Author name') }}
-			</NcCheckboxRadioSwitch>
-			<NcCheckboxRadioSwitch
-				:model-value="configState.show_column_date !== '0'"
-				class="checkColumn"
-				type="switch"
-				@update:model-value="onColumnCheck('show_column_date', $event)">
-				{{ t('integration_trackmania', 'Date') }}
-			</NcCheckboxRadioSwitch>
-			<NcCheckboxRadioSwitch
-				:model-value="configState.show_column_medals !== '0'"
-				class="checkColumn"
-				type="switch"
-				@update:model-value="onColumnCheck('show_column_medals', $event)">
-				{{ t('integration_trackmania', 'Medals') }}
-			</NcCheckboxRadioSwitch>
-			<NcCheckboxRadioSwitch
-				:model-value="configState.show_column_best_position !== '0'"
-				class="checkColumn"
-				type="switch"
-				@update:model-value="onColumnCheck('show_column_best_position', $event)">
-				{{ t('integration_trackmania', 'Best position') }}
-			</NcCheckboxRadioSwitch>
-			<NcCheckboxRadioSwitch
-				v-for="zn in zoneNames"
-				:key="zn"
-				:model-value="configState['show_column_zone_' + zn] !== '0'"
-				class="checkColumn"
-				type="switch"
-				@update:model-value="onZoneCheck(zn, $event)">
-				{{ t('integration_trackmania', 'Position in {zone}', { zone: zn }) }}
-			</NcCheckboxRadioSwitch>
-			<NcCheckboxRadioSwitch
-				:model-value="configState.show_column_wr !== '0'"
-				class="checkColumn"
-				type="switch"
-				@update:model-value="onColumnCheck('show_column_wr', $event)">
-				{{ t('integration_trackmania', 'World record') }}
-			</NcCheckboxRadioSwitch>
-			<NcCheckboxRadioSwitch v-if="configState.other_account_id"
-				:model-value="configState.show_column_other_time !== '0'"
-				class="checkColumn"
-				type="switch"
-				@update:model-value="onColumnCheck('show_column_other_time', $event)">
-				{{ t('integration_trackmania', 'Other account information') }}
-			</NcCheckboxRadioSwitch>
+		<div class="table-options tm-card" :class="{ open: tableOptionsOpen }">
+			<div class="table-options-header"
+				:title="t('integration_trackmania', 'Table options')"
+				:aria-expanded="tableOptionsOpen"
+				@click="tableOptionsOpen = !tableOptionsOpen">
+				<span class="table-options-title">
+					<TableCogIcon :size="16" />
+					{{ t('integration_trackmania', 'Table options') }}
+				</span>
+				<ChevronDownIcon class="table-options-chevron" :size="18" />
+			</div>
+			<div v-show="tableOptionsOpen" class="checkColumns">
+				<NcCheckboxRadioSwitch
+					:model-value="configState.show_column_line_number !== '0'"
+					class="checkColumn"
+					type="switch"
+					@update:model-value="onColumnCheck('show_column_line_number', $event)">
+					{{ t('integration_trackmania', 'Line numbers') }}
+				</NcCheckboxRadioSwitch>
+				<NcCheckboxRadioSwitch
+					:model-value="configState.show_column_favorite !== '0'"
+					class="checkColumn"
+					type="switch"
+					@update:model-value="onColumnCheck('show_column_favorite', $event)">
+					{{ t('integration_trackmania', 'Favorite') }}
+				</NcCheckboxRadioSwitch>
+				<NcCheckboxRadioSwitch
+					:model-value="configState.show_column_author_name !== '0'"
+					class="checkColumn"
+					type="switch"
+					@update:model-value="onColumnCheck('show_column_author_name', $event)">
+					{{ t('integration_trackmania', 'Author name') }}
+				</NcCheckboxRadioSwitch>
+				<NcCheckboxRadioSwitch
+					:model-value="configState.show_column_date !== '0'"
+					class="checkColumn"
+					type="switch"
+					@update:model-value="onColumnCheck('show_column_date', $event)">
+					{{ t('integration_trackmania', 'Date') }}
+				</NcCheckboxRadioSwitch>
+				<NcCheckboxRadioSwitch
+					:model-value="configState.show_column_medals !== '0'"
+					class="checkColumn"
+					type="switch"
+					@update:model-value="onColumnCheck('show_column_medals', $event)">
+					{{ t('integration_trackmania', 'Medals') }}
+				</NcCheckboxRadioSwitch>
+				<NcCheckboxRadioSwitch
+					:model-value="configState.show_column_best_position !== '0'"
+					class="checkColumn"
+					type="switch"
+					@update:model-value="onColumnCheck('show_column_best_position', $event)">
+					{{ t('integration_trackmania', 'Best position') }}
+				</NcCheckboxRadioSwitch>
+				<NcCheckboxRadioSwitch
+					v-for="zn in zoneNames"
+					:key="zn"
+					:model-value="configState['show_column_zone_' + zn] !== '0'"
+					class="checkColumn"
+					type="switch"
+					@update:model-value="onZoneCheck(zn, $event)">
+					{{ t('integration_trackmania', 'Position in {zone}', { zone: zn }) }}
+				</NcCheckboxRadioSwitch>
+				<NcCheckboxRadioSwitch
+					:model-value="configState.show_column_wr !== '0'"
+					class="checkColumn"
+					type="switch"
+					@update:model-value="onColumnCheck('show_column_wr', $event)">
+					{{ t('integration_trackmania', 'World record') }}
+				</NcCheckboxRadioSwitch>
+				<NcCheckboxRadioSwitch v-if="configState.other_account_id"
+					:model-value="configState.show_column_other_time !== '0'"
+					class="checkColumn"
+					type="switch"
+					@update:model-value="onColumnCheck('show_column_other_time', $event)">
+					{{ t('integration_trackmania', 'Other account information') }}
+				</NcCheckboxRadioSwitch>
+			</div>
 		</div>
-		<br>
 		<MapDetailModal v-if="detailPb"
 			:pb="detailPb"
 			:config-state="configState"
@@ -412,6 +448,8 @@ import StarIcon from 'vue-material-design-icons/Star.vue'
 import StarOutlineIcon from 'vue-material-design-icons/StarOutline.vue'
 import FilterRemoveIcon from 'vue-material-design-icons/FilterRemove.vue'
 import TargetIcon from 'vue-material-design-icons/Target.vue'
+import ChevronDownIcon from 'vue-material-design-icons/ChevronDown.vue'
+import TableCogIcon from 'vue-material-design-icons/TableCog.vue'
 
 import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
 import NcButton from '@nextcloud/vue/components/NcButton'
@@ -491,6 +529,8 @@ export default {
 		TargetIcon,
 		StarIcon,
 		StarOutlineIcon,
+		ChevronDownIcon,
+		TableCogIcon,
 	},
 
 	props: {
@@ -573,6 +613,10 @@ export default {
 			sortOptions: this.initSortOptions(),
 			detailPb: null,
 			visibleRowCount: RENDER_CHUNK,
+			// the table options card is collapsed by default
+			tableOptionsOpen: false,
+			// zone stats show only the top 1 count, the top 10/100/1000 rows unfold on click
+			unfoldedZones: {},
 			// per-map rank computations triggered from the table cells
 			rankLoading: {},
 			rankBeyond: {},
@@ -1057,6 +1101,9 @@ export default {
 		onColumnCheck(key, checked) {
 			this.saveOptions({ [key]: checked ? '1' : '0' })
 		},
+		toggleZoneTile(zn) {
+			this.unfoldedZones[zn] = !this.unfoldedZones[zn]
+		},
 		saveOptions(values) {
 			emit('save-options', values)
 		},
@@ -1342,38 +1389,201 @@ export default {
 		display: flex;
 		align-items: center;
 		gap: 8px;
-		margin-bottom: 12px;
+		margin: 0 0 12px;
+		color: var(--color-text-maxcontrast);
+		justify-content: center;
 	}
 
-	#trackmania-content {
-		//margin-left: 40px;
-	}
-
-	.summary {
+	.compare-badges {
 		display: flex;
+		gap: 8px;
+		flex-wrap: wrap;
+		margin-bottom: 16px;
+		justify-content: center;
+	}
+
+	.compare-badge {
+		display: inline-flex;
 		align-items: center;
-		gap: 44px;
-		margin-bottom: 24px;
-		&__medals p {
-			display: flex;
-			gap: 8px;
-			align-items: center;
-			img {
-				width: 32px;
-			}
+		padding: 4px 12px;
+		border-radius: 999px;
+		border: 1px solid var(--tm-ring);
+		background: var(--tm-surface);
+		backdrop-filter: blur(10px);
+		font-size: 0.85em;
+
+		&--better {
+			color: var(--tm-green);
+			border-color: rgba(45, 224, 165, 0.35);
+			box-shadow: 0 0 12px rgba(45, 224, 165, 0.12);
+		}
+
+		&--worse {
+			color: var(--tm-red);
+			border-color: rgba(255, 107, 126, 0.35);
+			box-shadow: 0 0 12px rgba(255, 107, 126, 0.12);
+		}
+
+		&--equal {
+			color: var(--tm-gold);
+			border-color: rgba(255, 207, 94, 0.35);
+			box-shadow: 0 0 12px rgba(255, 207, 94, 0.12);
 		}
 	}
 
+	.summary {
+		padding: 20px;
+		margin: 0 auto 16px;
+		width: fit-content;
+	}
+
+	.stat-tiles {
+		display: flex;
+		align-items: stretch;
+		gap: 12px;
+		flex-wrap: wrap;
+	}
+
+	.stat-tile {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 2px;
+		min-width: 96px;
+		padding: 12px 16px;
+		border-radius: var(--tm-radius-small);
+		border: 1px solid var(--tm-ring);
+		background: var(--tm-tile-bg);
+		text-align: center;
+
+		.stat-medal {
+			width: 32px;
+			filter: drop-shadow(0 0 8px rgba(255, 207, 94, 0.4));
+		}
+
+		.stat-number {
+			font-size: 1.7em;
+			font-weight: bold;
+			font-variant-numeric: tabular-nums;
+			line-height: 1.1;
+		}
+
+		.stat-label {
+			color: var(--color-text-maxcontrast);
+			font-size: 0.75em;
+		}
+	}
+
+	.stat-tile--none {
+		max-width: 140px;
+		color: var(--tm-red);
+	}
+
+	.stat-tile--zone {
+		cursor: pointer;
+		min-width: 120px;
+
+		&:hover {
+			border-color: var(--tm-ring-strong);
+		}
+
+		.stat-zone-chevron {
+			margin-top: 4px;
+			transition: transform 0.15s ease;
+			color: var(--tm-cyan);
+		}
+
+		&.stat-tile--zone-open .stat-zone-chevron {
+			transform: rotate(180deg);
+		}
+	}
+
+	.stat-zone-name {
+		color: var(--tm-purple);
+		font-weight: bold;
+	}
+
+	.stat-zone-rows {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		color: var(--color-text-maxcontrast);
+		font-size: 0.75em;
+		gap: 2px;
+		margin-top: 4px;
+
+		.stat-zone-number {
+			font-weight: bold;
+			color: var(--color-main-text);
+			font-variant-numeric: tabular-nums;
+		}
+	}
+
+	.table-options {
+		margin: 0 auto 16px;
+		padding: 4px 20px;
+		width: fit-content;
+
+		&.open {
+			width: 100%;
+		}
+
+		.table-options-header {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			padding: 12px 0;
+			cursor: pointer;
+			user-select: none;
+			color: var(--color-text-maxcontrast);
+
+			.table-options-title {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				font-weight: bold;
+			}
+
+			.table-options-chevron {
+				margin-left: 8px;
+				transition: transform 0.15s ease;
+			}
+
+			&:hover {
+				color: var(--tm-cyan);
+				.table-options-chevron {
+					color: var(--tm-cyan);
+				}
+			}
+		}
+
+		&.open .table-options-chevron {
+			transform: rotate(180deg);
+		}
+	}
+
+	.checkColumns {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+		padding-bottom: 12px;
+	}
+
 	:deep(.mapNameColumn) {
-		color: #111;
-		background: #B0B0B0;
+		background: rgba(255, 255, 255, 0.05);
 		font-weight: bold;
 		cursor: pointer;
 		max-width: 250px;
 		overflow: hidden;
 		text-overflow: ellipsis;
+		border-radius: 6px;
+		transition: background 0.1s ease, color 0.1s ease;
+
 		&:hover {
-			background: #909090;
+			background: rgba(31, 212, 232, 0.14);
+			color: var(--tm-cyan);
+			box-shadow: 0 0 10px rgba(31, 212, 232, 0.18) inset;
 		}
 		* {
 			cursor: pointer !important;

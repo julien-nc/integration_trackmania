@@ -116,6 +116,9 @@ export default {
 <style scoped lang="scss">
 .simple-table {
 	position: relative;
+	// take what the columns need, at most the available width:
+	// never stretched beyond the content, never squeezed below the min content
+	width: fit-content;
 	counter-reset: simple-table-row;
 	// the line-number cell content is browser-computed in the rendered row
 	// order, so re-filtering/re-sorting the rows never patches it: the counter
@@ -125,11 +128,35 @@ export default {
 		counter-increment: simple-table-row;
 		content: counter(simple-table-row);
 	}
-	&, th, td {
-		border: 1px solid var(--color-border-dark);
-		//border-collapse: collapse;
+
+	border-collapse: separate;
+	border-spacing: 0;
+
+	&,
+	th,
+	td {
+		border: none;
 	}
+
 	tr {
+		td {
+			border-bottom: 1px solid var(--tm-line);
+			border-inline-start: 1px solid var(--tm-line);
+			border-inline-end: 1px solid var(--tm-line);
+			padding: 6px;
+			text-align: right;
+		}
+
+		&:first-of-type td {
+			border-top: 1px solid var(--tm-line);
+		}
+
+		&:hover {
+			td {
+				background-color: color-mix(in srgb, var(--color-primary-element-hover) 40%, transparent);
+			}
+		}
+
 		.header {
 			user-select: none;
 			cursor: pointer;
@@ -145,15 +172,25 @@ export default {
 				.title {
 					&.sorted {
 						font-weight: bold;
+						color: var(--tm-cyan);
+						text-shadow: 0 0 12px rgba(31, 212, 232, 0.35);
 					}
 				}
 			}
 		}
-		&:hover {
-			background-color: var(--color-background-hover);
-		}
+
 		th {
-			background-color: var(--color-primary-element-light);
+			background-color: var(--tm-surface-strong);
+			backdrop-filter: blur(10px);
+			-webkit-backdrop-filter: blur(10px);
+			border-bottom: 1px solid var(--tm-ring);
+			border-inline-start: 1px solid var(--tm-line);
+			border-inline-end: 1px solid var(--tm-line);
+			padding: 6px;
+			text-align: right;
+			color: var(--color-main-text);
+			white-space: nowrap;
+
 			&.header {
 				position: sticky;
 				top: -30px;
@@ -163,6 +200,7 @@ export default {
 				position: sticky;
 				top: 4px;
 				z-index: 999;
+				border-bottom: 1px solid var(--tm-line);
 			}
 			.sort-suffix {
 				display: flex;
@@ -170,16 +208,8 @@ export default {
 				align-items: center;
 				justify-content: center;
 				line-height: 12px;
-				color: var(--color-primary);
+				color: var(--tm-cyan);
 			}
-		}
-
-		th, td {
-			padding: 4px;
-		}
-
-		td {
-			text-align: right;
 		}
 	}
 }

@@ -204,6 +204,8 @@ export default {
 	.thumbnail {
 		max-height: 350px;
 		max-width: 80%;
+		border-radius: var(--tm-radius-small);
+		border: 1px solid var(--tm-ring);
 	}
 	.map-name {
 		font-weight: bold;
@@ -220,10 +222,10 @@ export default {
 		}
 	}
 	.medalTime {
-		color: var(--color-border-error, --color-error);
+		color: var(--tm-red);
 	}
 	.success {
-		color: var(--color-border-success, --color-success);
+		color: var(--tm-green);
 	}
 }
 </style>

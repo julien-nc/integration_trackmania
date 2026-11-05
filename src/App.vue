@@ -5,58 +5,60 @@
 			@update:showDetails="a = 2">
 			<!--template #list>
 			</template-->
-			<h2 class="page-title">
-				<TrackmaniaIcon class="icon" />
-				<span>{{ t('integration_trackmania', 'Trackmania integration') }}</span>
-			</h2>
-			<div v-if="!connected">
-				<NcEmptyContent
-					:name="t('integration_trackmania', 'You are not connected to Trackmania')">
+			<div class="tm-page">
+				<h2 class="page-title">
+					<TrackmaniaIcon class="icon" />
+					<span>{{ t('integration_trackmania', 'Trackmania integration') }}</span>
+				</h2>
+				<div v-if="!connected">
+					<NcEmptyContent
+						:name="t('integration_trackmania', 'You are not connected to Trackmania')">
+						<template #icon>
+							<CogIcon />
+						</template>
+					</NcEmptyContent>
+					<PersonalSettings
+						class="settings"
+						:show-title="true"
+						:config="userState"
+						@connected="onConnected" />
+				</div>
+				<NcEmptyContent v-else-if="loadingData"
+					class="main-empty-content"
+					:name="t('integration_trackmania', 'Loading your records')">
 					<template #icon>
-						<CogIcon />
+						<NcLoadingIcon />
+					</template>
+					<template #action>
+						<div class="loading-progress">
+							{{ infoLoadingPercent }} %
+							<NcProgressBar :value="infoLoadingPercent"
+								type="linear"
+								size="medium" />
+							<span class="loading-caption">{{ loadingText }}</span>
+							<NcButton @click="cancelDataLoad">
+								<template #icon>
+									<CloseIcon />
+								</template>
+								{{ t('integration_trackmania', 'Cancel') }}
+							</NcButton>
+						</div>
 					</template>
 				</NcEmptyContent>
-				<PersonalSettings
-					class="settings"
-					:show-title="true"
-					:config="userState"
-					@connected="onConnected" />
-			</div>
-			<NcEmptyContent v-else-if="loadingData"
-				class="main-empty-content"
-				:name="t('integration_trackmania', 'Loading your records')">
-				<template #icon>
-					<NcLoadingIcon />
-				</template>
-				<template #action>
-					<div class="loading-progress">
-						{{ infoLoadingPercent }} %
-						<NcProgressBar :value="infoLoadingPercent"
-							type="linear"
-							size="medium" />
-						<span class="loading-caption">{{ loadingText }}</span>
-						<NcButton @click="cancelDataLoad">
-							<template #icon>
-								<CloseIcon />
-							</template>
-							{{ t('integration_trackmania', 'Cancel') }}
-						</NcButton>
-					</div>
-				</template>
-			</NcEmptyContent>
-			<div v-else>
-				<AccountHeader
-					v-model:other-account="selectedOtherAccount"
-					:user-state="userState"
-					:last-update-time="lastUpdateTime"
-					:last-load-duration-ms="lastLoadDurationMs"
-					@disconnect="disconnect"
-					@reload="reloadData"
-					@update:other-account="onUpdateOtherAccount" />
-				<UserData
-					:pbs="pbs"
-					:zone-names="zoneNames"
-					:config-state="tableState" />
+				<div v-else>
+					<AccountHeader
+						v-model:other-account="selectedOtherAccount"
+						:user-state="userState"
+						:last-update-time="lastUpdateTime"
+						:last-load-duration-ms="lastLoadDurationMs"
+						@disconnect="disconnect"
+						@reload="reloadData"
+						@update:other-account="onUpdateOtherAccount" />
+					<UserData
+						:pbs="pbs"
+						:zone-names="zoneNames"
+						:config-state="tableState" />
+				</div>
 			</div>
 		</NcAppContent>
 	</NcContent>
@@ -119,7 +121,7 @@ export default {
 			pbs: [],
 			infoLoadingPercent: 0,
 			loadingText: '',
-			selectedOtherAccount: {},
+			selectedOtherAccount: null,
 			lastUpdateTime: null,
 			lastLoadDurationMs: null,
 		}
@@ -551,5 +553,119 @@ h2.page-title {
 
 .loading-caption {
 	color: var(--color-text-maxcontrast);
+}
+</style>
+
+<style lang="scss">
+// Neon glass design tokens of the Trackmania pages, dark and light theme variations.
+// Defined on body because modals are teleported outside of .tm-page.
+// The tokens and the .tm-card utility are non-scoped so every page component can use them.
+// Theme definitions mirror what Nextcloud does on <body>:
+// a bare data-theme-light / data-theme-dark attribute when a theme is forced,
+// and only the OS preference (via media query) otherwise.
+:root {
+	--tm-radius: 16px;
+	--tm-radius-small: 12px;
+
+	--tm-cyan: #0087a5;
+	--tm-purple: #6d4bd6;
+	--tm-green: #0c7d4f;
+	--tm-red: #c94055;
+	--tm-gold: #9a6d00;
+
+	--tm-surface: rgba(255, 255, 255, 0.6);
+	--tm-surface-strong: rgba(255, 255, 255, 0.92);
+	--tm-ring: rgba(0, 0, 0, 0.1);
+	--tm-ring-strong: rgba(0, 0, 0, 0.18);
+	--tm-line: rgba(0, 0, 0, 0.09);
+	--tm-tile-bg: rgba(0, 0, 0, 0.03);
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+	:root {
+		--tm-surface: var(--color-main-background);
+	}
+}
+
+body[data-theme-dark] {
+	--tm-cyan: #1fd4e8;
+	--tm-purple: #a78bfa;
+	--tm-green: #2de0a5;
+	--tm-red: #ff6b7e;
+	--tm-gold: #ffcf5e;
+
+	--tm-surface: rgba(24, 27, 33, 0.55);
+	--tm-surface-strong: rgba(24, 27, 33, 0.85);
+	--tm-ring: rgba(255, 255, 255, 0.09);
+	--tm-ring-strong: rgba(255, 255, 255, 0.16);
+	--tm-line: rgba(255, 255, 255, 0.07);
+	--tm-tile-bg: rgba(255, 255, 255, 0.04);
+}
+
+@media (prefers-color-scheme: dark) {
+	body:not([data-theme-light]):not([data-theme-dark]) {
+		--tm-cyan: #1fd4e8;
+		--tm-purple: #a78bfa;
+		--tm-green: #2de0a5;
+		--tm-red: #ff6b7e;
+		--tm-gold: #ffcf5e;
+
+		--tm-surface: rgba(24, 27, 33, 0.55);
+		--tm-surface-strong: rgba(24, 27, 33, 0.85);
+		--tm-ring: rgba(255, 255, 255, 0.09);
+		--tm-ring-strong: rgba(255, 255, 255, 0.16);
+		--tm-line: rgba(255, 255, 255, 0.07);
+		--tm-tile-bg: rgba(255, 255, 255, 0.04);
+	}
+}
+
+.tm-page {
+	padding: 0 30px;
+	// fill the scroll container so the background is never cut on short pages
+	min-height: 100%;
+	background-attachment: fixed;
+	background-image:
+		radial-gradient(700px 500px at 12% 0%, color-mix(in srgb, var(--color-primary) 9%, transparent), transparent 65%),
+		radial-gradient(900px 700px at 88% 24%, color-mix(in srgb, var(--color-primary) 10%, transparent), transparent 65%),
+		radial-gradient(700px 600px at 55% 95%, color-mix(in srgb, var(--color-primary) 5%, transparent), transparent 65%);
+
+	color: var(--color-main-text);
+}
+
+.tm-card {
+	background: var(--tm-surface);
+	backdrop-filter: blur(14px);
+	-webkit-backdrop-filter: blur(14px);
+	border: 1px solid var(--tm-ring);
+	border-radius: var(--tm-radius);
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+	position: relative;
+	overflow: hidden;
+
+	&::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		height: 2px;
+		background: linear-gradient(90deg, transparent 6%, var(--tm-accent, var(--color-primary)) 30%, var(--tm-accent, var(--color-primary)) 70%, transparent 94%);
+		opacity: 0.75;
+	}
+}
+
+.tm-page h2.page-title {
+	padding: 20px 0 0;
+	display: flex;
+	justify-content: center;
+
+	.icon {
+		margin-right: 8px;
+		filter: drop-shadow(0 0 10px rgba(31, 212, 232, 0.5));
+	}
+
+	span {
+		color: var(--color-main-text);
+	}
 }
 </style>

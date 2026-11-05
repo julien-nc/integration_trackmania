@@ -1,19 +1,16 @@
 <template>
 	<div class="other-account">
-		<h3>
-			<strong>{{ t('integration_trackmania', 'Compare yourself with another player') }}</strong>
-		</h3>
 		<NcSelect
 			:model-value="otherAccount"
 			:options="otherAccountOptions"
 			class="other-account-select"
 			:multiple="false"
-			:label-outside="true"
 			label="name"
+			:input-label="t('integration_trackmania', 'Account name')"
 			:filter-by="() => true"
 			:loading="searchingOtherAccount"
 			:aria-label-combobox="t('integration_trackmania', 'Search account')"
-			:placeholder="t('integration_trackmania', 'Search on trackmania.io by player name')"
+			:placeholder="t('integration_trackmania', 'Search by player name')"
 			:append-to-body="false"
 			@update:model-value="onOtherAccountSelectChange"
 			@search="onOtherAccountSearch">
@@ -42,7 +39,7 @@
 			:label="t('integration_trackmania', 'Account ID')"
 			:show-trailing-button="!!otherAccount?.id"
 			class="other-account-input"
-			:placeholder="t('integration_trackmania', 'account ID')"
+			:placeholder="t('integration_trackmania', 'Search by account ID')"
 			@keyup.enter="onAccountIdSubmit"
 			@trailing-button-click="clearOtherAccount" />
 	</div>
@@ -93,7 +90,7 @@ export default {
 
 	methods: {
 		clearOtherAccount() {
-			this.$emit('update:other-account', {})
+			this.$emit('update:other-account', null)
 		},
 		onAccountIdSubmit(e) {
 			const submittedAccountId = e.target.value
@@ -131,7 +128,7 @@ export default {
 			})
 		},
 		onOtherAccountSelectChange(value) {
-			this.$emit('update:other-account', value ?? {})
+			this.$emit('update:other-account', value ?? null)
 		},
 		onOtherAccountSearch: debounce(function(query) {
 			this.otherAccountSearchQuery = query
@@ -163,10 +160,17 @@ export default {
 </script>
 
 <style scoped lang="scss">
+.other-account {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 12px;
+	width: 100%;
+}
+
 .other-account-select,
 .other-account-input {
 	width: 350px !important;
-	margin-bottom: 8px !important;
 }
 
 .account-option {
