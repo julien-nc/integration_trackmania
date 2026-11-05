@@ -243,10 +243,10 @@ class TrackmaniaAPIController extends Controller {
 		} catch (\Throwable $e) {
 			return new DataResponse($e->getMessage(), Http::STATUS_BAD_REQUEST);
 		}
-		if ($image === null || !isset($image['body'])) {
+		if ($image === null || !isset($image['body']) || $image['body'] === '') {
 			return new DataDisplayResponse('', Http::STATUS_NOT_FOUND);
 		}
-		$response = new DataDisplayResponse($image['body'], Http::STATUS_OK, ['Content-Type' => 'image/png']);
+		$response = new DataDisplayResponse($image['body'], Http::STATUS_OK, ['Content-Type' => $image['contentType'] ?? 'image/png']);
 		$response->cacheFor(60 * 60 * 24, false, true);
 		return $response;
 	}

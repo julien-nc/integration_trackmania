@@ -38,11 +38,16 @@
 					:alt="skin.name"
 					@error="onSkinError(false)">
 			</div>
-			<div v-else-if="skin"
+			<div v-else-if="skin && skin.hasSkin"
 				class="skin-thumb skin-no-preview"
 				:title="skin.name"
 				@click="openSkinModal(skin)">
 				<span>{{ skin.name }}</span>
+			</div>
+			<div v-else-if="skin"
+				class="skin-thumb skin-no-preview"
+				:title="displayName">
+				<span>{{ t('integration_trackmania', 'No skin equipped') }}</span>
 			</div>
 			<div v-if="otherSkin && otherSkin.hasThumbnail"
 				class="skin-thumb"
@@ -52,11 +57,16 @@
 					:alt="otherSkin.name"
 					@error="onSkinError(true)">
 			</div>
-			<div v-else-if="otherSkin"
+			<div v-else-if="otherSkin && otherSkin.hasSkin"
 				class="skin-thumb skin-no-preview"
 				:title="otherSkin.name"
 				@click="openSkinModal(otherSkin)">
 				<span>{{ otherSkin.name }}</span>
+			</div>
+			<div v-else-if="otherSkin"
+				class="skin-thumb skin-no-preview"
+				:title="otherAccount?.name">
+				<span>{{ t('integration_trackmania', 'No skin equipped') }}</span>
 			</div>
 			<OtherAccountSelect :other-account="otherAccount"
 				@update:other-account="$emit('update:other-account', $event)" />
@@ -187,7 +197,11 @@ export default {
 			}
 			try {
 				const response = await axios.get(url)
-				const skin = response.data?.skinId ? response.data : null
+				const data = response.data
+				// a missing equipped skin is a known upstream state: show the placeholder instead of hiding the block
+				const skin = data?.hasSkin === true
+					? data
+					: (data?.hasSkin === false ? { hasSkin: false } : null)
 				this.setSkin(accountId, skin)
 			} catch (error) {
 				// the skin is a nice-to-have, the equipped list may just not exist upstream

@@ -24,6 +24,7 @@ use OCA\Trackmania\Db\TrackPosition;
 use OCA\Trackmania\Db\TrackPositionMapper;
 use OCA\Trackmania\Exception\TmApiRequestException;
 use OCA\Trackmania\Exception\TokenRefreshException;
+use OCA\Trackmania\Util\SkinZipPreview;
 use OCA\Trackmania\Util\TgaImageConverter;
 use OCP\AppFramework\Http;
 use OCP\Exceptions\AppConfigTypeConflictException;
@@ -52,6 +53,10 @@ class TrackmaniaAPIService {
 	private const OWN_RECORDS_PAGE_SIZE = 1000;
 	/** Skins change rarely, cache their info a bit */
 	private const SKIN_INFO_CACHE_TTL = 24 * 60 * 60;
+	/** Skin preview images are also cached a bit, failures included, to not probe the same skin repeatedly */
+	private const SKIN_THUMBNAIL_CACHE_TTL = 24 * 60 * 60;
+	/** How much of the end of the skin ZIP has to be read to find the central directory descriptor */
+	private const ZIP_EOCD_SEARCH_SIZE = 65536;
 
 	private IClient $client;
 	private ICache $cache;
@@ -795,14 +800,11 @@ class TrackmaniaAPIService {
 	}
 
 	/**
-	 * Get the info of the skin equipped by an account, null if it has none.
+	 * Get the info of the skin equipped by an account.
 	 *
 	 * @param string $userId
 	 * @param string|null $accountId the connected account is used if null
-	 * @return array|null ['skinId' => string, 'name' => string]
-	 * @throws PreConditionNotMetException
-	 * @throws TmApiRequestException
-	 * @throws TokenRefreshException
+	 * @return array|null an object, or null when the equipped skin could not be retrieved
 	 */
 	public function getEquippedSkinInfo(string $userId, ?string $accountId = null): ?array {
 		$prefix = Application::AUDIENCES[Application::AUDIENCE_CORE]['token_config_key_prefix'];
@@ -820,7 +822,8 @@ class TrackmaniaAPIService {
 			}
 		}
 		if ($skinId === null) {
-			return null;
+			// Nadeo omits the account from its equipped skins list when nothing is equipped
+			return ['hasSkin' => false];
 		}
 
 		$skinInfo = $this->getSkinInfo($userId, $skinId);
@@ -828,10 +831,12 @@ class TrackmaniaAPIService {
 			return null;
 		}
 		return [
+			'hasSkin' => true,
 			'skinId' => $skinId,
 			'name' => $skinInfo['skinDisplayName'] ?? '',
-			// skin authors do not always attach a thumbnail, and old ones can be dead
-			'hasThumbnail' => !empty($skinInfo['thumbnailUrl']),
+			// a preview may exist in the skin ZIP even without a Nadeo thumbnail:
+			// let the thumbnail endpoint decide, it degrades to no-preview on failure
+			'hasThumbnail' => true,
 		];
 	}
 
@@ -855,32 +860,247 @@ class TrackmaniaAPIService {
 	}
 
 	/**
-	 * Get the thumbnail of a skin, converted to PNG.
-	 * Nadeo provides TGA files, browsers cannot render them.
+	 * Get the displayable thumbnail of a skin.
+	 * Skins often lack a Nadeo thumbnail (a TGA on their CDN which browsers cannot render),
+	 * in that case the skin ZIP itself is searched for a preview image.
+	 * The result, failures included, is cached to not probe the same skin repeatedly.
 	 *
 	 * @param string $userId
 	 * @param string $skinId
-	 * @return array|null ['body' => string]
+	 * @return array|null ['body' => string, 'contentType' => string] or null when there is no preview
 	 * @throws PreConditionNotMetException
 	 * @throws TmApiRequestException
 	 * @throws TokenRefreshException
 	 */
 	public function getSkinThumbnail(string $userId, string $skinId): ?array {
+		$cacheKey = 'skin-image-' . $skinId;
+		$cached = $this->cache->get($cacheKey);
+		if (is_array($cached)) {
+			// failures are cached as an empty body
+			return ($cached['body'] ?? '') === '' ? null : $cached;
+		}
 		$skinInfo = $this->getSkinInfo($userId, $skinId);
-		if ($skinInfo === null || empty($skinInfo['thumbnailUrl'])) {
+		if ($skinInfo === null) {
+			return null;
+		}
+		$thumbnail = $this->getTgaSkinThumbnail($skinInfo['thumbnailUrl'] ?? '');
+		if ($thumbnail === null) {
+			$thumbnail = $this->getZipSkinThumbnail($skinInfo);
+		}
+		$cacheable = $thumbnail !== null;
+		if ($cacheable) {
+			$this->cache->set($cacheKey, $thumbnail, self::SKIN_THUMBNAIL_CACHE_TTL);
+		}
+		// null means 'not tested, could work later', it is not cached
+		return $cacheable ? ($thumbnail['body'] === '' ? null : $thumbnail) : null;
+	}
+
+	/**
+	 * Fetch the registered Nadeo thumbnail of a skin and convert it to PNG.
+	 * Nadeo provides TGA files, browsers cannot render them.
+	 *
+	 * @param string $thumbnailUrl
+	 * @return array|null ['body' => string, 'contentType' => string] or null when there is no registered thumbnail
+	 */
+	private function getTgaSkinThumbnail(string $thumbnailUrl): ?array {
+		if ($thumbnailUrl === '') {
 			return null;
 		}
 		try {
-			$image = $this->getImage($skinInfo['thumbnailUrl']);
+			$image = $this->getImage($thumbnailUrl);
 		} catch (ClientException|ServerException $e) {
 			$this->logger->warning('Skin thumbnail request failed: ' . $e->getMessage(), ['app' => Application::APP_ID]);
 			return null;
 		}
-		$png = TgaImageConverter::convertToPng($image['body'] ?? '');
+		$png = TgaImageConverter::convertToPng((string)($image['body'] ?? ''));
 		if ($png === null) {
 			$this->logger->warning('Failed to convert skin thumbnail from TGA to PNG', ['app' => Application::APP_ID]);
+			return null;
 		}
-		return $png === null ? null : ['body' => $png];
+		return ['body' => $png, 'contentType' => 'image/png'];
+	}
+
+	/**
+	 * Search the skin ZIP for an image which can be used as thumbnail.
+	 * Only the ZIP central directory and the selected image are downloaded,
+	 * through range requests, Nadeo skin ZIPs can be tens of MBs.
+	 *
+	 * @param array $skinInfo as returned by getSkinInfo()
+	 * @return array|null ['body' => string, 'contentType' => string] or null when nothing usable was found this time.
+	 *                    ['body' => '', 'contentType' => ''] when the ZIP was successfully inspected and definitely has no preview
+	 */
+	private function getZipSkinThumbnail(array $skinInfo): ?array {
+		$zipUrls = array_values(array_filter([
+			$skinInfo['fileOptimizedUrl'] ?? '',
+			$skinInfo['fileUrl'] ?? '',
+		]));
+		if (count($zipUrls) === 0) {
+			return ['body' => '', 'contentType' => ''];
+		}
+		$emptyResult = ['body' => '', 'contentType' => ''];
+		$inspectedWithoutPreview = false;
+		$couldHaveMore = false;
+		foreach ($zipUrls as $zipUrl) {
+			$entries = $this->getZipImageEntries($zipUrl);
+			if ($entries === null) {
+				// the ZIP could not be inspected, temporarily or not
+				$couldHaveMore = true;
+				continue;
+			}
+			$selected = SkinZipPreview::filterPreviewEntries($entries)[0] ?? null;
+			if ($selected === null) {
+				// the ZIP was fully inspected: it contains no usable preview image,
+				// but its other version may still have one
+				$inspectedWithoutPreview = true;
+				continue;
+			}
+			$image = $this->extractZipEntryImage($zipUrl, $selected);
+			if ($image === null) {
+				$couldHaveMore = true;
+				continue;
+			}
+			return $image;
+		}
+		// every candidate ZIP got inspected and none had a usable image
+		return ($inspectedWithoutPreview && !$couldHaveMore) ? $emptyResult : null;
+	}
+
+	/**
+	 * List the image entries of a remote ZIP file.
+	 *
+	 * @param string $zipUrl
+	 * @return array|null entry list like SkinZipPreview::listEntries(), null when the file could not be read
+	 */
+	private function getZipImageEntries(string $zipUrl): ?array {
+		// one-byte probe: gets the file size from Content-Range or, when a server ignores ranges,
+		// the whole body to avoid more downloads
+		$probe = $this->fetchZipRange($zipUrl, '0-0');
+		if ($probe === null) {
+			return null;
+		}
+		$whole = '';
+		if ($probe['status'] === 206 && preg_match('/\/(\d+)$/', $probe['contentRange'], $m)) {
+			$total = (int)$m[1];
+		} else {
+			// the range was ignored, the whole file is already here
+			$whole = $probe['body'];
+			$total = strlen($whole);
+		}
+		if ($total === 0) {
+			return null;
+		}
+
+		// the end of central directory record sits in the last bytes of the file
+		$tailLength = min($total, self::ZIP_EOCD_SEARCH_SIZE);
+		$tail = ($whole !== '')
+			? substr($whole, $total - $tailLength)
+			: ($this->fetchZipSlice($zipUrl, $total - $tailLength, $total - 1) ?? '');
+		$eocd = SkinZipPreview::parseEOCD($tail);
+		if ($eocd === null) {
+			return null;
+		}
+
+		$centralDirectory = ($whole !== '')
+			? substr($whole, $eocd['cdOffset'], $eocd['cdSize'])
+			: ($this->fetchZipSlice($zipUrl, $eocd['cdOffset'], $eocd['cdOffset'] + $eocd['cdSize'] - 1) ?? '');
+		if ($centralDirectory === '' || strlen($centralDirectory) !== $eocd['cdSize']) {
+			return null;
+		}
+		return SkinZipPreview::listEntries($centralDirectory);
+	}
+
+	/**
+	 * Download and decompress one ZIP entry.
+	 *
+	 * @param string $zipUrl
+	 * @param array $entry like SkinZipPreview::listEntries() items
+	 * @return array|null ['body' => string, 'contentType' => string] or null when the entry cannot be turned into an image
+	 */
+	private function extractZipEntryImage(string $zipUrl, array $entry): ?array {
+		// a small margin first: some local headers have an extra field longer than the central one
+		$data = $this->fetchZipSlice($zipUrl, $entry['localHeaderOffset'], $entry['localHeaderOffset'] + 30 + strlen($entry['name']) + 4095);
+		if ($data === null) {
+			return null;
+		}
+		$dataOffset = SkinZipPreview::localDataOffset(substr($data, 0, 30));
+		if ($dataOffset === null) {
+			return null;
+		}
+		$neededLength = $dataOffset + $entry['compressedSize'];
+		if (strlen($data) < $neededLength) {
+			$more = $this->fetchZipSlice($zipUrl, $entry['localHeaderOffset'] + strlen($data), $entry['localHeaderOffset'] + $neededLength - 1);
+			if ($more === null) {
+				return null;
+			}
+			$data .= $more;
+		}
+		$compressed = substr($data, $dataOffset, $entry['compressedSize']);
+		if (strlen($compressed) < $entry['compressedSize']) {
+			return null;
+		}
+		$image = SkinZipPreview::decodeEntry($compressed, $entry['method'], $entry['uncompressedSize']);
+		if ($image === null) {
+			$this->logger->warning('Failed to decompress skin preview entry ' . $entry['name'], ['app' => Application::APP_ID]);
+			return null;
+		}
+		$extension = strtolower(pathinfo($entry['name'], PATHINFO_EXTENSION));
+		if ($extension === 'png') {
+			return ['body' => $image, 'contentType' => 'image/png'];
+		}
+		if ($extension === 'jpg' || $extension === 'jpeg') {
+			return ['body' => $image, 'contentType' => 'image/jpeg'];
+		}
+		$png = TgaImageConverter::convertToPng($image);
+		if ($png === null) {
+			$this->logger->warning('Failed to convert skin preview from TGA to PNG', ['app' => Application::APP_ID]);
+			return null;
+		}
+		return ['body' => $png, 'contentType' => 'image/png'];
+	}
+
+	/**
+	 * @param string $url
+	 * @param string $range value of the HTTP Range header, e.g. '0-0'
+	 * @return array|null ['status' => int, 'body' => string, 'contentRange' => string] or null on network error
+	 */
+	private function fetchZipRange(string $url, string $range): ?array {
+		try {
+			$response = $this->client->get($url, [
+				'headers' => [
+					'Range' => 'bytes=' . $range,
+					'User-Agent' => Application::INTEGRATION_USER_AGENT,
+				],
+				'timeout' => 60,
+			]);
+		} catch (Exception $e) {
+			$this->logger->warning('Skin ZIP range request failed: ' . $e->getMessage(), ['app' => Application::APP_ID]);
+			return null;
+		}
+		return [
+			'status' => $response->getStatusCode(),
+			'body' => (string)$response->getBody(),
+			'contentRange' => $response->getHeader('Content-Range'),
+		];
+	}
+
+	/**
+	 * Get the raw bytes of an absolute byte range of a remote file.
+	 * Servers which ignore range requests make this cheaper: they send the whole file, sliced here.
+	 *
+	 * @param string $url
+	 * @param int $from
+	 * @param int $to inclusive
+	 * @return string|null the bytes between $from and $to, null on network error
+	 */
+	private function fetchZipSlice(string $url, int $from, int $to): ?string {
+		$response = $this->fetchZipRange($url, $from . '-' . $to);
+		if ($response === null) {
+			return null;
+		}
+		if ($response['status'] === 206) {
+			return $response['body'];
+		}
+		return strlen($response['body']) > $from ? substr($response['body'], $from, $to - $from + 1) : null;
 	}
 
 	/**
