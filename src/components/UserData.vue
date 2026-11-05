@@ -1482,6 +1482,11 @@ export default {
 
 	.stat-tile--zone {
 		cursor: pointer;
+		// some children have their own UA/global cursor, keep the pointer everywhere
+		* {
+			cursor: pointer;
+		}
+
 		min-width: 120px;
 
 		&:hover {
@@ -1536,6 +1541,10 @@ export default {
 			padding: 12px 0;
 			cursor: pointer;
 			user-select: none;
+			// some children have their own UA/global cursor, keep the pointer everywhere
+			* {
+				cursor: pointer;
+			}
 			color: var(--color-text-maxcontrast);
 
 			.table-options-title {
@@ -1588,6 +1597,13 @@ export default {
 		* {
 			cursor: pointer !important;
 		}
+	}
+
+	// the map name cell has its own (always-on) background, which is not affected
+	// by the row hover background-color of SimpleTable: emulate the row hover here
+	// (:not(:hover) keeps the cell's own cyan hover effective when directly hovered)
+	:deep(tr:hover .mapNameColumn:not(:hover)) {
+		background-color: color-mix(in srgb, var(--color-primary-element-hover) 40%, transparent);
 	}
 
 	:deep(.mapFavoriteColumn) {

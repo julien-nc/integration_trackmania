@@ -132,6 +132,25 @@ export default {
 	border-collapse: separate;
 	border-spacing: 0;
 
+	// rounded corners need to be set on the corner cells: cells tile the whole
+	// table box, so a radius on the table element alone would not clip them
+	border-radius: var(--border-radius-element);
+
+	thead {
+		tr:first-of-type {
+			th {
+				border-top: 1px solid var(--tm-line);
+
+				&:first-of-type {
+					border-top-left-radius: var(--border-radius-element);
+				}
+				&:last-of-type {
+					border-top-right-radius: var(--border-radius-element);
+				}
+			}
+		}
+	}
+
 	&,
 	th,
 	td {
@@ -149,6 +168,15 @@ export default {
 
 		&:first-of-type td {
 			border-top: 1px solid var(--tm-line);
+		}
+
+		&:last-of-type td {
+			&:first-of-type {
+				border-bottom-left-radius: var(--border-radius-element);
+			}
+			&:last-of-type {
+				border-bottom-right-radius: var(--border-radius-element);
+			}
 		}
 
 		&:hover {
