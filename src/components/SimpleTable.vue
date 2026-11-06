@@ -12,7 +12,7 @@
 							{{ c.label }}
 						</span>
 						<span class="spacer" />
-						<span v-if="columnSortSuffix[c.sortName]" class="sort-suffix">
+						<span v-if="columnSortSuffix[c.sortName]" class="sort-suffix sorted">
 							{{ columnSortSuffix[c.sortName] }}
 						</span>
 						<span v-else-if="c.sortName" class="sort-suffix">
@@ -200,8 +200,9 @@ export default {
 				.title {
 					&.sorted {
 						font-weight: bold;
-						color: var(--tm-cyan);
-						text-shadow: 0 0 12px rgba(31, 212, 232, 0.35);
+						// neon text: same driver as the page title for color and glow
+						color: var(--tm-neon-glow-text);
+						filter: var(--tm-neon-glow);
 					}
 				}
 			}
@@ -233,7 +234,12 @@ export default {
 				align-items: center;
 				justify-content: center;
 				line-height: 12px;
-				color: var(--tm-cyan);
+
+				&.sorted {
+					// neon text: same driver as the page title for color and glow
+					color: var(--tm-neon-glow-text);
+					filter: var(--tm-neon-glow);
+				}
 			}
 		}
 	}

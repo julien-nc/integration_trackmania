@@ -579,6 +579,15 @@ h2.page-title {
 	--tm-ring-strong: rgba(0, 0, 0, 0.18);
 	--tm-line: rgba(0, 0, 0, 0.09);
 	--tm-tile-bg: rgba(0, 0, 0, 0.03);
+
+	// neon glow for emphasized texts, tuned for dark backgrounds.
+	// the glowing elements must use --tm-neon-glow-text as color so the text
+	// itself participates in the illusion of the light source
+	--tm-neon-glow: drop-shadow(0 0 2px color-mix(in srgb, var(--color-primary) 100%, transparent))
+		drop-shadow(0 0 6px color-mix(in srgb, var(--color-primary) 80%, transparent))
+		drop-shadow(0 0 16px color-mix(in srgb, var(--color-primary) 60%, transparent))
+		drop-shadow(0 0 36px color-mix(in srgb, var(--color-primary) 40%, transparent));
+	--tm-neon-glow-text: currentColor;
 }
 
 @supports not (backdrop-filter: blur(1px)) {
@@ -600,6 +609,27 @@ body[data-theme-dark] {
 	--tm-ring-strong: rgba(255, 255, 255, 0.16);
 	--tm-line: rgba(255, 255, 255, 0.07);
 	--tm-tile-bg: rgba(255, 255, 255, 0.04);
+}
+
+body[data-theme-light] {
+	// on light backgrounds the tight glow layers of the dark mode turn into a
+	// muddy halo on the text: keep the glow tight so it outlines the text, and
+	// tint the text itself towards the primary color so letters and glow read
+	// as the same light source
+	// (recommendations from the CSS community, e.g. the neon glow guides)
+	--tm-neon-glow: drop-shadow(0 0 1px color-mix(in srgb, var(--color-primary) 100%, transparent))
+		drop-shadow(0 0 3px color-mix(in srgb, var(--color-primary) 90%, transparent))
+		drop-shadow(0 0 9px color-mix(in srgb, var(--color-primary) 40%, transparent));
+	--tm-neon-glow-text: color-mix(in srgb, var(--color-primary) 75%, currentColor);
+}
+
+@media (prefers-color-scheme: light) {
+	body:not([data-theme-light]):not([data-theme-dark]) {
+		--tm-neon-glow: drop-shadow(0 0 1px color-mix(in srgb, var(--color-primary) 100%, transparent))
+			drop-shadow(0 0 3px color-mix(in srgb, var(--color-primary) 90%, transparent))
+			drop-shadow(0 0 9px color-mix(in srgb, var(--color-primary) 40%, transparent));
+		--tm-neon-glow-text: color-mix(in srgb, var(--color-primary) 75%, currentColor);
+	}
 }
 
 @media (prefers-color-scheme: dark) {
@@ -658,17 +688,16 @@ body[data-theme-dark] {
 	padding: 20px 0 0;
 	display: flex;
 	justify-content: center;
-	filter: drop-shadow(0 0 2px color-mix(in srgb, var(--color-primary) 100%, transparent))
-		drop-shadow(0 0 6px color-mix(in srgb, var(--color-primary) 80%, transparent))
-		drop-shadow(0 0 16px color-mix(in srgb, var(--color-primary) 60%, transparent))
-		drop-shadow(0 0 36px color-mix(in srgb, var(--color-primary) 40%, transparent));
+	filter: var(--tm-neon-glow);
 
 	.icon {
 		margin-right: 8px;
 	}
 
 	span {
-		color: var(--color-main-text);
+		// the text itself participates in the neon glow illusion (light mode);
+		// this is currentColor in dark mode
+		color: var(--tm-neon-glow-text);
 	}
 }
 </style>
