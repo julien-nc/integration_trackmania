@@ -19,7 +19,7 @@
 					</NcEmptyContent>
 					<PersonalSettings
 						class="settings"
-						:show-title="true"
+						:show-title="false"
 						:config="userState"
 						@connected="onConnected" />
 				</div>
@@ -625,9 +625,9 @@ body[data-theme-dark] {
 	min-height: 100%;
 	background-attachment: fixed;
 	background-image:
-		radial-gradient(700px 500px at 12% 0%, color-mix(in srgb, var(--color-primary) 9%, transparent), transparent 65%),
-		radial-gradient(900px 700px at 88% 24%, color-mix(in srgb, var(--color-primary) 10%, transparent), transparent 65%),
-		radial-gradient(700px 600px at 55% 95%, color-mix(in srgb, var(--color-primary) 5%, transparent), transparent 65%);
+		radial-gradient(700px 500px at 12% 0%, color-mix(in srgb, var(--color-primary) 22%, transparent), transparent 65%),
+		radial-gradient(900px 700px at 88% 24%, color-mix(in srgb, var(--color-primary) 18%, transparent), transparent 65%),
+		radial-gradient(700px 600px at 55% 95%, color-mix(in srgb, var(--color-primary) 14%, transparent), transparent 65%);
 
 	color: var(--color-main-text);
 }
@@ -658,10 +658,13 @@ body[data-theme-dark] {
 	padding: 20px 0 0;
 	display: flex;
 	justify-content: center;
+	filter: drop-shadow(0 0 2px color-mix(in srgb, var(--color-primary) 100%, transparent))
+		drop-shadow(0 0 6px color-mix(in srgb, var(--color-primary) 80%, transparent))
+		drop-shadow(0 0 16px color-mix(in srgb, var(--color-primary) 60%, transparent))
+		drop-shadow(0 0 36px color-mix(in srgb, var(--color-primary) 40%, transparent));
 
 	.icon {
 		margin-right: 8px;
-		filter: drop-shadow(0 0 10px rgba(31, 212, 232, 0.5));
 	}
 
 	span {

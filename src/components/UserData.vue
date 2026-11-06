@@ -1419,7 +1419,10 @@ export default {
 
 <style scoped lang="scss">
 #trackmania_main {
-	overflow-x: scroll;
+	// no overflow here: any non-visible overflow makes this element the nearest
+	// scroll container (even when it never scrolls) and traps the sticky table
+	// headers of SimpleTable, which must bind to the app-content scroller instead.
+	// The table's horizontal overflow is handled by .app-content.
 	height: 100%;
 	padding: 30px;
 
@@ -1731,8 +1734,8 @@ export default {
 
 	.map-thumbnail {
 		position: relative;
-		width: 320px;
-		height: 180px;
+		width: 400px;
+		height: 224px;
 
 		.map-thumbnail-loading {
 			position: absolute;

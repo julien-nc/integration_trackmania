@@ -221,13 +221,10 @@ export default {
 
 			&.header {
 				position: sticky;
-				top: -30px;
+				top: 0;
 				z-index: 999;
 			}
 			&.filter-header {
-				position: sticky;
-				top: 4px;
-				z-index: 999;
 				border-bottom: 1px solid var(--tm-line);
 			}
 			.sort-suffix {

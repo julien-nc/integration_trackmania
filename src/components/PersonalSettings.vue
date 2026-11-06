@@ -26,41 +26,38 @@
 					{{ t('integration_trackmania', 'Your login/password is not stored in Nextcloud.') }}
 				</NcNoteCard>
 				<div v-show="!connected"
-					class="line">
-					<label
-						for="trackmania-login">
-						<AccountIcon :size="20" class="icon" />
-						{{ t('integration_trackmania', 'Login') }}
-					</label>
-					<input id="trackmania-login"
+					id="login-form">
+					<NcTextField
+						id="trackmania-login"
 						v-model="login"
-						type="text"
+						:label="t('integration_trackmania', 'Login')"
 						:placeholder="t('integration_trackmania', 'Trackmania service account login')"
 						@keyup.enter="connectWithCredentials">
-				</div>
-				<div v-show="!connected"
-					class="line">
-					<label
-						for="trackmania-password">
-						<LockIcon :size="20" class="icon" />
-						{{ t('integration_trackmania', 'Password') }}
-					</label>
-					<input id="trackmania-password"
+						<template #icon>
+							<AccountIcon :size="20" />
+						</template>
+					</NcTextField>
+					<NcPasswordField
+						id="trackmania-password"
 						v-model="password"
-						type="password"
+						:label="t('integration_trackmania', 'Password')"
 						:placeholder="t('integration_trackmania', 'Trackmania service account password')"
 						@keyup.enter="connectWithCredentials">
+						<template #icon>
+							<LockIcon :size="20" />
+						</template>
+					</NcPasswordField>
+					<NcButton v-if="!connected"
+						id="trackmania-connect"
+						:disabled="loading === true || !login || !password"
+						:class="{ loading }"
+						@click="connectWithCredentials">
+						<template #icon>
+							<OpenInNewIcon />
+						</template>
+						{{ t('integration_trackmania', 'Connect to Trackmania') }}
+					</NcButton>
 				</div>
-				<NcButton v-if="!connected"
-					id="trackmania-connect"
-					:disabled="loading === true || !login || !password"
-					:class="{ loading }"
-					@click="connectWithCredentials">
-					<template #icon>
-						<OpenInNewIcon />
-					</template>
-					{{ t('integration_trackmania', 'Connect to Trackmania') }}
-				</NcButton>
 				<div v-if="connected" class="line">
 					<label class="trackmania-connected">
 						<CheckIcon :size="20" class="icon" />
@@ -89,6 +86,8 @@ import TrackmaniaIcon from './icons/TrackmaniaIcon.vue'
 
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
+import NcTextField from '@nextcloud/vue/components/NcTextField'
+import NcPasswordField from '@nextcloud/vue/components/NcPasswordField'
 
 import { loadState } from '@nextcloud/initial-state'
 import { generateUrl } from '@nextcloud/router'
@@ -102,6 +101,8 @@ export default {
 		TrackmaniaIcon,
 		NcButton,
 		NcNoteCard,
+		NcTextField,
+		NcPasswordField,
 		OpenInNewIcon,
 		CloseIcon,
 		CheckIcon,
@@ -214,15 +215,8 @@ export default {
 
 	h2 {
 		justify-content: start;
-	}
-
-	h2,
-	.line {
 		display: flex;
 		align-items: center;
-		.icon {
-			margin-right: 4px;
-		}
 	}
 
 	h2 .icon {
@@ -230,20 +224,35 @@ export default {
 	}
 
 	.line {
-		> label {
-			width: 300px;
-			display: flex;
-			align-items: center;
-		}
-		> input {
-			width: 300px;
-		}
+		display: flex;
+		align-items: center;
 	}
 
-	// the hint cards must match the width of the login form lines (label + input)
-	#trackmania-connect-block .notecard {
-		width: 600px;
-		box-sizing: border-box;
+	.trackmania-connected {
+		flex: auto;
+	}
+
+	// the login form block spans up to 800px wide so its children fill it
+	#trackmania-connect-block {
+		display: flex;
+		flex-direction: column;
+		max-width: 800px;
+		gap: 8px;
+		// NcNoteCard has a built-in vertical margin, the block gap handles the spacing
+		.notecard {
+			margin: 0;
+		}
+		// the login fields and the connect button live in their own narrow block
+		#login-form {
+			display: flex;
+			flex-direction: column;
+			max-width: 400px;
+			// NcButton is a flex block filling its container, keep it content-sized and left-aligned
+			#trackmania-connect {
+				width: fit-content;
+				margin-top: 12px;
+			}
+		}
 	}
 }
 </style>
