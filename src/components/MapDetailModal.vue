@@ -16,44 +16,85 @@
 			</span>
 			<img :src="thumbnailUrl"
 				class="thumbnail">
-			<span>
-				{{ t('integration_trackmania', 'Map Id') }}: {{ pb.mapInfo.mapId }}
-			</span>
-			<span>
-				{{ t('integration_trackmania', 'Map Uid') }}: {{ pb.mapInfo.uid }}
-			</span>
-			<span v-if="pb.mapInfo.nb_players">
-				{{ t('integration_trackmania', 'My position') }}: {{ pb.recordPosition.zones.World }} / {{ pb.mapInfo.nb_players }} ({{ positionPercent }})
-			</span>
-			<span>
-				{{ t('integration_trackmania', 'My time') }}: {{ pb.record.recordScore.formattedTime }}
-			</span>
-			<span :title="formattedBestMedal"
-				class="medal">
-				{{ t('integration_trackmania', 'My medal') }}:
-				<span>{{ pb.record.formattedMedal }}</span>
-				<img :src="getMedalImageUrl(pb.record.medal)">
-			</span>
-			<span
-				class="medalTime"
-				:class="{ success: pb.record.recordScore.time - pb.mapInfo.authorTime < 0 }">
-				{{ pb.mapInfo.formattedAuthorTime }}
-			</span>
-			<span
-				class="medalTime"
-				:class="{ success: pb.record.recordScore.time - pb.mapInfo.goldTime < 0 }">
-				{{ pb.mapInfo.formattedGoldTime }}
-			</span>
-			<span
-				class="medalTime"
-				:class="{ success: pb.record.recordScore.time - pb.mapInfo.silverTime < 0 }">
-				{{ pb.mapInfo.formattedSilverTime }}
-			</span>
-			<span
-				class="medalTime"
-				:class="{ success: pb.record.recordScore.time - pb.mapInfo.bronzeTime < 0 }">
-				{{ pb.mapInfo.formattedBronzeTime }}
-			</span>
+			<div class="mapInfo">
+				<span class="lineLabel">
+					{{ t('integration_trackmania', 'Map Id') }}
+				</span>
+				<span>
+					{{ pb.mapInfo.mapId }}
+				</span>
+				<span class="lineLabel">
+					{{ t('integration_trackmania', 'Map Uid') }}
+				</span>
+				<span>
+					{{ pb.mapInfo.uid }}
+				</span>
+				<template v-if="pb.mapInfo.nb_players">
+					<span class="lineLabel">
+						{{ t('integration_trackmania', 'My position') }}
+					</span>
+					<span>
+						{{ pb.recordPosition.zones.World }} / {{ pb.mapInfo.nb_players }} ({{ positionPercent }})
+					</span>
+				</template>
+				<span class="lineLabel">
+					{{ t('integration_trackmania', 'My time') }}
+				</span>
+				<span>
+					{{ pb.record.recordScore.formattedTime }}
+				</span>
+				<span class="lineLabel">
+					{{ t('integration_trackmania', 'My medal') }}
+				</span>
+				<span
+					:title="formattedBestMedal"
+					class="medal">
+					<span>{{ pb.record.formattedMedal }}</span>
+					<img :src="getMedalImageUrl(pb.record.medal)">
+				</span>
+				<template v-for="medalTime in medalTimes"
+					:key="medalTime.label">
+					<span class="lineLabel">
+						{{ medalTime.label }}
+					</span>
+					<span class="medalTime">
+						{{ medalTime.formattedTime }}
+						(<span
+							class="medalDelta"
+							:class="{ success: medalTime.delta < 0, error: medalTime.delta > 0 }">
+							{{ medalTime.formattedDelta }}
+						</span>)
+					</span>
+				</template>
+				<template v-if="isWorldRecordHolder || pb.worldRecord || worldRecordLoading">
+					<span class="lineLabel">
+						{{ t('integration_trackmania', 'World record') }}
+					</span>
+					<span v-if="isWorldRecordHolder" class="wrapperHolder">
+						{{ t('integration_trackmania', 'You are the world record holder') }}
+					</span>
+					<span v-else-if="pb.worldRecord" class="worldRecord">
+						{{ pb.worldRecord.formattedTime }}
+						<span
+							class="wrDelta"
+							:class="{ success: pb.worldRecord.delta <= 0, error: pb.worldRecord.delta > 0 }">
+							{{ pb.worldRecord.formattedDelta }}
+						</span>
+						<span
+							v-if="pb.worldRecord.name"
+							:title="t('integration_trackmania', 'World record holder')">
+							{{ t('integration_trackmania', 'by {holderName}', { holderName: pb.worldRecord.name }) }}
+						</span>
+						<span
+							class="wrDate"
+							:title="t('integration_trackmania', 'World record date')">
+							{{ pb.worldRecord.formattedDate }}
+						</span>
+					</span>
+					<span v-else-if="worldRecordLoading" class="wrapperHolder">
+						<NcLoadingIcon :size="20" /></span>
+				</template>
+			</div>
 			<div v-if="otherGhostUrl" class="ghost-url">
 				<label>{{ t('integration_trackmania', 'Ghost URL of {accountId}', { accountId: configState.other_account_name || configState.other_account_id }) }}</label>
 				<a :href="otherGhostUrl">
@@ -80,6 +121,7 @@
 import NcModal from '@nextcloud/vue/components/NcModal'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
+import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
 
 import { generateUrl } from '@nextcloud/router'
 import { emit } from '@nextcloud/event-bus'
@@ -94,6 +136,7 @@ export default {
 		NcModal,
 		NcButton,
 		NcTextField,
+		NcLoadingIcon,
 	},
 
 	props: {
@@ -109,6 +152,7 @@ export default {
 
 	emits: [
 		'close',
+		'world-record-fetched',
 	],
 
 	data() {
@@ -116,6 +160,7 @@ export default {
 			otherGhostUrl: '',
 			accountIdForGhostUrl: '',
 			ghostUrl: '',
+			worldRecordLoading: false,
 		}
 	},
 
@@ -133,6 +178,13 @@ export default {
 		formattedBestMedal() {
 			return getFormattedBestMedal(this.pb)
 		},
+		isWorldRecordHolder() {
+			return this.pb.recordPosition?.zones?.World === 1
+		},
+		medalTimes() {
+			const medalTimes = this.pb.mapInfo.medalTimes ?? {}
+			return [medalTimes.author, medalTimes.gold, medalTimes.silver, medalTimes.bronze].filter(t => t)
+		},
 	},
 
 	watch: {
@@ -146,11 +198,32 @@ export default {
 
 	mounted() {
 		this.getOtherGhostUrl()
+		this.getWorldRecord()
 	},
 
 	methods: {
 		getMedalImageUrl(medal) {
 			return getMedalImageUrl(medal)
+		},
+		getWorldRecord() {
+			if (this.pb.worldRecord || this.isWorldRecordHolder) {
+				return
+			}
+			this.worldRecordLoading = true
+			const url = generateUrl('/apps/integration_trackmania/map/{mapUid}/world-record', { mapUid: this.pb.mapInfo.uid })
+			axios.get(url).then((response) => {
+				if (response.data) {
+					this.$emit('world-record-fetched', this.pb, response.data)
+				}
+				this.worldRecordLoading = false
+			}).catch((error) => {
+				showError(
+					t('integration_trackmania', 'Failed to get world record')
+					+ ': ' + (error.response?.request?.responseText ?? ''),
+				)
+				console.error(error)
+				this.worldRecordLoading = false
+			})
 		},
 		getOtherGhostUrl() {
 			if (this.configState.other_account_id) {
@@ -213,19 +286,46 @@ export default {
 	.map-name-button {
 		background-color: #909090;
 	}
-	.medal {
-		display: flex;
-		align-items: center;
-		gap: 4px;
-		img {
-			width: 32px;
+	.mapInfo {
+		display: grid;
+		grid-template-columns: auto auto;
+		justify-content: center;
+		align-items: baseline;
+		column-gap: 12px;
+		row-gap: 6px;
+
+		.lineLabel {
+			text-align: end;
+			color: var(--color-text-maxcontrast);
 		}
-	}
-	.medalTime {
-		color: var(--tm-red);
+		.medal {
+			display: flex;
+			align-items: center;
+			gap: 4px;
+			img {
+				width: 32px;
+			}
+		}
+		.medalTime {
+			white-space: nowrap;
+		}
+		.medalDelta {
+			margin-inline-start: 4px;
+		}
+		.worldRecord {
+			display: flex;
+			gap: 4px;
+			white-space: nowrap;
+		}
+		.wrapperHolder {
+			white-space: nowrap;
+		}
 	}
 	.success {
 		color: var(--tm-green);
+	}
+	.error {
+		color: var(--tm-red);
 	}
 }
 </style>

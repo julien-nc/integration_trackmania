@@ -472,4 +472,21 @@ class TrackmaniaAPIController extends Controller {
 		}
 		return new DataResponse($result);
 	}
+
+	/**
+	 * @param string $mapUid
+	 * @return DataResponse
+	 */
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
+	public function getMapWorldRecord(string $mapUid): DataResponse {
+		try {
+			$result = $this->trackmaniaAPIService->getWorldRecord($this->userId, $mapUid);
+		} catch (TokenRefreshException|TmApiRequestException $e) {
+			return $this->getExceptionResponse($e);
+		} catch (\Throwable $e) {
+			return new DataResponse($e->getMessage(), Http::STATUS_BAD_REQUEST);
+		}
+		return new DataResponse($result);
+	}
 }

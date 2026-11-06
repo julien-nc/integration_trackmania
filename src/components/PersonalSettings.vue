@@ -11,9 +11,20 @@
 				{{ t('integration_trackmania', 'Your administrator didn\'t set any Trackmania OAuth app credentials. The map author names won\'t be displayed') }}
 			</NcNoteCard>
 			<div id="trackmania-connect-block">
-				<p v-if="!connected" class="settings-hint">
+				<NcNoteCard v-if="!connected"
+					type="info"
+					:heading="t('integration_trackmania', 'Use a service account')">
+					<p>
+						{{ t('integration_trackmania', 'You have to use a dedicated Trackmania account as a service account. You can create a new account with this link:') }}
+						<a href="https://www.trackmania.com/player/service-account" target="_blank" class="external">
+							https://www.trackmania.com/player/service-account
+						</a>
+					</p>
+				</NcNoteCard>
+				<NcNoteCard v-if="!connected"
+					type="info">
 					{{ t('integration_trackmania', 'Your login/password is not stored in Nextcloud.') }}
-				</p>
+				</NcNoteCard>
 				<div v-show="!connected"
 					class="line">
 					<label
@@ -206,8 +217,7 @@ export default {
 	}
 
 	h2,
-	.line,
-	.settings-hint {
+	.line {
 		display: flex;
 		align-items: center;
 		.icon {
@@ -228,6 +238,12 @@ export default {
 		> input {
 			width: 300px;
 		}
+	}
+
+	// the hint cards must match the width of the login form lines (label + input)
+	#trackmania-connect-block .notecard {
+		width: 600px;
+		box-sizing: border-box;
 	}
 }
 </style>

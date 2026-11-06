@@ -140,7 +140,8 @@
 		<MapDetailModal v-if="detailPb"
 			:pb="detailPb"
 			:config-state="configState"
-			@close="detailPb = null" />
+			@close="detailPb = null"
+			@world-record-fetched="onWorldRecordFetched" />
 		<div class="table-header">
 			<span>
 				{{ t('integration_trackmania', '{nb} track records', { nb: rowCount }) }}
@@ -162,9 +163,33 @@
 			@header-shift-clicked="onHeaderShiftClick">
 			<template #cell="{row, column}">
 				<!-- eslint-disable vue/no-v-html -->
-				<span v-if="column.field === 'mapInfo.cleanName'"
-					:title="row.mapInfo.cleanName"
-					v-html="row.mapInfo.htmlName" />
+				<NcPopover v-if="column.field === 'mapInfo.cleanName'"
+					class="map-name-popover"
+					:delay="{ show: 300, hide: 100 }"
+					:triggers="['hover']"
+					no-focus-trap>
+					<template #trigger>
+						<span class="map-name-cell-trigger" v-html="row.mapInfo.htmlName" />
+					</template>
+					<template #default>
+						<div class="map-name-popover-content">
+							<div
+								class="map-thumbnail"
+								:class="{ 'thumbnail-loaded': mapThumbnailLoaded[row.mapInfo.mapId] }">
+								<span class="map-thumbnail-loading">
+									<NcLoadingIcon v-if="!mapThumbnailLoaded[row.mapInfo.mapId]"
+										:size="24" />
+								</span>
+								<img
+									:src="mapThumbnailUrl(row.mapInfo.mapId)"
+									alt=""
+									loading="lazy"
+									@load="onMapThumbnailLoad(row.mapInfo.mapId)">
+							</div>
+							<span class="popover-map-name">{{ row.mapInfo.cleanName }}</span>
+						</div>
+					</template>
+				</NcPopover>
 				<!-- eslint-enable -->
 				<span v-else-if="column.field === 'mapInfo.favorite'"
 					:title="t('integration_trackmania', 'Click to toggle favorite')">
@@ -453,6 +478,7 @@ import TableCogIcon from 'vue-material-design-icons/TableCog.vue'
 
 import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
 import NcButton from '@nextcloud/vue/components/NcButton'
+import NcPopover from '@nextcloud/vue/components/NcPopover'
 
 import moment from '@nextcloud/moment'
 import { generateUrl, imagePath } from '@nextcloud/router'
@@ -460,7 +486,7 @@ import axios from '@nextcloud/axios'
 import { emit } from '@nextcloud/event-bus'
 import { defineAsyncComponent } from 'vue'
 import {
-	dig, getFormattedBestMedal, getMedalImageUrl,
+	dig, getFormattedBestMedal, getMedalImageUrl, formatWorldRecord,
 	authorMedalImageUrl, goldMedalImageUrl, silverMedalImageUrl, bronzeMedalImageUrl,
 } from '../utils.js'
 // import NbRecordsPerPosition from './charts/NbRecordsPerPosition.vue'
@@ -522,6 +548,7 @@ export default {
 		NcSelect: defineAsyncComponent(() => import('@nextcloud/vue/components/NcSelect')),
 		NcButton,
 		NcLoadingIcon,
+		NcPopover,
 		NcTextField: defineAsyncComponent(() => import('@nextcloud/vue/components/NcTextField')),
 		NcDateTimePicker: defineAsyncComponent(() => import('@nextcloud/vue/components/NcDateTimePicker')),
 		NcCheckboxRadioSwitch: defineAsyncComponent(() => import('@nextcloud/vue/components/NcCheckboxRadioSwitch')),
@@ -612,6 +639,7 @@ export default {
 			zonePositionFilters: {},
 			sortOptions: this.initSortOptions(),
 			detailPb: null,
+			mapThumbnailLoaded: {},
 			visibleRowCount: RENDER_CHUNK,
 			// the table options card is collapsed by default
 			tableOptionsOpen: false,
@@ -1092,6 +1120,12 @@ export default {
 		getMedalImageUrl(medal) {
 			return getMedalImageUrl(medal)
 		},
+		mapThumbnailUrl(mapId) {
+			return generateUrl('/apps/integration_trackmania/map/{mapId}/thumbnail', { mapId })
+		},
+		onMapThumbnailLoad(mapId) {
+			this.mapThumbnailLoaded[mapId] = true
+		},
 		getFormattedBestMedal(pb) {
 			return getFormattedBestMedal(pb)
 		},
@@ -1328,6 +1362,10 @@ export default {
 			} else if (column.field === 'mapInfo.favorite') {
 				emit('toggle-favorite', row)
 			}
+		},
+		onWorldRecordFetched(pb, worldRecord) {
+			pb.worldRecord = worldRecord
+			formatWorldRecord(pb)
 		},
 		onHeaderShiftClick(column) {
 			if (this.sortOptions.length === 0) {
@@ -1669,6 +1707,55 @@ export default {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 8px;
+	}
+}
+
+// The popover trigger must be the whole map name cell: floating-vue binds the
+// hover listeners to the trigger's root element, so outdent it over the cell
+// padding (SimpleTable uses 6px) to cover the entire cell
+.map-name-cell-trigger {
+	display: block;
+	box-sizing: border-box;
+	margin: -6px;
+	padding: 6px;
+	height: calc(100% + 12px);
+}
+
+// NcPopover content is teleported to body, keep it out of the #trackmania_main nesting
+.map-name-popover-content {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	align-items: center;
+	padding: 8px;
+
+	.map-thumbnail {
+		position: relative;
+		width: 320px;
+		height: 180px;
+
+		.map-thumbnail-loading {
+			position: absolute;
+			inset: 0;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
+		img {
+			position: absolute;
+			inset: 0;
+			width: 100%;
+			height: 100%;
+			object-fit: contain;
+			border-radius: var(--tm-radius-small);
+			visibility: hidden;
+		}
+	}
+	.thumbnail-loaded img {
+		visibility: visible;
+	}
+	.popover-map-name {
+		text-align: center;
 	}
 }
 </style>

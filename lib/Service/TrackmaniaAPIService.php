@@ -1506,6 +1506,20 @@ class TrackmaniaAPIService {
 	/**
 	 * @param string $userId
 	 * @param string $mapUid
+	 * @return array|null the world record info ['time', 'account_id', 'name', 'unix_timestamp'] or null when there is none
+	 * @throws PreConditionNotMetException
+	 * @throws TmApiRequestException
+	 * @throws TokenRefreshException
+	 */
+	public function getWorldRecord(string $userId, string $mapUid): ?array {
+		$worldRecords = $this->getWorldRecords($userId, [$mapUid]);
+		$worldRecord = $worldRecords[$mapUid] ?? null;
+		return ($worldRecord !== null && $worldRecord['time'] !== null) ? $worldRecord : null;
+	}
+
+	/**
+	 * @param string $userId
+	 * @param string $mapUid
 	 * @param int $position
 	 * @return bool
 	 * @throws PreConditionNotMetException
