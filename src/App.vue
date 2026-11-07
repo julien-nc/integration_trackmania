@@ -419,6 +419,10 @@ export default {
 				this.infoLoadingPercent = parseInt(
 					FAVORITES_PERCENT_END + (loadedShare * (100 - FAVORITES_PERCENT_END)),
 				)
+				this.loadingText = t('integration_trackmania', 'Loading map info ({count}/{total})', {
+					count: this.$options.pbsWithInfo.length,
+					total: this.$options.rawPbsToGetInfoOn.length,
+				})
 				console.debug(`----- ${++this.$options.nbChunksDone}/${this.$options.nbChunks} chunks done ${this.infoLoadingPercent} %`)
 				return response
 			}).catch((error) => {
