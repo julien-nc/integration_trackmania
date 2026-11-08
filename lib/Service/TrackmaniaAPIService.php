@@ -387,20 +387,23 @@ class TrackmaniaAPIService {
 
 	/**
 	 * @param string $userId
+	 * @param bool $withFavorites false in the cron path: the favorites requests are skipped
+	 *                            and the favorite flag is always false, as the results are not exposed to the UI
 	 * @return Generator
 	 * @throws PreConditionNotMetException
 	 * @throws TmApiRequestException
 	 * @throws TokenRefreshException
 	 */
-	public function getAllMapsWithPosition(string $userId): Generator {
+	public function getAllMapsWithPosition(string $userId, bool $withFavorites = true): Generator {
 		$prefix = Application::AUDIENCES[Application::AUDIENCE_CORE]['token_config_key_prefix'];
 		$userAccountId = $this->userConfig->getValueString($userId, Application::APP_ID, $prefix . 'account_id');
 
-		// get favorites because liveMapInfo always says favorite: false
-		$allFavs = $this->getAllFavorites($userId);
 		$allFavsByMapId = [];
-		foreach ($allFavs as $fav) {
-			$allFavsByMapId[$fav['mapId']] = 1;
+		if ($withFavorites) {
+			// get favorites because liveMapInfo always says favorite: false
+			foreach ($this->getAllFavorites($userId) as $fav) {
+				$allFavsByMapId[$fav['mapId']] = 1;
+			}
 		}
 
 		// $pbs = iterator_to_array($this->getMapRecords($userId));
@@ -2150,7 +2153,8 @@ class TrackmaniaAPIService {
 			}
 			try {
 				error_log('[TM] Starting user ' . $userId);
-				foreach ($this->getAllMapsWithPosition($userId) as $item) {
+				// the favorite flag is not read by the cron, skip the favorites requests
+				foreach ($this->getAllMapsWithPosition($userId, false) as $item) {
 					yield ['user_id' => $userId, 'map' => $item];
 				};
 				error_log('[TM] End user ' . $userId);
