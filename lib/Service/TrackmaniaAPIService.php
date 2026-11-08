@@ -912,12 +912,12 @@ class TrackmaniaAPIService {
 		try {
 			$image = $this->getImage($thumbnailUrl);
 		} catch (ClientException|ServerException $e) {
-			$this->logger->warning('Skin thumbnail request failed: ' . $e->getMessage(), ['app' => Application::APP_ID]);
+			$this->logger->warning('Skin thumbnail request failed: ' . $e->getMessage());
 			return null;
 		}
 		$png = TgaImageConverter::convertToPng((string)($image['body'] ?? ''));
 		if ($png === null) {
-			$this->logger->warning('Failed to convert skin thumbnail from TGA to PNG', ['app' => Application::APP_ID]);
+			$this->logger->warning('Failed to convert skin thumbnail from TGA to PNG');
 			return null;
 		}
 		return ['body' => $png, 'contentType' => 'image/png'];
@@ -1043,7 +1043,7 @@ class TrackmaniaAPIService {
 		}
 		$image = SkinZipPreview::decodeEntry($compressed, $entry['method'], $entry['uncompressedSize']);
 		if ($image === null) {
-			$this->logger->warning('Failed to decompress skin preview entry ' . $entry['name'], ['app' => Application::APP_ID]);
+			$this->logger->warning('Failed to decompress skin preview entry ' . $entry['name']);
 			return null;
 		}
 		$extension = strtolower(pathinfo($entry['name'], PATHINFO_EXTENSION));
@@ -1055,7 +1055,7 @@ class TrackmaniaAPIService {
 		}
 		$png = TgaImageConverter::convertToPng($image);
 		if ($png === null) {
-			$this->logger->warning('Failed to convert skin preview from TGA to PNG', ['app' => Application::APP_ID]);
+			$this->logger->warning('Failed to convert skin preview from TGA to PNG');
 			return null;
 		}
 		return ['body' => $png, 'contentType' => 'image/png'];
@@ -1076,7 +1076,7 @@ class TrackmaniaAPIService {
 				'timeout' => 60,
 			]);
 		} catch (Exception $e) {
-			$this->logger->warning('Skin ZIP range request failed: ' . $e->getMessage(), ['app' => Application::APP_ID]);
+			$this->logger->warning('Skin ZIP range request failed: ' . $e->getMessage());
 			return null;
 		}
 		return [
@@ -1513,7 +1513,7 @@ class TrackmaniaAPIService {
 				try {
 					$response = $promises[$mapUid]->wait(true);
 				} catch (ClientException|ServerException $e) {
-					$this->logger->warning('Failed to get world record of map ' . $mapUid, ['app' => Application::APP_ID, 'exception' => $e]);
+					$this->logger->warning('Failed to get world record of map ' . $mapUid, ['exception' => $e]);
 					continue;
 				}
 				$tops = json_decode((string)$response->getBody(), true);
@@ -1581,7 +1581,7 @@ class TrackmaniaAPIService {
 				return (int)$parsedBody['player_count'];
 			}
 		} catch (Exception|Throwable $e) {
-			$this->logger->warning('Failed to get nb players from tm.waalrus.xyz', ['app' => Application::APP_ID, 'exception' => $e]);
+			$this->logger->warning('Failed to get nb players from tm.waalrus.xyz', ['exception' => $e]);
 		}
 
 		$url = 'https://map-monitor.xk.io/map/' . $mapUid . '/nb_players/refresh';
@@ -1593,7 +1593,7 @@ class TrackmaniaAPIService {
 				return (int)$parsedBody['nb_players'];
 			}
 		} catch (Exception|Throwable $e) {
-			$this->logger->warning('Failed to get nb players from map-monitor.xk.io', ['app' => Application::APP_ID, 'exception' => $e]);
+			$this->logger->warning('Failed to get nb players from map-monitor.xk.io', ['exception' => $e]);
 		}
 
 		return null;
@@ -1823,10 +1823,10 @@ class TrackmaniaAPIService {
 			}
 		} catch (ServerException|ClientException $e) {
 			$body = $e->getResponse()->getBody();
-			$this->logger->warning('Trackmania.io API error : ' . $body, ['app' => Application::APP_ID]);
+			$this->logger->warning('Trackmania.io API error : ' . $body);
 			return ['error' => $e->getMessage()];
 		} catch (Exception|Throwable $e) {
-			$this->logger->warning('Trackmania.io API error', ['exception' => $e, 'app' => Application::APP_ID]);
+			$this->logger->warning('Trackmania.io API error', ['exception' => $e]);
 			return ['error' => $e->getMessage()];
 		}
 	}
@@ -1965,7 +1965,7 @@ class TrackmaniaAPIService {
 	private function refreshToken(string $userId, string $audience): bool {
 		$refreshToken = $this->secretService->getEncryptedUserValue($userId, Application::AUDIENCES[$audience]['token_config_key_prefix'] . 'refresh_token');
 		if (!$refreshToken) {
-			$this->logger->error('No ' . $audience . ' refresh token found', ['app' => Application::APP_ID]);
+			$this->logger->error('No ' . $audience . ' refresh token found');
 			return false;
 		}
 		try {
@@ -1985,7 +1985,7 @@ class TrackmaniaAPIService {
 			} else {
 				$bodyArray = json_decode($body, true);
 				if (isset($bodyArray['accessToken'], $bodyArray['refreshToken'])) {
-					$this->logger->info($audience . 'access token successfully refreshed', ['app' => Application::APP_ID]);
+					$this->logger->info($audience . 'access token successfully refreshed');
 					$accessToken = $bodyArray['accessToken'];
 					$refreshToken = $bodyArray['refreshToken'];
 					$this->secretService->setEncryptedUserValue($userId, Application::AUDIENCES[$audience]['token_config_key_prefix'] . 'token', $accessToken);
@@ -2007,8 +2007,7 @@ class TrackmaniaAPIService {
 				$parsedResponse = json_decode($body, true);
 				$this->logger->error(
 					$audience . ' token is not valid anymore. Impossible to refresh it. '
-					. ($parsedResponse['message'] ?? '[no error message]'),
-					['app' => Application::APP_ID]
+					. ($parsedResponse['message'] ?? '[no error message]')
 				);
 			}
 			throw new TokenRefreshException($e);
@@ -2042,7 +2041,7 @@ class TrackmaniaAPIService {
 			}
 			return ['error' => $this->l10n->t('Error during login')];
 		} catch (Exception $e) {
-			$this->logger->warning('login error : ' . $e->getMessage(), ['app' => Application::APP_ID]);
+			$this->logger->warning('login error : ' . $e->getMessage());
 			return ['error' => $e->getMessage()];
 		}
 	}
@@ -2080,7 +2079,7 @@ class TrackmaniaAPIService {
 				return ['error' => $this->l10n->t('Error when getting access token')];
 			}
 		} catch (Exception $e) {
-			$this->logger->warning('login error : ' . $e->getMessage(), ['app' => Application::APP_ID]);
+			$this->logger->warning('login error : ' . $e->getMessage());
 			return ['error' => $e->getMessage()];
 		}
 	}
@@ -2152,12 +2151,12 @@ class TrackmaniaAPIService {
 				continue;
 			}
 			try {
-				$this->logger->debug('UpdatePositions: starting user ' . $userId, ['app' => Application::APP_ID]);
+				$this->logger->debug('UpdatePositions: starting user ' . $userId);
 				// the favorite flag is not read by the cron, skip the favorites requests
 				foreach ($this->getAllMapsWithPosition($userId, false) as $item) {
 					yield ['user_id' => $userId, 'map' => $item];
 				};
-				$this->logger->debug('UpdatePositions: done user ' . $userId, ['app' => Application::APP_ID]);
+				$this->logger->debug('UpdatePositions: done user ' . $userId);
 			} catch (Exception|Throwable) {
 			}
 		}
