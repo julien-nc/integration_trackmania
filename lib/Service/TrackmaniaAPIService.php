@@ -1228,29 +1228,62 @@ class TrackmaniaAPIService {
 
 	public function getScorePositions(string $userId, array $scoresByMapUid): Generator {
 		$uids = array_keys($scoresByMapUid);
+		if (count($uids) === 0) {
+			return [];
+		}
+
 		$chunkSize = 50;
-		$offset = 0;
-		while ($offset < count($uids)) {
-			$uidsToLook = array_slice($uids, $offset, $chunkSize);
-			$params = [
-				'maps' => [],
-			];
-			foreach ($uidsToLook as $uid) {
-				$params['maps'][] = [
-					'mapUid' => $uid,
-					'groupUid' => 'Personal_Best',
+		$accessToken = $this->getCheckedToken($userId, Application::AUDIENCE_LIVE);
+		$options = [
+			'headers' => [
+				'Authorization' => 'nadeo_v1 t=' . $accessToken,
+				'Content-Type' => 'application/json',
+				'User-Agent' => Application::INTEGRATION_USER_AGENT,
+			],
+			'timeout' => 120,
+		];
+
+		// each concurrent request groups up to $chunkSize maps,
+		// waves of self::CONCURRENT_RECORD_REQUESTS run in parallel
+		for ($offset = 0; $offset < count($uids); $offset += self::CONCURRENT_RECORD_REQUESTS * $chunkSize) {
+			$batchUids = array_slice($uids, $offset, self::CONCURRENT_RECORD_REQUESTS * $chunkSize);
+			$promises = [];
+			$paramsBatch = [];
+			foreach (array_chunk($batchUids, $chunkSize) as $i => $uidsToLook) {
+				$params = [
+					'maps' => [],
 				];
+				foreach ($uidsToLook as $uid) {
+					$params['maps'][] = [
+						'mapUid' => $uid,
+						'groupUid' => 'Personal_Best',
+					];
+				}
+				$getParams = array_map(static function ($uid) use ($scoresByMapUid) {
+					return 'scores[' . $uid . ']=' . $scoresByMapUid[$uid];
+				}, $uidsToLook);
+				$paramsBatch[$i] = $params;
+				$url = Application::AUDIENCES[Application::AUDIENCE_LIVE]['base_url']
+					. 'leaderboard/group/map?' . implode('&', $getParams);
+
+				$options['json'] = $params;
+				$promises[$i] = $this->client->postAsync($url, $options);
 			}
-			$getParams = array_map(function ($uid) use ($scoresByMapUid) {
-				return 'scores[' . $uid . ']=' . $scoresByMapUid[$uid];
-			}, $uidsToLook);
-			$positions = $this->request($userId, Application::AUDIENCE_LIVE, 'leaderboard/group/map?' . implode('&', $getParams), $params, 'POST');
-			if (!isset($positions['error'])) {
-				foreach ($positions as $position) {
-					yield $position;
+			// waiting on one promise drives the shared curl multi handler
+			// and also progresses the other requests in flight
+			foreach ($promises as $i => $promise) {
+				try {
+					$response = $promise->wait(true);
+				} catch (BadResponseException $e) {
+					throw new TmApiRequestException($e, Application::AUDIENCE_LIVE, 'leaderboard/group/map', 'POST', $paramsBatch[$i]);
+				}
+				$positions = json_decode((string)$response->getBody(), true);
+				if (is_array($positions)) {
+					foreach ($positions as $position) {
+						yield $position;
+					}
 				}
 			}
-			$offset = $offset + $chunkSize;
 		}
 
 		return [];
