@@ -2152,12 +2152,12 @@ class TrackmaniaAPIService {
 				continue;
 			}
 			try {
-				error_log('[TM] Starting user ' . $userId);
+				$this->logger->debug('UpdatePositions: starting user ' . $userId, ['app' => Application::APP_ID]);
 				// the favorite flag is not read by the cron, skip the favorites requests
 				foreach ($this->getAllMapsWithPosition($userId, false) as $item) {
 					yield ['user_id' => $userId, 'map' => $item];
 				};
-				error_log('[TM] End user ' . $userId);
+				$this->logger->debug('UpdatePositions: done user ' . $userId, ['app' => Application::APP_ID]);
 			} catch (Exception|Throwable) {
 			}
 		}
