@@ -157,51 +157,59 @@ class TrackPositionMapper extends QBMapper {
 			return;
 		}
 
-		$ts = time();
-		$touchedRowIds = [];
-		$rowsToInsert = [];
-		foreach (array_chunk($positionsByTrackId, self::CHUNK_SIZE, true) as $positionsChunk) {
-			$lastPositionsByTrackId = $this->getLastPositionsOfTracks($userId, $accountId, array_keys($positionsChunk));
+		// one transaction removes the per-statement autocommit overhead of the chunked writes
+		$this->db->beginTransaction();
+		try {
+			$ts = time();
+			$touchedRowIds = [];
+			$rowsToInsert = [];
+			foreach (array_chunk($positionsByTrackId, self::CHUNK_SIZE, true) as $positionsChunk) {
+				$lastPositionsByTrackId = $this->getLastPositionsOfTracks($userId, $accountId, array_keys($positionsChunk));
 
-			foreach ($positionsChunk as $trackId => $update) {
-				$lastPosition = $lastPositionsByTrackId[$trackId] ?? null;
-				if ($lastPosition === null || (int)$lastPosition->getPosition() !== $update['position']) {
-					$rowsToInsert[] = [$userId, $accountId, $trackId, $update['trackUid'], $ts, $ts, $update['position']];
-				} else {
-					$touchedRowIds[] = $lastPosition->getId();
+				foreach ($positionsChunk as $trackId => $update) {
+					$lastPosition = $lastPositionsByTrackId[$trackId] ?? null;
+					if ($lastPosition === null || (int)$lastPosition->getPosition() !== $update['position']) {
+						$rowsToInsert[] = [$userId, $accountId, $trackId, $update['trackUid'], $ts, $ts, $update['position']];
+					} else {
+						$touchedRowIds[] = $lastPosition->getId();
+					}
 				}
 			}
-		}
 
-		// refresh the last seen date of the rows whose position did not change
-		if (count($touchedRowIds) > 0) {
-			foreach (array_chunk($touchedRowIds, self::CHUNK_SIZE) as $touchedRowIdsChunk) {
-				$qb = $this->db->getQueryBuilder();
-				$qb->update($this->getTableName())
-					->set('last_seen_at', $qb->createNamedParameter($ts, IQueryBuilder::PARAM_INT))
-					->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId, IQueryBuilder::PARAM_STR)))
-					->andWhere($qb->expr()->eq('account_id', $qb->createNamedParameter($accountId, IQueryBuilder::PARAM_STR)))
-					->andWhere($qb->expr()->in('id', $qb->createNamedParameter($touchedRowIdsChunk, IQueryBuilder::PARAM_INT_ARRAY)));
-				$qb->executeStatement();
-			}
-		}
-
-		// create new rows for the positions that changed
-		if (count($rowsToInsert) > 0) {
-			// rows are inserted in chunks to respect the parameters limit of the databases
-			foreach (array_chunk($rowsToInsert, 500) as $rowsChunk) {
-				$values = [];
-				$params = [];
-				foreach ($rowsChunk as $row) {
-					$values[] = '(?, ?, ?, ?, ?, ?, ?)';
-					array_push($params, ...$row);
+			// refresh the last seen date of the rows whose position did not change
+			if (count($touchedRowIds) > 0) {
+				foreach (array_chunk($touchedRowIds, self::CHUNK_SIZE) as $touchedRowIdsChunk) {
+					$qb = $this->db->getQueryBuilder();
+					$qb->update($this->getTableName())
+						->set('last_seen_at', $qb->createNamedParameter($ts, IQueryBuilder::PARAM_INT))
+						->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId, IQueryBuilder::PARAM_STR)))
+						->andWhere($qb->expr()->eq('account_id', $qb->createNamedParameter($accountId, IQueryBuilder::PARAM_STR)))
+						->andWhere($qb->expr()->in('id', $qb->createNamedParameter($touchedRowIdsChunk, IQueryBuilder::PARAM_INT_ARRAY)));
+					$qb->executeStatement();
 				}
-				$sql = 'INSERT INTO *PREFIX*' . $this->getTableName() . ' '
-					. '(user_id, account_id, track_id, track_uid, first_seen_at, last_seen_at, position) '
-					. 'VALUES ' . implode(', ', $values);
-				$this->db->executeStatement($sql, $params);
 			}
+
+			// create new rows for the positions that changed
+			if (count($rowsToInsert) > 0) {
+				// rows are inserted in chunks to respect the parameters limit of the databases
+				foreach (array_chunk($rowsToInsert, 500) as $rowsChunk) {
+					$values = [];
+					$params = [];
+					foreach ($rowsChunk as $row) {
+						$values[] = '(?, ?, ?, ?, ?, ?, ?)';
+						array_push($params, ...$row);
+					}
+					$sql = 'INSERT INTO *PREFIX*' . $this->getTableName() . ' '
+						. '(user_id, account_id, track_id, track_uid, first_seen_at, last_seen_at, position) '
+						. 'VALUES ' . implode(', ', $values);
+					$this->db->executeStatement($sql, $params);
+				}
+			}
+		} catch (\Throwable $e) {
+			$this->db->rollBack();
+			throw $e;
 		}
+		$this->db->commit();
 	}
 
 	/**
