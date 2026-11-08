@@ -6,6 +6,36 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## 2.3.0 – 2026-11-08
+
+### Added
+
+- Show world record for each track @julien-nc
+- Show world record in the map info modal and map image on hover on map name table cells @julien-nc
+- Display user skins thumbnails if available and search in the skin zip to find a preview if the API says there is no preview @julien-nc
+- Show other's position and add a button to fetch it on demand @julien-nc
+- Progressive display of the table and record count while getting data @julien-nc
+- Add basic AGENTS.md and improve it @julien-nc [#1](https://github.com/julien-nc/integration_trackmania/pull/1)
+
+### Changed
+
+- Get records with parallel requests in batches of 8 and get favorites in a separate request, better progress reporting @julien-nc
+- Run 'other account' requests in parallel in batches of 8 and cache results @julien-nc
+- Batch track position DB queries @julien-nc
+- Frontend performance optimizations (sorting, filtering and rendering) @julien-nc
+- Refactor the settings form, make table header sticky, improve page background and style @julien-nc
+- Drop deprecated endpoints in favour of new ones @julien-nc
+- Do not cache the connected user's records @julien-nc
+- Cleaner date format @julien-nc
+- Support for Nextcloud 36, set guzzle timeout to 120 @julien-nc
+- Switch to vite 8 with faster rolldown @julien-nc
+- Update dependencies and screenshots @julien-nc
+- Disable findUnusedIssueHandlerSuppression in psalm config @julien-nc
+
+### Fixed
+
+- Fix flag and display name (service account info does not contain this info about the real account) by using tm.io @julien-nc
+
 ## 2.2.0 – 2026-08-23
 
 ### Changed
