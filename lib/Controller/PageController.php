@@ -20,8 +20,8 @@ use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\TemplateResponse;
 use OCP\AppFramework\Services\IInitialState;
+use OCP\Config\IUserConfig;
 use OCP\IAppConfig;
-use OCP\IConfig;
 use OCP\IRequest;
 
 class PageController extends Controller {
@@ -29,7 +29,7 @@ class PageController extends Controller {
 	public function __construct(
 		string $appName,
 		IRequest $request,
-		private IConfig $config,
+		private IUserConfig $userConfig,
 		private IAppConfig $appConfig,
 		private SecretService $secretService,
 		private TrackmaniaAPIService $trackmaniaAPIService,
@@ -51,11 +51,11 @@ class PageController extends Controller {
 		$refreshToken = $this->secretService->getEncryptedUserValue($this->userId, $prefix . 'refresh_token');
 		// the zone info and display name may be incomplete when the user connected with a service account
 		$this->trackmaniaAPIService->refreshStoredZoneInfo($this->userId);
-		$userName = $this->config->getUserValue($this->userId, Application::APP_ID, 'user_name');
-		$accountId = $this->config->getUserValue($this->userId, Application::APP_ID, $prefix . 'account_id');
-		$userFlagCode = $this->config->getUserValue($this->userId, Application::APP_ID, 'user_flag_code');
-		$userZoneName = $this->config->getUserValue($this->userId, Application::APP_ID, 'user_zone_name');
-		$userDisplayName = $this->config->getUserValue($this->userId, Application::APP_ID, 'user_display_name');
+		$userName = $this->userConfig->getValueString($this->userId, Application::APP_ID, 'user_name');
+		$accountId = $this->userConfig->getValueString($this->userId, Application::APP_ID, $prefix . 'account_id');
+		$userFlagCode = $this->userConfig->getValueString($this->userId, Application::APP_ID, 'user_flag_code');
+		$userZoneName = $this->userConfig->getValueString($this->userId, Application::APP_ID, 'user_zone_name');
+		$userDisplayName = $this->userConfig->getValueString($this->userId, Application::APP_ID, 'user_display_name');
 		$hasClientID = $this->appConfig->getValueString(Application::APP_ID, 'client_id') !== '';
 		$hasClientSecret = $this->appConfig->getValueString(Application::APP_ID, 'client_secret') !== '';
 
@@ -77,18 +77,18 @@ class PageController extends Controller {
 			'other_account_flag_code' => '',
 			'other_account_zone_name' => '',
 		];
-		foreach ($this->config->getUserKeys($this->userId, Application::APP_ID) as $key) {
+		foreach ($this->userConfig->getKeys($this->userId, Application::APP_ID) as $key) {
 			if (str_starts_with($key, 'show_column_')) {
-				$tableConfig[$key] = $this->config->getUserValue($this->userId, Application::APP_ID, $key);
+				$tableConfig[$key] = $this->userConfig->getValueString($this->userId, Application::APP_ID, $key);
 			}
 			if (str_starts_with($key, 'filter_')) {
-				$tableConfig[$key] = $this->config->getUserValue($this->userId, Application::APP_ID, $key);
+				$tableConfig[$key] = $this->userConfig->getValueString($this->userId, Application::APP_ID, $key);
 			}
 			if (str_starts_with($key, 'sort_')) {
-				$tableConfig[$key] = $this->config->getUserValue($this->userId, Application::APP_ID, $key);
+				$tableConfig[$key] = $this->userConfig->getValueString($this->userId, Application::APP_ID, $key);
 			}
 			if (str_starts_with($key, 'other_account_')) {
-				$tableConfig[$key] = $this->config->getUserValue($this->userId, Application::APP_ID, $key);
+				$tableConfig[$key] = $this->userConfig->getValueString($this->userId, Application::APP_ID, $key);
 			}
 		}
 		$this->initialStateService->provideInitialState('table-config', $tableConfig);

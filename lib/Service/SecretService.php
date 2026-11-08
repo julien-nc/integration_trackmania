@@ -9,14 +9,14 @@ namespace OCA\Trackmania\Service;
 
 use Exception;
 use OCA\Trackmania\AppInfo\Application;
-use OCP\IConfig;
+use OCP\Config\IUserConfig;
 use OCP\PreConditionNotMetException;
 use OCP\Security\ICrypto;
 
 class SecretService {
 
 	public function __construct(
-		private IConfig $config,
+		private IUserConfig $userConfig,
 		private ICrypto $crypto,
 	) {
 	}
@@ -30,11 +30,11 @@ class SecretService {
 	 */
 	public function setEncryptedUserValue(string $userId, string $key, string $value): void {
 		if ($value === '') {
-			$this->config->setUserValue($userId, Application::APP_ID, $key, '');
+			$this->userConfig->setValueString($userId, Application::APP_ID, $key, '');
 			return;
 		}
 		$encryptedValue = $this->crypto->encrypt($value);
-		$this->config->setUserValue($userId, Application::APP_ID, $key, $encryptedValue);
+		$this->userConfig->setValueString($userId, Application::APP_ID, $key, $encryptedValue);
 	}
 
 	/**
@@ -44,7 +44,7 @@ class SecretService {
 	 * @throws Exception
 	 */
 	public function getEncryptedUserValue(string $userId, string $key): string {
-		$storedValue = $this->config->getUserValue($userId, Application::APP_ID, $key);
+		$storedValue = $this->userConfig->getValueString($userId, Application::APP_ID, $key);
 		if ($storedValue === '') {
 			return '';
 		}

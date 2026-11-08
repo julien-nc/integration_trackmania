@@ -19,9 +19,9 @@ use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\Attribute\PasswordConfirmationRequired;
 use OCP\AppFramework\Http\DataResponse;
+use OCP\Config\IUserConfig;
 use OCP\Exceptions\AppConfigTypeConflictException;
 use OCP\IAppConfig;
-use OCP\IConfig;
 use OCP\IRequest;
 use OCP\PreConditionNotMetException;
 
@@ -30,7 +30,7 @@ class ConfigController extends Controller {
 	public function __construct(
 		string $appName,
 		IRequest $request,
-		private IConfig $config,
+		private IUserConfig $userConfig,
 		private IAppConfig $appConfig,
 		private SecretService $secretService,
 		private TrackmaniaAPIService $trackmaniaAPIService,
@@ -64,23 +64,23 @@ class ConfigController extends Controller {
 		}
 
 		foreach ($values as $key => $value) {
-			$this->config->setUserValue($this->userId, Application::APP_ID, $key, $value);
+			$this->userConfig->setValueString($this->userId, Application::APP_ID, $key, $value);
 		}
 		$result = [];
 
 		if (isset($values['core_token']) && $values['core_token'] === '') {
-			$this->config->deleteUserValue($this->userId, Application::APP_ID, 'user_id');
-			$this->config->deleteUserValue($this->userId, Application::APP_ID, 'account_id');
-			$this->config->deleteUserValue($this->userId, Application::APP_ID, 'user_name');
-			$this->config->deleteUserValue($this->userId, Application::APP_ID, 'user_flag_code');
-			$this->config->deleteUserValue($this->userId, Application::APP_ID, 'user_zone_name');
-			$this->config->deleteUserValue($this->userId, Application::APP_ID, 'user_display_name');
+			$this->userConfig->deleteUserConfig($this->userId, Application::APP_ID, 'user_id');
+			$this->userConfig->deleteUserConfig($this->userId, Application::APP_ID, 'account_id');
+			$this->userConfig->deleteUserConfig($this->userId, Application::APP_ID, 'user_name');
+			$this->userConfig->deleteUserConfig($this->userId, Application::APP_ID, 'user_flag_code');
+			$this->userConfig->deleteUserConfig($this->userId, Application::APP_ID, 'user_zone_name');
+			$this->userConfig->deleteUserConfig($this->userId, Application::APP_ID, 'user_display_name');
 			foreach (Application::AUDIENCES as $audienceKey => $v) {
 				$prefix = $v['token_config_key_prefix'];
-				$this->config->deleteUserValue($this->userId, Application::APP_ID, $prefix . 'token');
-				$this->config->deleteUserValue($this->userId, Application::APP_ID, $prefix . 'refresh_token');
-				$this->config->deleteUserValue($this->userId, Application::APP_ID, $prefix . 'token_expires_at');
-				$this->config->deleteUserValue($this->userId, Application::APP_ID, $prefix . 'account_id');
+				$this->userConfig->deleteUserConfig($this->userId, Application::APP_ID, $prefix . 'token');
+				$this->userConfig->deleteUserConfig($this->userId, Application::APP_ID, $prefix . 'refresh_token');
+				$this->userConfig->deleteUserConfig($this->userId, Application::APP_ID, $prefix . 'token_expires_at');
+				$this->userConfig->deleteUserConfig($this->userId, Application::APP_ID, $prefix . 'account_id');
 			}
 			$result['user_id'] = '';
 			$result['user_name'] = '';
@@ -120,13 +120,13 @@ class ConfigController extends Controller {
 	 */
 	private function loginWithCredentials(string $login, string $password): DataResponse {
 		// cleanup refresh token and expiration date on classic login
-		$this->config->deleteUserValue($this->userId, Application::APP_ID, 'refresh_token');
-		$this->config->deleteUserValue($this->userId, Application::APP_ID, 'token_expires_at');
+		$this->userConfig->deleteUserConfig($this->userId, Application::APP_ID, 'refresh_token');
+		$this->userConfig->deleteUserConfig($this->userId, Application::APP_ID, 'token_expires_at');
 
 		$result = $this->trackmaniaAPIService->login($login, $password);
 		if (isset($result['userId'], $result['nameOnPlatform'])) {
-			$this->config->setUserValue($this->userId, Application::APP_ID, 'user_id', $result['userId'] ?? '');
-			$this->config->setUserValue($this->userId, Application::APP_ID, 'user_name', $result['nameOnPlatform'] ?? '');
+			$this->userConfig->setValueString($this->userId, Application::APP_ID, 'user_id', $result['userId'] ?? '');
+			$this->userConfig->setValueString($this->userId, Application::APP_ID, 'user_name', $result['nameOnPlatform'] ?? '');
 
 			foreach (Application::AUDIENCES as $audienceKey => $v) {
 				$prefix = $v['token_config_key_prefix'];
@@ -134,9 +134,9 @@ class ConfigController extends Controller {
 				$this->secretService->setEncryptedUserValue($this->userId, $prefix . 'refresh_token', $result[$audienceKey]['refreshToken']);
 				$decodedToken = $this->decodeToken($result[$audienceKey]['accessToken']);
 				$expiresAt = $decodedToken['exp'];
-				$this->config->setUserValue($this->userId, Application::APP_ID, $prefix . 'token_expires_at', $expiresAt);
+				$this->userConfig->setValueString($this->userId, Application::APP_ID, $prefix . 'token_expires_at', $expiresAt);
 				$accountId = $decodedToken['sub'];
-				$this->config->setUserValue($this->userId, Application::APP_ID, $prefix . 'account_id', $accountId);
+				$this->userConfig->setValueString($this->userId, Application::APP_ID, $prefix . 'account_id', $accountId);
 
 				if ($audienceKey === Application::AUDIENCE_CORE) {
 					$zoneInfo = $this->getAccountZoneInfo($decodedToken['sub']);
@@ -145,7 +145,7 @@ class ConfigController extends Controller {
 
 			$corePrefix = Application::AUDIENCES[Application::AUDIENCE_CORE]['token_config_key_prefix'];
 			return new DataResponse([
-				'user_id' => $this->config->getUserValue($this->userId, Application::APP_ID, $corePrefix . 'account_id'),
+				'user_id' => $this->userConfig->getValueString($this->userId, Application::APP_ID, $corePrefix . 'account_id'),
 				'user_name' => $result['nameOnPlatform'],
 				'user_flag_code' => $zoneInfo['user_flag_code'] ?? '',
 				'user_zone_name' => $zoneInfo['user_zone_name'] ?? '',
@@ -163,9 +163,9 @@ class ConfigController extends Controller {
 		if ($zoneInfo === null) {
 			return [];
 		}
-		$this->config->setUserValue($this->userId, Application::APP_ID, 'user_flag_code', $zoneInfo['flag_code']);
-		$this->config->setUserValue($this->userId, Application::APP_ID, 'user_zone_name', $zoneInfo['zone_name']);
-		$this->config->setUserValue($this->userId, Application::APP_ID, 'user_display_name', $zoneInfo['display_name']);
+		$this->userConfig->setValueString($this->userId, Application::APP_ID, 'user_flag_code', $zoneInfo['flag_code']);
+		$this->userConfig->setValueString($this->userId, Application::APP_ID, 'user_zone_name', $zoneInfo['zone_name']);
+		$this->userConfig->setValueString($this->userId, Application::APP_ID, 'user_display_name', $zoneInfo['display_name']);
 		return [
 			'user_flag_code' => $zoneInfo['flag_code'],
 			'user_zone_name' => $zoneInfo['zone_name'],
@@ -192,7 +192,7 @@ class ConfigController extends Controller {
 	 */
 	public function setAdminConfig(array $values): DataResponse {
 		foreach ($values as $key => $value) {
-			$this->config->setAppValue(Application::APP_ID, $key, $value);
+			$this->appConfig->setValueString(Application::APP_ID, $key, $value);
 		}
 		return new DataResponse(1);
 	}

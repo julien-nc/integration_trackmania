@@ -27,13 +27,13 @@ use OCA\Trackmania\Exception\TokenRefreshException;
 use OCA\Trackmania\Util\SkinZipPreview;
 use OCA\Trackmania\Util\TgaImageConverter;
 use OCP\AppFramework\Http;
+use OCP\Config\IUserConfig;
 use OCP\Exceptions\AppConfigTypeConflictException;
 use OCP\Http\Client\IClient;
 use OCP\Http\Client\IClientService;
 use OCP\IAppConfig;
 use OCP\ICache;
 use OCP\ICacheFactory;
-use OCP\IConfig;
 use OCP\IL10N;
 use OCP\PreConditionNotMetException;
 use Psr\Log\LoggerInterface;
@@ -64,7 +64,7 @@ class TrackmaniaAPIService {
 	public function __construct(
 		private LoggerInterface $logger,
 		private IL10N $l10n,
-		private IConfig $config,
+		private IUserConfig $userConfig,
 		private IAppConfig $appConfig,
 		private SecretService $secretService,
 		private TrackPositionMapper $trackPositionMapper,
@@ -84,8 +84,8 @@ class TrackmaniaAPIService {
 	 */
 	public function test(string $userId): array {
 		$prefix = Application::AUDIENCES[Application::AUDIENCE_CORE]['token_config_key_prefix'];
-		$accountId = $this->config->getUserValue($userId, Application::APP_ID, $prefix . 'account_id');
-		//		$accountId = $this->config->getUserValue($userId, Application::APP_ID, 'user_id');
+		$accountId = $this->userConfig->getValueString($userId, Application::APP_ID, $prefix . 'account_id');
+		//		$accountId = $this->userConfig->getValueString($userId, Application::APP_ID, 'user_id');
 		//		return $this->request($userId, Application::AUDIENCE_CORE, 'accounts/' . $accountId);
 		//				$accountId = 'e3504dbb-df3c-42c5-95a7-eb64a5a302f1';
 		return $this->request($userId, Application::AUDIENCE_CORE, 'v2/accounts/' . $accountId . '/mapRecords');
@@ -136,7 +136,7 @@ class TrackmaniaAPIService {
 	 */
 	public function getRawRecordsPage(string $userId, int $offset): array {
 		$prefix = Application::AUDIENCES[Application::AUDIENCE_CORE]['token_config_key_prefix'];
-		$userAccountId = $this->config->getUserValue($userId, Application::APP_ID, $prefix . 'account_id');
+		$userAccountId = $this->userConfig->getValueString($userId, Application::APP_ID, $prefix . 'account_id');
 
 		$rawRecords = $this->getMapRecordsPage($userId, $userAccountId, $offset);
 		$records = [];
@@ -191,7 +191,7 @@ class TrackmaniaAPIService {
 		string $userId, array $pbTimesByMapId, ?string $otherAccountId, bool $withWorldRecords = false,
 	): array {
 		$prefix = Application::AUDIENCES[Application::AUDIENCE_CORE]['token_config_key_prefix'];
-		$userAccountId = $this->config->getUserValue($userId, Application::APP_ID, $prefix . 'account_id');
+		$userAccountId = $this->userConfig->getValueString($userId, Application::APP_ID, $prefix . 'account_id');
 
 		$coreMapInfos = $this->getCoreMapInfo($userId, array_keys($pbTimesByMapId));
 		$coreMapInfos = iterator_to_array($coreMapInfos);
@@ -394,7 +394,7 @@ class TrackmaniaAPIService {
 	 */
 	public function getAllMapsWithPosition(string $userId): Generator {
 		$prefix = Application::AUDIENCES[Application::AUDIENCE_CORE]['token_config_key_prefix'];
-		$userAccountId = $this->config->getUserValue($userId, Application::APP_ID, $prefix . 'account_id');
+		$userAccountId = $this->userConfig->getValueString($userId, Application::APP_ID, $prefix . 'account_id');
 
 		// get favorites because liveMapInfo always says favorite: false
 		$allFavs = $this->getAllFavorites($userId);
@@ -809,7 +809,7 @@ class TrackmaniaAPIService {
 	public function getEquippedSkinInfo(string $userId, ?string $accountId = null): ?array {
 		$prefix = Application::AUDIENCES[Application::AUDIENCE_CORE]['token_config_key_prefix'];
 		if ($accountId === null) {
-			$accountId = $this->config->getUserValue($userId, Application::APP_ID, $prefix . 'account_id');
+			$accountId = $this->userConfig->getValueString($userId, Application::APP_ID, $prefix . 'account_id');
 		}
 		// one request for all requested accounts, users without equipped skin are omitted
 		$equippedSkins = $this->request($userId, Application::AUDIENCE_CORE, 'accounts/skins', ['accountIdList' => $accountId]);
@@ -1119,7 +1119,7 @@ class TrackmaniaAPIService {
 	public function getMapRecords(string $userId, ?array $accountIds = null, ?array $mapIds = null): Generator {
 		$prefix = Application::AUDIENCES[Application::AUDIENCE_CORE]['token_config_key_prefix'];
 
-		$userAccountId = $this->config->getUserValue($userId, Application::APP_ID, $prefix . 'account_id');
+		$userAccountId = $this->userConfig->getValueString($userId, Application::APP_ID, $prefix . 'account_id');
 		if ($accountIds === null) {
 			$offset = 0;
 			do {
@@ -1702,13 +1702,13 @@ class TrackmaniaAPIService {
 		if (!$connected) {
 			return;
 		}
-		$accountId = $this->config->getUserValue($userId, Application::APP_ID, $prefix . 'account_id');
+		$accountId = $this->userConfig->getValueString($userId, Application::APP_ID, $prefix . 'account_id');
 		if ($accountId === '') {
 			return;
 		}
 		$isIncomplete = false;
 		foreach (['user_flag_code', 'user_zone_name', 'user_display_name'] as $key) {
-			if ($this->config->getUserValue($userId, Application::APP_ID, $key) === '') {
+			if ($this->userConfig->getValueString($userId, Application::APP_ID, $key) === '') {
 				$isIncomplete = true;
 				break;
 			}
@@ -1720,9 +1720,9 @@ class TrackmaniaAPIService {
 		if ($zoneInfo === null) {
 			return;
 		}
-		$this->config->setUserValue($userId, Application::APP_ID, 'user_flag_code', $zoneInfo['flag_code']);
-		$this->config->setUserValue($userId, Application::APP_ID, 'user_zone_name', $zoneInfo['zone_name']);
-		$this->config->setUserValue($userId, Application::APP_ID, 'user_display_name', $zoneInfo['display_name']);
+		$this->userConfig->setValueString($userId, Application::APP_ID, 'user_flag_code', $zoneInfo['flag_code']);
+		$this->userConfig->setValueString($userId, Application::APP_ID, 'user_zone_name', $zoneInfo['zone_name']);
+		$this->userConfig->setValueString($userId, Application::APP_ID, 'user_display_name', $zoneInfo['display_name']);
 	}
 
 	/**
@@ -1908,7 +1908,7 @@ class TrackmaniaAPIService {
 	 */
 	private function checkTokenExpiration(string $userId, string $audience): void {
 		$refreshToken = $this->secretService->getEncryptedUserValue($userId, Application::AUDIENCES[$audience]['token_config_key_prefix'] . 'refresh_token');
-		$expireAt = $this->config->getUserValue($userId, Application::APP_ID, Application::AUDIENCES[$audience]['token_config_key_prefix'] . 'token_expires_at');
+		$expireAt = $this->userConfig->getValueString($userId, Application::APP_ID, Application::AUDIENCES[$audience]['token_config_key_prefix'] . 'token_expires_at');
 		if ($refreshToken !== '' && $expireAt !== '') {
 			$nowTs = (new DateTime())->getTimestamp();
 			$expireAt = (int)$expireAt;
@@ -1958,7 +1958,7 @@ class TrackmaniaAPIService {
 					$prefix = Application::AUDIENCES[$audience]['token_config_key_prefix'];
 					$decodedToken = ConfigController::decodeToken($accessToken);
 					$expiresAt = $decodedToken['exp'];
-					$this->config->setUserValue($userId, Application::APP_ID, $prefix . 'token_expires_at', $expiresAt);
+					$this->userConfig->setValueString($userId, Application::APP_ID, $prefix . 'token_expires_at', $expiresAt);
 					return true;
 				}
 				return false;
