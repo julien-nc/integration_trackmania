@@ -122,7 +122,7 @@
 					{{ t('integration_trackmania', 'Position in {zone}', { zone: zn }) }}
 				</NcCheckboxRadioSwitch>
 				<NcCheckboxRadioSwitch
-					:model-value="configState.show_column_wr !== '0'"
+					:model-value="configState.show_column_wr === '1'"
 					class="checkColumn"
 					type="switch"
 					@update:model-value="onColumnCheck('show_column_wr', $event)">
@@ -1002,7 +1002,7 @@ export default {
 					sortName: 'otherPosition',
 				})
 			}
-			if (this.configState.show_column_wr !== '0') {
+			if (this.configState.show_column_wr === '1') {
 				columns.push({
 					label: t('integration_trackmania', 'World record holder'),
 					type: 'text',

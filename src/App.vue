@@ -390,7 +390,8 @@ export default {
 			if (this.tableState.other_account_id) {
 				reqData.otherAccountId = this.tableState.other_account_id
 			}
-			if (this.tableState.show_column_wr !== '0') {
+			// opted-in only: the world record requests are the most expensive of /pbs/info
+			if (this.tableState.show_column_wr === '1') {
 				reqData.withWorldRecords = true
 			}
 			return axios.post(url, reqData, reqConfig).then(response => {
