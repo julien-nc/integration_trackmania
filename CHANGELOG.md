@@ -6,6 +6,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## 2.4.0 – 2026-11-09
+
+### Changed
+
+- Make the world record table column disabled by default, it is now opt-in @julien-nc
+- Get score positions with parallel requests in batches of 8 @julien-nc
+- Do not fetch the favorites in the cron job as it does not use them @julien-nc
+- Wrap bulk track position DB writes in a transaction @julien-nc
+- Switch to IUserConfig @julien-nc
+- Remove leftover debug logs and the redundant app context in log calls @julien-nc
+- Ignore more files when building the release archive @julien-nc
+
 ## 2.3.0 – 2026-11-08
 
 ### Added
