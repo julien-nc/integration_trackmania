@@ -6,6 +6,8 @@
 .php-cs-fixer.*
 /.codecov.yml
 /.eslintrc.js
+/eslint.config.*
+AGENTS.md
 /.gitattributes
 /.gitignore
 /.l10nignore
@@ -20,6 +22,7 @@
 /screenshots
 /src
 /vendor/bin
+/vendor-bin
 /jest.config.js
 /Makefile
 /makefile
@@ -30,7 +33,8 @@
 /psalm.xml
 /pyproject.toml
 /renovate.json
-/stylelint.config.js
+/stylelint.config.*
 /webpack.config.js
 /webpack.js
+/vite.config.*
 tests
