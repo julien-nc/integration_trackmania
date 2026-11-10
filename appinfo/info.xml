@@ -14,10 +14,10 @@
 	<category>integration</category>
 	<website>https://github.com/julien-nc/integration_trackmania</website>
 	<bugs>https://github.com/julien-nc/integration_trackmania/issues</bugs>
-	<screenshot>https://raw.githubusercontent.com/julien-nc/integration_trackmania/main/img/screenshots/screenshot1.jpg</screenshot>
-	<screenshot>https://raw.githubusercontent.com/julien-nc/integration_trackmania/main/img/screenshots/screenshot2.jpg</screenshot>
-	<screenshot>https://raw.githubusercontent.com/julien-nc/integration_trackmania/main/img/screenshots/screenshot3.jpg</screenshot>
-	<screenshot>https://raw.githubusercontent.com/julien-nc/integration_trackmania/main/img/screenshots/screenshot4.jpg</screenshot>
+	<screenshot>https://raw.githubusercontent.com/julien-nc/integration_trackmania/main/img/screenshots/1.jpg</screenshot>
+	<screenshot>https://raw.githubusercontent.com/julien-nc/integration_trackmania/main/img/screenshots/2.jpg</screenshot>
+	<screenshot>https://raw.githubusercontent.com/julien-nc/integration_trackmania/main/img/screenshots/3.jpg</screenshot>
+	<screenshot>https://raw.githubusercontent.com/julien-nc/integration_trackmania/main/img/screenshots/4.jpg</screenshot>
 	<dependencies>
 		<nextcloud min-version="34" max-version="36"/>
 	</dependencies>
