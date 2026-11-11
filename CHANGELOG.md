@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## 2.4.1 – 2026-11-11
+
+### Changed
+
+- Ignore even more files when building the release archive @julien-nc
+- Rename screenshots @julien-nc
+
 ## 2.4.0 – 2026-11-09
 
 ### Changed
